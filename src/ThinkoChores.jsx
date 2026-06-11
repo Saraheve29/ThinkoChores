@@ -5,7 +5,7 @@ import React,{useState,useEffect,useRef,useCallback} from 'react';
 const GardenBg = () => (
   <div style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none",overflow:"hidden"}}>
     <img
-      src="/garden.jpg"
+      src="/Gareden2.png"
       alt=""
       style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"brightness(1.08) saturate(1.05)"}}
     />
