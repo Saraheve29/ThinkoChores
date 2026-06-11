@@ -1,0 +1,13 @@
+{
+  "name": "Thinko Chores",
+  "short_name": "Chores",
+  "description": "Your home, organised",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f0e8",
+  "theme_color": "#5A7848",
+  "icons": [
+    { "src": "/logo.jpg", "sizes": "192x192", "type": "image/jpeg" },
+    { "src": "/logo.jpg", "sizes": "512x512", "type": "image/jpeg" }
+  ]
+}
