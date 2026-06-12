@@ -1,5 +1,32 @@
 import React,{useState,useEffect,useRef,useCallback} from 'react';
 
+const C = {
+  dp:"#2C3820", mp:"#4A7038", pp:"#6A9058",
+  lp:"#A8C5B0", ll:"#D4E4D8", pale:"#F0EBE0",
+  wh:"#FFFFFF", txt:"#1A1A10", mid:"#5A5040",
+  soft:"#8A8070", done:"#D8D0C0",
+};
+const headerGrad  = `linear-gradient(135deg,#3A5030 0%,#4A6840 50%,#5A7850 100%)`;
+const pageGrad    = `linear-gradient(180deg,#F5F0E4 0%,#EDE8D8 40%,#E5DFC8 100%)`;
+const btnGrad     = `linear-gradient(135deg,#3D5A2A,#6A9058)`;
+const cardGlass   = "rgba(252,248,238,0.75)";
+
+const SWATCHES = [
+  {id:"sage",  fill:"#5A7848",border:"#3A5830",num:"#3A5830"},
+  {id:"forest",fill:"#2E7D52",border:"#1B5E38",num:"#1B5E38"},
+  {id:"teal",  fill:"#1abc9c",border:"#148f77",num:"#148f77"},
+  {id:"blue",  fill:"#2980b9",border:"#1a5276",num:"#1a5276"},
+  {id:"purple",fill:"#9b59b6",border:"#7d3c98",num:"#7d3c98"},
+  {id:"amber", fill:"#f39c12",border:"#d68910",num:"#b7770d"},
+  {id:"orange",fill:"#e67e22",border:"#ca6f1e",num:"#ca6f1e"},
+  {id:"rose",  fill:"#e07090",border:"#c05070",num:"#c05070"},
+  {id:"lilac", fill:"#c4aee8",border:"#9b7dd4",num:"#7c5cbf"},
+];
+const swatchById = id => SWATCHES.find(s=>s.id===id)||SWATCHES[8];
+const BREAK_PRESETS = [5,10,15,20,30];
+const spinBtnStyle = { borderRadius:8,width:34,height:34,fontSize:22,fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,border:"none" };
+
+
 // ── Background ──────────────────────────────────────────
 /* ── GARDEN BACKGROUND ── */
 const GardenBg = () => (
@@ -30,6 +57,396 @@ function NavBar({current,setScreen}){
           {current===t.id&&<div style={{width:20,height:3,borderRadius:2,background:'#5A7848',marginTop:1}}/>}
         </button>
       ))}
+    </div>
+  );
+}
+
+
+function UrlField({value, onChange, style={}}) {
+  const clean = v => v?.trim().startsWith("http") ? v.trim() : v?.trim() ? "https://"+v.trim() : "";
+  return (
+    <div style={{...style}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+        <span style={{fontSize:14,flexShrink:0}}>🔗</span>
+        <input
+          value={value||""}
+          onChange={e=>onChange(e.target.value)}
+          placeholder="Paste recipe or Pinterest link..."
+          style={{flex:1,padding:"7px 10px",borderRadius:9,border:`1.5px solid ${C.ll}`,fontSize:12,color:C.txt,outline:"none",background:C.pale,fontWeight:600}}
+        />
+        {value?.trim()&&(
+          <button onClick={()=>window.open(clean(value),"_blank")}
+            style={{background:C.pp,color:"#1A1A10",border:"none",borderRadius:8,padding:"5px 10px",fontSize:11,fontWeight:800,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}}>
+            Open ↗
+          </button>
+        )}
+      </div>
+      {/* Quick shortcut buttons */}
+      <div style={{display:"flex",gap:6}}>
+        <button onClick={()=>window.open("https://www.pinterest.co.uk/search/pins/?q=recipe","_blank")}
+          style={{display:"flex",alignItems:"center",gap:4,padding:"5px 10px",background:"rgba(230,0,35,0.08)",color:"#E60023",border:"1px solid rgba(230,0,35,0.18)",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer"}}>
+          📌 Pinterest
+        </button>
+        <button onClick={()=>window.open("https://www.bbcgoodfood.com/recipes","_blank")}
+          style={{display:"flex",alignItems:"center",gap:4,padding:"5px 10px",background:"rgba(90,120,72,0.08)",color:"#3A6020",border:"1px solid rgba(90,120,72,0.18)",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer"}}>
+          🍽️ BBC Food
+        </button>
+        <button onClick={()=>window.open("https://www.google.com/search?q=recipe","_blank")}
+          style={{display:"flex",alignItems:"center",gap:4,padding:"5px 10px",background:"rgba(66,133,244,0.08)",color:"#4285f4",border:"1px solid rgba(66,133,244,0.18)",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer"}}>
+          🔍 Search
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Compact URL badge (shown on saved items) ─────────── */
+
+function UrlBadge({url}) {
+  if(!url?.trim()) return null;
+  const href = url.trim().startsWith("http") ? url.trim() : "https://"+url.trim();
+  const label = (() => { try { return new URL(href).hostname.replace("www.",""); } catch { return url.slice(0,24); } })();
+  return (
+    <a href={href} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
+      style={{display:"inline-flex",alignItems:"center",gap:4,background:"#e3f2fd",color:"#1565c0",fontSize:10,fontWeight:700,borderRadius:20,padding:"2px 8px",textDecoration:"none",marginTop:4,flexShrink:0}}>
+      🔗 {label}
+    </a>
+  );
+}
+
+function Header({ title, onBack, right }) {
+  return (
+    <div style={{
+      background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",
+      backdropFilter:"blur(16px)",
+      WebkitBackdropFilter:"blur(16px)",
+      padding:"16px 20px",
+      display:"flex",alignItems:"center",gap:12,
+      boxShadow:"0 1px 12px rgba(0,0,0,0.06)",
+      position:"sticky",top:0,zIndex:50,
+      borderBottom:"1px solid rgba(90,120,72,0.1)",
+    }}>
+      {onBack&&(
+        <button onClick={onBack} style={{
+          background:"none",color:"#1A1A10",border:"none",
+          width:36,height:36,fontSize:22,cursor:"pointer",
+          flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",
+          borderRadius:10,
+        }}>
+          <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="#1A1A10" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
+      )}
+      <span style={{flex:1,color:"#1A1A10",fontFamily:"Georgia,serif",fontWeight:700,fontSize:20,textAlign:"center",letterSpacing:0.2}}>{title}</span>
+      {right || (
+        <button style={{background:"none",border:"none",cursor:"pointer",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",color:"#1A1A10",opacity:0.7}}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="18" cy="5" r="3" stroke="#1A1A10" strokeWidth="1.8"/><circle cx="6" cy="12" r="3" stroke="#1A1A10" strokeWidth="1.8"/><circle cx="18" cy="19" r="3" stroke="#1A1A10" strokeWidth="1.8"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51L8.59 10.49" stroke="#1A1A10" strokeWidth="1.8" strokeLinecap="round"/></svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
+
+function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMoveToList,lists,onPrioritizeThis,onSendTo,onMoveUp,onMoveDown,isFirst,isLast,setScreen}) {
+  const sw=swatchById(task.color);
+  const [pickerOpen,setPickerOpen]=useState(false);
+  const [menuOpen,setMenuOpen]=useState(false);
+  const [subOpen,setSubOpen]=useState(false);
+  const [newSub,setNewSub]=useState("");
+  const [mins,setMins]=useState(5);
+  const [left,setLeft]=useState(null);
+  const [on,setOn]=useState(false);
+  const ref=useRef(null);
+  useEffect(()=>{
+    if(on&&left>0)ref.current=setInterval(()=>setLeft(l=>l-1),1000);
+    else{clearInterval(ref.current);if(left===0)setOn(false);}
+    return()=>clearInterval(ref.current);
+  },[on,left]);
+  const start=(secs)=>{const t=secs||mins*60;if(t<1)return;setLeft(t);setOn(true);};
+  const stop=()=>{setOn(false);setLeft(null);};
+  const fmt=s=>`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+
+  const subs=task.subItems||[];
+  const subsDone=subs.filter(s=>s.done).length;
+
+  const addSub=()=>{
+    if(!newSub.trim())return;
+    onAddSub(task.id,[...subs,{id:Date.now(),text:newSub.trim(),done:false}]);
+    setNewSub("");
+  };
+  const toggleSub=id=>onAddSub(task.id,subs.map(s=>s.id===id?{...s,done:!s.done}:s));
+  const delSub=id=>onAddSub(task.id,subs.filter(s=>s.id!==id));
+
+  const MenuItem=({icon,label,onClick,danger})=>(
+    <button onClick={()=>{onClick();setMenuOpen(false);}}
+      style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",background:"none",border:"none",borderBottom:`1px solid ${C.ll}`,cursor:"pointer",width:"100%",textAlign:"left",color:danger?"#e74c3c":C.txt,fontWeight:600,fontSize:14}}>
+      <span style={{fontSize:18,flexShrink:0}}>{icon}</span>
+      <span>{label}</span>
+    </button>
+  );
+
+  return (
+    <div style={{background:task.done?"rgba(248,245,236,0.55)":"rgba(248,245,236,0.92)",border:`1.5px solid ${task.done?"rgba(90,80,60,0.12)":sw.border+"55"}`,borderLeft:`4px solid ${task.done?"rgba(90,80,60,0.18)":sw.fill}`,borderRadius:18,padding:"12px 12px 10px 12px",marginBottom:10,opacity:task.done?0.65:1,transition:"all 0.2s",boxShadow:"0 2px 10px rgba(60,70,40,0.07)",position:"relative"}}>
+
+      {/* Main row */}
+      <div style={{display:"flex",alignItems:"flex-start",gap:9,marginBottom:8}}>
+        {/* Index */}
+        <div style={{minWidth:28,height:28,borderRadius:"50%",background:task.done?C.done:sw.num,color:"#1A1A10",fontWeight:800,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>{index+1}</div>
+        <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"grab",color:"rgba(90,120,72,0.35)",fontSize:16,lineHeight:1,padding:"0 2px",letterSpacing:1}}>⠿</div>
+        </div>
+        {/* Colour picker dot — prominent */}
+        <div style={{position:"relative",flexShrink:0,marginTop:5}}>
+          <button onClick={()=>setPickerOpen(p=>!p)}
+            title="Change colour"
+            style={{width:24,height:24,borderRadius:"50%",cursor:"pointer",padding:0,
+              background:task.done?C.done:sw.fill,
+              border:`3px solid ${task.done?C.done:sw.border}`,
+              boxShadow:pickerOpen?`0 0 0 3px ${C.lp},0 2px 8px rgba(0,0,0,0.15)`:"0 1px 4px rgba(0,0,0,0.12)",
+              transition:"all 0.15s",display:"flex",alignItems:"center",justifyContent:"center"}}/>
+          {pickerOpen&&<ColourPicker current={task.color} onChange={id=>onColorChange(task.id,id)} onClose={()=>setPickerOpen(false)}/>}
+        </div>
+        {/* Task name */}
+        <div style={{flex:1}}>
+          <div style={{fontWeight:700,fontSize:16,lineHeight:1.4,color:task.done?C.soft:"#1A1A10",textDecoration:task.done?"line-through":"none",wordBreak:"break-word"}}>{task.name}</div>
+          {task.url&&<UrlBadge url={task.url}/>}
+          {subs.length>0&&<div style={{fontSize:11,color:C.soft,marginTop:2,fontWeight:600}}>{subsDone}/{subs.length} sub-items done</div>}
+        </div>
+        {/* Complete */}
+        <button onClick={()=>onComplete(task.id)} style={{background:task.done?C.ll:sw.num,color:task.done?C.mid:"#fff",border:"none",borderRadius:9,width:34,height:34,cursor:"pointer",fontSize:15,flexShrink:0}}>{task.done?"↩":"✓"}</button>
+        {/* Delete — visible on card */}
+        {onDelete&&<button onClick={()=>onDelete(task.id)} style={{background:"rgba(192,57,43,0.09)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.18)",borderRadius:9,width:34,height:34,cursor:"pointer",fontSize:14,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>🗑</button>}
+        {/* 3-dot menu */}
+        <button onClick={()=>setMenuOpen(m=>!m)} style={{background:C.ll,color:C.mp,border:"none",borderRadius:9,width:34,height:34,cursor:"pointer",fontSize:18,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}}>⋮</button>
+      </div>
+
+      {/* Sub-items */}
+      {subOpen&&(
+        <div style={{marginLeft:56,marginBottom:8,borderLeft:`3px solid ${C.lp}`,paddingLeft:12}}>
+          {subs.map(s=>(
+            <div key={s.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
+              <button onClick={()=>toggleSub(s.id)} style={{width:20,height:20,borderRadius:"50%",border:`2px solid ${s.done?"#27ae60":C.lp}`,background:s.done?"#27ae60":"transparent",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,fontWeight:900}}>{s.done?"✓":""}</button>
+              <span style={{flex:1,fontSize:13,color:s.done?C.soft:C.txt,textDecoration:s.done?"line-through":"none",fontWeight:600}}>{s.text}</span>
+              <button onClick={()=>delSub(s.id)} style={{background:"transparent",color:"#e74c3c",border:"none",cursor:"pointer",fontSize:13,padding:0}}>🗑</button>
+            </div>
+          ))}
+          <div style={{display:"flex",gap:6,marginTop:6}}>
+            <input value={newSub} onChange={e=>setNewSub(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addSub()}
+              placeholder="Add sub-item..."
+              style={{flex:1,padding:"6px 10px",borderRadius:8,border:`1.5px solid ${C.lp}`,fontSize:13,color:C.txt,outline:"none"}}/>
+            <button onClick={addSub} style={{background:btnGrad,color:"#1A1A10",border:"none",borderRadius:8,padding:"6px 12px",fontWeight:800,fontSize:13,cursor:"pointer"}}>+</button>
+          </div>
+        </div>
+      )}
+
+      {/* Compact inline timer — not a full widget */}
+      {!task.done&&(
+        <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6,padding:"7px 10px",background:"rgba(90,120,72,0.06)",borderRadius:12,border:"1px solid rgba(90,120,72,0.12)"}}>
+          <span style={{fontSize:14}}>⏱</span>
+          {left!==null?(
+            <>
+              <span style={{fontFamily:"monospace",fontSize:15,fontWeight:700,color:left<60?"#c0392b":"#3A6020",flex:1}}>{fmt(left)}</span>
+              <div style={{height:4,flex:1,background:"rgba(90,80,60,0.10)",borderRadius:100,overflow:"hidden",margin:"0 4px"}}>
+                <div style={{height:"100%",width:`${Math.round((left/(on?left+1:mins*60||300))*100)}%`,background:left<60?"#c0392b":sw.fill,borderRadius:100,transition:"width 1s linear"}}/>
+              </div>
+              <button onClick={stop} style={{background:"rgba(192,57,43,0.12)",color:"#c0392b",border:"none",borderRadius:8,padding:"3px 8px",fontSize:11,fontWeight:700,cursor:"pointer"}}>✕</button>
+            </>
+          ):(
+            <>
+              <span style={{fontSize:12,color:"#8A8070",flex:1}}>Task timer</span>
+              <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                {[10,20,30,50].map(t=>(
+                  <button key={t} onClick={()=>{setMins(t);start(t*60);}} style={{background:"rgba(90,120,72,0.10)",color:"#3A6020",border:"1px solid rgba(90,120,72,0.18)",borderRadius:8,padding:"3px 7px",fontSize:11,fontWeight:600,cursor:"pointer"}}>{t}m</button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Calendar */}
+      {!task.done&&(
+        <button onClick={()=>window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent("📋 "+task.name)}`,"_blank")}
+          style={{marginTop:8,width:"100%",display:"flex",alignItems:"center",gap:8,background:"#e8f5e9",color:"#2e7d32",border:"1.5px solid #a5d6a7",borderRadius:10,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+          <span>📅</span><span>Schedule in Google Calendar</span>
+        </button>
+      )}
+
+      {/* ── 3-dot menu sheet ── */}
+      {menuOpen&&(
+        <div style={{position:"fixed",inset:0,zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setMenuOpen(false)}>
+          <div style={{background:C.wh,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,boxShadow:"0 -8px 32px rgba(90,80,60,0.35)",paddingBottom:34}} onClick={e=>e.stopPropagation()}>
+            {/* Drag handle */}
+            <div style={{display:"flex",justifyContent:"center",paddingTop:10,paddingBottom:4}}>
+              <div style={{width:40,height:4,borderRadius:2,background:C.ll}}/>
+            </div>
+            {/* Header — back button LEFT, task name centre, close RIGHT */}
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:"6px 12px 10px",borderBottom:`2px solid ${C.ll}`}}>
+              <button onClick={()=>setMenuOpen(false)}
+                style={{background:C.pp,color:"#1A1A10",border:"none",borderRadius:10,width:40,height:40,fontSize:20,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:900,boxShadow:"0 2px 8px rgba(90,80,60,0.25)"}}>←</button>
+              <div style={{flex:1,fontWeight:800,color:C.dp,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.name}</div>
+              <button onClick={()=>setMenuOpen(false)}
+                style={{background:C.ll,color:C.mid,border:"none",borderRadius:10,width:36,height:36,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>✕</button>
+            </div>
+            <MenuItem icon="📝" label="Add sub-item" onClick={()=>setSubOpen(s=>!s)}/>
+            <MenuItem icon="🎯" label="Prioritize sub-items" onClick={()=>onPrioritizeThis&&onPrioritizeThis(task.id)}/>
+            <MenuItem icon="📋" label="Move to another list" onClick={()=>{}}/>
+            {(lists||[]).filter(l=>l.id!==task._listId).map(l=>(
+              <button key={l.id} onClick={()=>{onMoveToList&&onMoveToList(task.id,l.id);setMenuOpen(false);}}
+                style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px 10px 44px",background:C.pale,border:"none",borderBottom:`1px solid ${C.ll}`,cursor:"pointer",width:"100%",textAlign:"left",fontSize:13,fontWeight:600,color:C.txt}}>
+                → {l.name}
+              </button>
+            ))}
+            <MenuItem icon="📅" label="Schedule in Calendar" onClick={()=>window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent("📋 "+task.name)}`,"_blank")}/>
+            <MenuItem icon="🎯" label="Send to Matrix — Do First" onClick={()=>onSendTo&&onSendTo(task,"matrix","do")}/>
+            <MenuItem icon="🟠" label="Send to Matrix — Schedule" onClick={()=>onSendTo&&onSendTo(task,"matrix","plan")}/>
+            <MenuItem icon="🔵" label="Send to Matrix — Ask for Help" onClick={()=>onSendTo&&onSendTo(task,"matrix","help")}/>
+            <MenuItem icon="⚡" label="Send to The Wipe Out" onClick={()=>onSendTo&&onSendTo(task,"charge")}/>
+            <MenuItem icon="🗑" label="Delete task" onClick={()=>onDelete(task.id)} danger/>
+            {/* Big close button at bottom for easy thumb reach */}
+            <div style={{padding:"10px 16px 0"}}>
+              <button onClick={()=>setMenuOpen(false)}
+                style={{width:"100%",padding:"14px",background:C.ll,color:C.mp,border:`1.5px solid ${C.lp}`,borderRadius:14,fontWeight:800,fontSize:15,cursor:"pointer"}}>
+                ← Back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function PriCompare({tasks,onDone}) {
+  const pending=tasks.filter(t=>!t.done);
+  const pairs=[];
+  for(let i=0;i<pending.length;i++) for(let j=i+1;j<pending.length;j++) pairs.push([pending[i],pending[j]]);
+  const [idx,setIdx]=useState(0);
+  const [scores,setScores]=useState({});
+
+  if(pairs.length===0){onDone(pending);return null;}
+
+  const choose=w=>{
+    const ns={...scores,[w.id]:(scores[w.id]||0)+1};
+    setScores(ns);
+    if(idx+1>=pairs.length) onDone([...pending].sort((a,b)=>(ns[b.id]||0)-(ns[a.id]||0)));
+    else setIdx(i=>i+1);
+  };
+
+  const skip=()=>{
+    if(idx+1>=pairs.length) onDone([...pending].sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)));
+    else setIdx(i=>i+1);
+  };
+
+  const [a,b]=pairs[idx];
+  const pct=Math.round((idx/pairs.length)*100);
+
+  const TaskCard=({task,onPick})=>{
+    const sw=swatchById(task.color);
+    return(
+      <button onClick={onPick}
+        style={{flex:1,padding:"22px 16px 20px",borderRadius:20,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:`3px solid ${sw.fill}`,color:C.txt,fontWeight:800,fontSize:16,cursor:"pointer",boxShadow:`0 6px 24px ${sw.fill}`,display:"flex",flexDirection:"column",alignItems:"center",gap:14,transition:"all 0.15s",minHeight:160,textAlign:"center",lineHeight:1.4}}
+        onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.04)";}}
+        onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";}}>
+        {/* Colour circle — explicitly forced round */}
+        <div style={{width:32,height:32,borderRadius:"50%",background:sw.fill,border:"3px solid rgba(255,255,255,0.9)",boxShadow:`0 2px 10px ${sw.fill}`,flexShrink:0,display:"block"}}/>
+        <span style={{color:C.dp,fontWeight:800,fontSize:15,lineHeight:1.4,wordBreak:"break-word"}}>{task.name}</span>
+      </button>
+    );
+  };
+
+  return(
+    <div style={{minHeight:"100vh",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",fontFamily:"'Segoe UI',sans-serif",paddingBottom:40}}>
+
+      {/* Header */}
+      <div style={{width:"100%",background:"rgba(90,80,60,0.05)",padding:"14px 16px",display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
+        <button onClick={()=>onDone([...pending].sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)))}
+          style={{background:"rgba(255,255,255,0.15)",color:"#1A1A10",border:"none",borderRadius:10,width:36,height:36,fontSize:18,cursor:"pointer",flexShrink:0}}>←</button>
+        <div style={{flex:1,color:"#1A1A10",fontWeight:800,fontSize:16}}>To Do List</div>
+        <div style={{color:"rgba(255,255,255,0.55)",fontSize:13,fontWeight:600}}>{idx+1} / {pairs.length}</div>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{width:"100%",height:4,background:"rgba(255,255,255,0.1)"}}>
+        <div style={{height:"100%",width:`${pct}%`,background:C.lp,transition:"width 0.3s"}}/>
+      </div>
+
+      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"32px 20px",width:"100%",maxWidth:480,gap:0}}>
+
+        {/* Question */}
+        <div style={{fontSize:22,fontWeight:900,color:"#1A1A10",marginBottom:32,textAlign:"center",lineHeight:1.3}}>
+          Which one is most important?
+        </div>
+
+        {/* Side by side cards */}
+        <div style={{display:"flex",gap:16,width:"100%",alignItems:"stretch"}}>
+          <TaskCard task={a} onPick={()=>choose(a)}/>
+
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <div style={{fontWeight:900,fontSize:22,color:"rgba(255,255,255,0.7)",letterSpacing:2}}>OR</div>
+          </div>
+
+          <TaskCard task={b} onPick={()=>choose(b)}/>
+        </div>
+
+        {/* Skip */}
+        <button onClick={skip} style={{marginTop:28,background:"transparent",color:"rgba(255,255,255,0.4)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:20,padding:"8px 22px",fontSize:13,fontWeight:600,cursor:"pointer"}}>
+          Skip this pair
+        </button>
+
+        {/* Tap hint */}
+        <div style={{marginTop:14,color:"rgba(255,255,255,0.3)",fontSize:12,textAlign:"center"}}>
+          Tap the task that matters more right now
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── HomeBar — sticky top bar with 🏠 home for all modules ── */
+
+function BreakTimer({setScreen}) {
+  const [mins,setMins]=useState(5);
+  const [left,setLeft]=useState(null);
+  const [on,setOn]=useState(false);
+  const [alerted,setAlerted]=useState(false);
+  const ref=useRef(null);
+  useEffect(()=>{
+    clearInterval(ref.current);
+    if(!on) return;
+    ref.current=setInterval(()=>setLeft(l=>{
+      if(l===0&&!alerted){playAlarm("gentle");setAlerted(true);}
+      return l-1;
+    }),1000);
+    return()=>clearInterval(ref.current);
+  },[on]);
+  const fmt=s=>{const abs=Math.abs(s);const str=String(Math.floor(abs/60)).padStart(2,"0")+":"+String(abs%60).padStart(2,"0");return s<0?"+"+str:str;};
+  return (
+    <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:18,padding:"14px 16px",marginBottom:12,border:"1px solid rgba(255,255,255,0.9)"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+        <span style={{fontFamily:"Georgia,serif",fontSize:15,fontWeight:700,color:"#1A1A10",flex:1}}>☕ Break Timer</span>
+        {left!==null&&<span style={{fontFamily:"monospace",fontSize:18,fontWeight:700,color:left<0?"#c0392b":left<60?"#E08020":"#2C3820"}}>{fmt(left)}</span>}
+      </div>
+      {left!==null&&left>=0&&(
+        <div style={{height:4,background:"rgba(90,80,60,0.10)",borderRadius:100,overflow:"hidden",marginBottom:10}}>
+          <div style={{height:"100%",width:`${Math.round((left/(mins*60))*100)}%`,background:left<60?"#c0392b":"#5A7848",borderRadius:100,transition:"width 1s linear"}}/>
+        </div>
+      )}
+      {left===null&&(
+        <div style={{display:"flex",gap:6,marginBottom:10}}>
+          {[5,10,15,20,30].map(p=>(
+            <button key={p} onClick={()=>setMins(p)} style={{flex:1,padding:"7px 0",fontSize:12,fontWeight:600,cursor:"pointer",background:mins===p?"#5A7848":"rgba(255,255,255,0.75)",color:mins===p?"#fff":"#3A3020",border:`1.5px solid ${mins===p?"transparent":"rgba(90,120,72,0.25)"}`,borderRadius:100,transition:"all 0.15s"}}>{p}m</button>
+          ))}
+        </div>
+      )}
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>{if(left===null){setLeft(mins*60);setOn(true);setAlerted(false);}else setOn(o=>!o);}} style={{flex:1,padding:"9px",background:on?"rgba(192,57,43,0.10)":"#5A7848",color:on?"#c0392b":"#fff",border:`1.5px solid ${on?"rgba(192,57,43,0.25)":"#5A7848"}`,borderRadius:100,fontWeight:700,fontSize:13,cursor:"pointer"}}>
+          {left===null?`▶ Start ${mins}m`:on?"⏸ Pause":"▶ Resume"}
+        </button>
+        {left!==null&&<button onClick={()=>{clearInterval(ref.current);setLeft(null);setOn(false);setAlerted(false);}} style={{flex:1,padding:"9px",background:"rgba(192,57,43,0.08)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.18)",borderRadius:100,fontWeight:700,fontSize:13,cursor:"pointer"}}>⏹ Stop</button>}
+      </div>
+      {setScreen&&<button onClick={()=>setScreen("rest")} style={{width:"100%",marginTop:8,padding:"9px",background:"transparent",color:"#5A7848",border:"1px solid rgba(90,120,72,0.22)",borderRadius:100,fontWeight:600,fontSize:12,cursor:"pointer"}}>🌿 Open Rest Space</button>}
     </div>
   );
 }
@@ -2206,6 +2623,8 @@ function Housework({setScreen}){
 
 // ── Main App ─────────────────────────────────────────────
 export default function App(){
+  const load=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}};
+  const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
   const MULTI="linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)";
 
   const [screen,setScreen]=useState('home');
@@ -2221,10 +2640,6 @@ export default function App(){
     return()=>window.removeEventListener('beforeinstallprompt',handler);
   },[]);
   const [userName,setUserName]=useState(()=>{try{return localStorage.getItem('chores_username')||'';}catch{return '';}});
-
-  // Shared data
-  const load=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}};
-  const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 
   const [priData,setPriDataRaw]=useState(()=>{
     const saved=load('chores_pri',null);
