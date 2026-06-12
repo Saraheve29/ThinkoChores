@@ -2015,7 +2015,11 @@ export default function App(){
   const load=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}};
   const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 
-  const [priData,setPriDataRaw]=useState(()=>load('chores_pri',[]));
+  const [priData,setPriDataRaw]=useState(()=>{
+    const saved=load('chores_pri',null);
+    if(saved&&Array.isArray(saved)&&saved.length>0) return saved;
+    return [{id:'main',name:'To Do',tasks:[],created:Date.now()}];
+  });
   const setPriData=d=>{setPriDataRaw(d);save('chores_pri',d);};
 
   const [shopData,setShopDataRaw]=useState(()=>load('chores_shop',[]));
@@ -2059,12 +2063,17 @@ export default function App(){
   </div></>);
 
   // ── HOME ──
-  const TILES=[
+  const DEFAULT_TILES=[
     {id:'todo',     icon:'📋', name:'To Do',    color:'#5A7848', summary:'Tasks · A vs B · Focus timer'},
     {id:'housework',icon:'🏠', name:'Chores',   color:'#7A8A5A', summary:'Zones · Templates · A vs B'},
     {id:'shopping', icon:'🛒', name:'Shopping', color:'#4878A8', summary:'Categories · Smart lists'},
     {id:'meals',    icon:'🍽️', name:'Meal Plan',color:'#C07040', summary:'Weekly meals · Shopping link'},
   ];
+  const [tileOrder,setTileOrderRaw]=useState(()=>load('chores_tile_order',DEFAULT_TILES.map(t=>t.id)));
+  const saveTileOrder=o=>{setTileOrderRaw(o);save('chores_tile_order',o);};
+  const TILES=tileOrder.map(id=>DEFAULT_TILES.find(t=>t.id===id)).filter(Boolean);
+  const [dragTile,setDragTile]=useState(null);
+  const [dragOverTile,setDragOverTile]=useState(null);
   return(
     <><GardenBg/>
     <div style={{position:'relative',zIndex:10,minHeight:'100vh',paddingBottom:80,fontFamily:"'Segoe UI',sans-serif"}}>
@@ -2094,13 +2103,26 @@ export default function App(){
       {/* 4 Tiles */}
       <div style={{padding:'0 16px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
         {TILES.map(t=>(
-          <button key={t.id} onClick={()=>setScreen(t.id)}
-            style={{background:'linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)',borderRadius:22,padding:'20px 16px',border:'1.5px solid rgba(255,255,255,0.7)',boxShadow:'0 4px 16px rgba(60,70,40,0.12)',cursor:'pointer',textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',gap:8}}>
+          <div key={t.id}
+            draggable
+            onDragStart={e=>{e.dataTransfer.effectAllowed='move';setDragTile(t.id);}}
+            onDragEnd={()=>{setDragTile(null);setDragOverTile(null);}}
+            onDragOver={e=>{e.preventDefault();setDragOverTile(t.id);}}
+            onDrop={e=>{
+              e.preventDefault();
+              if(!dragTile||dragTile===t.id){setDragTile(null);setDragOverTile(null);return;}
+              const order=[...tileOrder];
+              const from=order.indexOf(dragTile),to=order.indexOf(t.id);
+              order.splice(to,0,...order.splice(from,1));
+              saveTileOrder(order);setDragTile(null);setDragOverTile(null);
+            }}
+            onClick={()=>setScreen(t.id)}
+            style={{background:dragOverTile===t.id?'rgba(90,120,72,0.15)':'linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)',borderRadius:22,padding:'20px 16px',border:`1.5px solid ${dragOverTile===t.id?'rgba(90,120,72,0.40)':'rgba(255,255,255,0.7)'}`,boxShadow:'0 4px 16px rgba(60,70,40,0.12)',cursor:'grab',textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',gap:8}}>
             <span style={{fontSize:40}}>{t.icon}</span>
             <div style={{fontFamily:'Georgia,serif',fontWeight:700,fontSize:16,color:'#1A1A10'}}>{t.name}</div>
             <div style={{fontSize:11,color:'#5A4A30',opacity:0.8,lineHeight:1.3}}>{t.summary}</div>
             <div style={{width:32,height:3,borderRadius:2,background:t.color,marginTop:2}}/>
-          </button>
+          </div>
         ))}
       </div>
 
