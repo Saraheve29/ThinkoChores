@@ -341,6 +341,212 @@ const SHOP_TEMPLATES=[
 const SHOP_LIST_ICONS=["🛒","🎁","🍎","👗","🏠","🐾","💊","📚","🎉","✈️"];
 
 
+function ShopListDetail({list,onBack,onUpdate,onDelete}){
+  const [newItem,setNewItem]=useState("");
+  const [dragId,setDragId]=useState(null);
+
+  const [editingId,setEditingId]=useState(null);
+  const [editText,setEditText]=useState("");
+  const [editQty,setEditQty]=useState("");
+  const save=items=>onUpdate({...list,items:items.map(i=>({cat:"",...i}))});
+  const addItem=()=>{if(!newItem.trim())return;save([...list.items,{id:Date.now()+Math.random(),text:newItem.trim(),done:false,cat:""}]);setNewItem("");};
+  const toggle=id=>save(list.items.map(it=>it.id===id?{...it,done:!it.done}:it));
+  const del=id=>save(list.items.filter(it=>it.id!==id));
+  const dragOver=toId=>{
+    if(!dragId||dragId===toId)return;
+    const a=[...list.items],fi=a.findIndex(i=>i.id===dragId),ti=a.findIndex(i=>i.id===toId);
+    if(fi<0||ti<0)return;a.splice(fi,1);a.splice(ti,0,list.items[fi]);save(a);
+  };
+  const done=list.items.filter(i=>i.done).length;
+  const total=list.items.length;
+
+  return(
+    <div style={{minHeight:"100vh",background:"transparent",paddingBottom:90,fontFamily:"'Segoe UI',sans-serif"}}>
+
+      {/* Header */}
+      <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",backdropFilter:"blur(16px)",padding:"14px 16px 10px",borderBottom:"1px solid rgba(90,80,60,0.08)",position:"sticky",top:0,zIndex:50}}>
+        {/* Title row */}
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+          <button onClick={onBack} style={{background:"none",border:"none",cursor:"pointer",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="#1A1A10" strokeWidth="2.2" strokeLinecap="round"/></svg>
+          </button>
+          <div style={{fontSize:22,flexShrink:0}}>{list.icon||"🛒"}</div>
+          <div style={{flex:1,fontFamily:"Georgia,serif",fontWeight:700,fontSize:18,color:"#1A1A10"}}>{list.name}</div>
+          <div style={{fontSize:12,color:"#8A8070",fontWeight:600,flexShrink:0}}>{done}/{total}</div>
+          <button onClick={()=>{onDelete(list.id);}} style={{background:"none",border:"none",cursor:"pointer",color:"#c0392b",fontSize:20,flexShrink:0}}>🗑</button>
+        </div>
+        <div style={{display:"flex",gap:6,paddingBottom:6}}>
+          <button onClick={()=>{
+            const txt="🛒 "+list.name+"\n\n"+list.items.filter(i=>!i.done).map(i=>"☐ "+i.text).join("\n")+(list.items.filter(i=>i.done).length?"\n\n✅ Got:\n"+list.items.filter(i=>i.done).map(i=>"✓ "+i.text).join("\n"):"")+("\n\nFrom Thinko 🌿");
+            window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank");
+          }} style={{flex:1,background:"#25D366",color:"#fff",border:"none",borderRadius:12,padding:"11px",fontSize:14,fontWeight:800,cursor:"pointer"}}>💬 WhatsApp</button>
+          <button onClick={()=>{
+            const txt="🛒 "+list.name+"\n\n"+list.items.filter(i=>!i.done).map(i=>"☐ "+i.text).join("\n")+(list.items.filter(i=>i.done).length?"\n\n✅ Got:\n"+list.items.filter(i=>i.done).map(i=>"✓ "+i.text).join("\n"):"")+("\n\nFrom Thinko 🌿");
+            window.open("sms:?body="+encodeURIComponent(txt),"_blank");
+          }} style={{flex:1,background:"#3A6028",color:"#fff",border:"none",borderRadius:12,padding:"11px",fontSize:14,fontWeight:800,cursor:"pointer"}}>📱 Text</button>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      {total>0&&<div style={{height:4,background:"rgba(90,80,60,0.08)"}}><div style={{height:"100%",width:`${total?Math.round((done/total)*100):0}%`,background:"#5A7848",transition:"width 0.3s"}}/></div>}
+
+      <div style={{padding:"14px 16px"}}>
+        {/* Add item */}
+        <div style={{display:"flex",gap:10,marginBottom:14,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:100,padding:"10px 14px 10px 18px",border:"1.5px solid rgba(90,120,72,0.18)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)"}}>
+          <input value={newItem} onChange={e=>setNewItem(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&addItem()}
+            placeholder="Add item…"
+            style={{flex:1,border:"none",outline:"none",fontSize:15,color:"#1A1A10",background:"transparent",fontWeight:600}}/>
+          <button onClick={addItem} style={{background:"#5A7848",color:"#fff",border:"none",borderRadius:"50%",width:36,height:36,fontSize:20,cursor:"pointer",fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 2px 10px rgba(58,80,38,0.3)"}}>+</button>
+        </div>
+
+        {/* Share row */}
+        <div style={{display:"flex",gap:8,marginBottom:16}}>
+          <button onClick={()=>{
+            const txt="🛒 "+list.name+"\n\n"+list.items.filter(i=>!i.done).map(i=>"☐ "+i.text).join("\n")+(list.items.filter(i=>i.done).length?"\n\n✅ Got:\n"+list.items.filter(i=>i.done).map(i=>"✓ "+i.text).join("\n"):"")+("\n\nFrom Thinko 🌿");
+            window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank");
+          }} style={{flex:1,background:"#25D366",color:"#fff",border:"none",borderRadius:14,padding:"12px 8px",fontSize:14,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>💬 WhatsApp</button>
+          <button onClick={()=>{
+            const txt="🛒 "+list.name+"\n\n"+list.items.filter(i=>!i.done).map(i=>"☐ "+i.text).join("\n")+(list.items.filter(i=>i.done).length?"\n\n✅ Got:\n"+list.items.filter(i=>i.done).map(i=>"✓ "+i.text).join("\n"):"")+("\n\nFrom Thinko 🌿");
+            window.open("sms:?body="+encodeURIComponent(txt),"_blank");
+          }} style={{flex:1,background:"#3A6028",color:"#fff",border:"none",borderRadius:14,padding:"12px 8px",fontSize:14,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>📱 Text</button>
+        </div>
+
+        {list.items.length===0&&(
+          <div style={{textAlign:"center",color:"#8A8070",padding:"30px 0",fontSize:14}}>No items yet — add one above</div>
+        )}
+
+        {/* Items grouped by category */}
+        {(()=>{
+          const active=list.items.filter(i=>!i.done);
+          const done=list.items.filter(i=>i.done);
+          const groups={};
+          const noCat=[];
+          active.forEach(item=>{
+            if(item.cat&&CAT_EMOJI[item.cat]){if(!groups[item.cat])groups[item.cat]=[];groups[item.cat].push(item);}
+            else noCat.push(item);
+          });
+          const renderItem=(item)=>(
+            <div key={item.id}
+              draggable onDragStart={()=>setDragId(item.id)} onDragOver={e=>{e.preventDefault();dragOver(item.id);}} onDragEnd={()=>setDragId(null)}
+              style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:18,marginBottom:8,border:"1px solid rgba(90,80,60,0.10)",opacity:dragId===item.id?0.5:1,boxShadow:"0 2px 8px rgba(60,60,40,0.05)"}}>
+              {editingId===item.id&&editText!==(item.qty||"")?(
+                /* Edit name mode — only when ✏️ tapped, not qty */
+                <div style={{padding:"10px 12px"}}>
+                  <input value={editText} onChange={e=>setEditText(e.target.value)}
+                    autoFocus
+                    onKeyDown={e=>{if(e.key==="Enter"){save(list.items.map(i=>i.id===item.id?{...i,text:editText.trim()||i.text}:i));setEditingId(null);}if(e.key==="Escape")setEditingId(null);}}
+                    style={{width:"100%",boxSizing:"border-box",padding:"9px 14px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.25)",fontSize:14,fontWeight:600,color:"#1A1A10",outline:"none",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",marginBottom:8}}/>
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={()=>{save(list.items.map(i=>i.id===item.id?{...i,text:editText.trim()||i.text}:i));setEditingId(null);}}
+                      style={{flex:1,padding:"9px",background:"#4A7838",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:13,cursor:"pointer"}}>✅ Save</button>
+                    <button onClick={()=>setEditingId(null)}
+                      style={{flex:1,padding:"9px",background:"rgba(90,80,60,0.08)",color:"#8A8070",border:"none",borderRadius:100,fontWeight:600,fontSize:13,cursor:"pointer"}}>Cancel</button>
+                  </div>
+                </div>
+              ):(
+                <div style={{display:"flex",alignItems:"center",gap:10,padding:"11px 12px"}}>
+                  <span style={{cursor:"grab",color:"rgba(90,80,60,0.25)",fontSize:14,flexShrink:0}}>⠿</span>
+                  <button onClick={()=>toggle(item.id)}
+                    style={{width:24,height:24,borderRadius:"50%",border:`2px solid ${item.done?"#5A7848":"rgba(90,80,60,0.25)"}`,background:item.done?"#5A7848":"transparent",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#fff"}}>
+                    {item.done?"✓":""}
+                  </button>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                      <span style={{fontSize:15,fontWeight:item.done?400:600,color:item.done?"#8A9080":"#1A1A10",textDecoration:item.done?"line-through":"none"}}>{item.text}</span>
+                      {/* Qty badge — always shown, tap to edit inline */}
+                      {editingId===item.id?(
+                        <input value={editQty} onChange={e=>setEditQty(e.target.value)}
+                          onBlur={()=>{save(list.items.map(i=>i.id===item.id?{...i,qty:editQty.trim()}:i));setEditingId(null);}}
+                          onKeyDown={e=>{if(e.key==="Enter"||e.key==="Escape"){save(list.items.map(i=>i.id===item.id?{...i,qty:editQty.trim()}:i));setEditingId(null);}}}
+                          autoFocus
+                          placeholder="qty"
+                          style={{width:52,padding:"2px 8px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.35)",fontSize:12,fontWeight:700,color:"#3A6020",outline:"none",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",textAlign:"center"}}/>
+                      ):(
+                        <button onClick={()=>{setEditingId(item.id);setEditQty(item.qty||"");setEditText(item.text);}}
+                          style={{fontSize:12,fontWeight:700,color:item.qty?"#3A6020":"#B0A898",background:item.qty?"rgba(90,120,72,0.10)":"rgba(90,80,60,0.05)",border:item.qty?"1px solid rgba(90,120,72,0.22)":"1px dashed rgba(90,80,60,0.18)",borderRadius:100,padding:"2px 8px",cursor:"pointer",flexShrink:0}}>
+                          {item.qty||"+ qty"}
+                        </button>
+                      )}
+                    </div>
+                    <select value={item.cat||""} onChange={e=>{save(list.items.map(i=>i.id===item.id?{...i,cat:e.target.value}:i));}}
+                      style={{fontSize:11,fontWeight:600,color:item.cat?"#3A6020":"#8A8070",border:item.cat?"1px solid rgba(90,120,72,0.25)":"1px dashed rgba(90,80,60,0.20)",background:item.cat?"rgba(90,120,72,0.08)":"rgba(255,255,255,0.60)",borderRadius:100,cursor:"pointer",padding:"3px 8px",marginTop:3,outline:"none",maxWidth:"100%"}}>
+                      <option value="">＋ category</option>
+                      {Object.entries(CAT_EMOJI).map(([k,v])=><option key={k} value={k}>{v} {k}</option>)}
+                    </select>
+                  </div>
+                  <button onClick={()=>{setEditingId(item.id);setEditText(item.text);setEditQty(item.qty||"");}}
+                    style={{background:"rgba(90,80,60,0.07)",color:"#8A8070",border:"none",borderRadius:8,width:28,height:28,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}} title="Edit name">✏️</button>
+                  <button onClick={()=>del(item.id)} style={{background:"none",border:"none",color:"rgba(192,57,43,0.4)",cursor:"pointer",fontSize:14,flexShrink:0}}>🗑</button>
+                </div>
+              )}
+            </div>
+          );
+          return(
+            <div>
+              {noCat.map(renderItem)}
+              {Object.entries(groups).map(([cat,items])=>(
+                <div key={cat} style={{marginBottom:10}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#5A7848",letterSpacing:0.8,textTransform:"uppercase",marginBottom:6,paddingLeft:4}}>
+                    {CAT_EMOJI[cat]} {cat}
+                  </div>
+                  {items.map(renderItem)}
+                </div>
+              ))}
+              {done.length>0&&(
+                <div style={{marginTop:14}}>
+                  <div style={{fontSize:10,fontWeight:700,color:"rgba(90,80,60,0.35)",letterSpacing:1,textTransform:"uppercase",marginBottom:8}}>Done</div>
+                  {done.map(renderItem)}
+                  <button onClick={()=>save(list.items.filter(i=>!i.done))}
+                    style={{width:"100%",padding:"10px",marginTop:8,background:"rgba(192,57,43,0.08)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.18)",borderRadius:100,fontWeight:700,fontSize:13,cursor:"pointer"}}>
+                    🗑 Remove ticked items
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      {/* Fixed share bar */}
+      <div style={{position:"fixed",bottom:60,left:0,right:0,zIndex:200,display:"flex",boxShadow:"0 -2px 12px rgba(0,0,0,0.15)"}}>
+        <button onClick={()=>{
+          const items=list.items;
+          if(!items.length){alert("No items yet");return;}
+          const txt="🛒 "+list.name+"\n\n"+items.filter(i=>!i.done).map(i=>"☐ "+i.name).join("\n")+(items.filter(i=>i.done).length?"\n\n✅ Got:\n"+items.filter(i=>i.done).map(i=>"✓ "+i.name).join("\n"):"")+("\n\nFrom Thinko 🌿");
+          window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank");
+        }} style={{flex:1,background:"#25D366",color:"#fff",border:"none",padding:"16px 8px",fontSize:16,fontWeight:800,cursor:"pointer"}}>💬 WhatsApp</button>
+        <button onClick={()=>{
+          const items=list.items;
+          if(!items.length){alert("No items yet");return;}
+          const txt="🛒 "+list.name+"\n\n"+items.filter(i=>!i.done).map(i=>"☐ "+i.name).join("\n")+(items.filter(i=>i.done).length?"\n\n✅ Got:\n"+items.filter(i=>i.done).map(i=>"✓ "+i.name).join("\n"):"")+("\n\nFrom Thinko 🌿");
+          window.open("sms:?body="+encodeURIComponent(txt),"_blank");
+        }} style={{flex:1,background:"#3A6028",color:"#fff",border:"none",padding:"16px 8px",fontSize:16,fontWeight:800,cursor:"pointer"}}>📱 Text</button>
+      </div>
+      </div>
+    </div>
+  );
+}
+
+const mkItem=(text)=>({id:Date.now()+Math.random(),text:text.trim(),done:false});
+const mkShopList=(name,icon)=>({id:Date.now()+Math.random(),name:name||"My List",icon:icon||"🛒",items:[],color:"#5A7848"});
+
+const CAT_EMOJI={
+  "fruit & veg":"🥦",
+  "meat & fish":"🥩",
+  "dairy & eggs":"🧀",
+  "bread & bakery":"🥖",
+  "tins & packets":"🥫",
+  "frozen":"🧊",
+  "drinks":"🥤",
+  "snacks & confectionery":"🍿",
+  "condiments & sauces":"🫙",
+  "cleaning & household":"🧹",
+  "toiletries & beauty":"🧴",
+  "clothing":"👗",
+  "baby & kids":"🍼",
+  "health & pharmacy":"💊",
+  "pets":"🐾",
+};
+
 function ShoppingList({data,setData,setScreen}){
   const [activeId,setActiveId]=useState(null);
   const [showTemplates,setShowTemplates]=useState(true);
@@ -2004,6 +2210,11 @@ export default function App(){
 
   const [screen,setScreen]=useState('home');
   const [installPrompt,setInstallPrompt]=useState(null);
+  const DEFAULT_TILE_IDS=['todo','housework','shopping','meals'];
+  const [tileOrder,setTileOrderRaw]=useState(()=>load('chores_tile_order',DEFAULT_TILE_IDS));
+  const saveTileOrder=o=>{setTileOrderRaw(o);save('chores_tile_order',o);};
+  const [dragTile,setDragTile]=useState(null);
+  const [dragOverTile,setDragOverTile]=useState(null);
   useEffect(()=>{
     const handler=e=>{e.preventDefault();setInstallPrompt(e);};
     window.addEventListener('beforeinstallprompt',handler);
@@ -2043,7 +2254,7 @@ export default function App(){
 
   // ── SCREENS ──
   if(screen==='todo') return(<><GardenBg/><div style={{position:'relative',zIndex:10,minHeight:'100vh',paddingBottom:80}}>
-    <PriList list={priData.length>0?priData[0]:{id:'main',name:'To Do',tasks:[]}} onBack={()=>setScreen('home')} onUpdate={(l)=>setPriData([l])} matrixData={{}} setMatrixData={()=>{}} setScreen={setScreen} focusMins={25} setFocusMins={()=>{}} focusLeft={0} setFocusLeft={()=>{}} focusOn={false} setFocusOn={()=>{}} setFocusAlerted={()=>{}} fmtTimer={s=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}/>
+    <PriList list={{...( priData.length>0?priData[0]:{id:'main',name:'To Do',tasks:[]}),tasks:(priData.length>0&&priData[0].tasks)?priData[0].tasks:[]}} onBack={()=>setScreen('home')} onUpdate={(l)=>setPriData([l])} matrixData={{}} setMatrixData={()=>{}} setScreen={setScreen} focusMins={25} setFocusMins={()=>{}} focusLeft={0} setFocusLeft={()=>{}} focusOn={false} setFocusOn={()=>{}} setFocusAlerted={()=>{}} fmtTimer={s=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}/>
     <NavBar current="todo" setScreen={setScreen}/>
   </div></>);
 
@@ -2069,24 +2280,24 @@ export default function App(){
     {id:'shopping', icon:'🛒', name:'Shopping', color:'#4878A8', summary:'Categories · Smart lists'},
     {id:'meals',    icon:'🍽️', name:'Meal Plan',color:'#C07040', summary:'Weekly meals · Shopping link'},
   ];
-  const [tileOrder,setTileOrderRaw]=useState(()=>load('chores_tile_order',DEFAULT_TILES.map(t=>t.id)));
-  const saveTileOrder=o=>{setTileOrderRaw(o);save('chores_tile_order',o);};
   const TILES=tileOrder.map(id=>DEFAULT_TILES.find(t=>t.id===id)).filter(Boolean);
-  const [dragTile,setDragTile]=useState(null);
-  const [dragOverTile,setDragOverTile]=useState(null);
   return(
     <><GardenBg/>
     <div style={{position:'relative',zIndex:10,minHeight:'100vh',paddingBottom:80,fontFamily:"'Segoe UI',sans-serif"}}>
 
       {/* Install button */}
-      {installPrompt&&(
-        <div style={{padding:'8px 16px 0'}}>
+      <div style={{padding:'8px 16px 0'}}>
+        {installPrompt?(
           <button onClick={()=>{installPrompt.prompt();installPrompt.userChoice.then(()=>setInstallPrompt(null));}}
-            style={{width:'100%',padding:'10px',background:'linear-gradient(135deg,#5A7848,#3A5828)',color:'#fff',border:'none',borderRadius:100,fontFamily:'Georgia,serif',fontWeight:700,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-            📲 Add Thinko Chores to your home screen
+            style={{width:'100%',padding:'11px',background:'linear-gradient(135deg,#5A7848,#3A5828)',color:'#fff',border:'none',borderRadius:100,fontFamily:'Georgia,serif',fontWeight:700,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,boxShadow:'0 3px 12px rgba(90,120,72,0.35)'}}>
+            📲 Install app — add to home screen
           </button>
-        </div>
-      )}
+        ):(
+          <div style={{background:'rgba(255,255,255,0.65)',borderRadius:100,padding:'10px 16px',textAlign:'center',fontSize:12,color:'#5A4A30',fontWeight:600,border:'1px solid rgba(180,160,140,0.30)'}}>
+            📲 To install: tap browser menu → <strong>Add to home screen</strong>
+          </div>
+        )}
+      </div>
 
       {/* Logo */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:'16px 0 4px'}}>
