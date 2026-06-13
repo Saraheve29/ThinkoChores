@@ -2702,16 +2702,16 @@ export default function App(){
 
       {/* Install button */}
       <div style={{padding:'8px 16px 0'}}>
-        {installPrompt?(
-          <button onClick={()=>{installPrompt.prompt();installPrompt.userChoice.then(()=>setInstallPrompt(null));}}
-            style={{width:'100%',padding:'11px',background:'linear-gradient(135deg,#5A7848,#3A5828)',color:'#fff',border:'none',borderRadius:100,fontFamily:'Georgia,serif',fontWeight:700,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,boxShadow:'0 3px 12px rgba(90,120,72,0.35)'}}>
-            📲 Install app — add to home screen
-          </button>
-        ):(
-          <div style={{background:'rgba(255,255,255,0.65)',borderRadius:100,padding:'10px 16px',textAlign:'center',fontSize:12,color:'#5A4A30',fontWeight:600,border:'1px solid rgba(180,160,140,0.30)'}}>
-            📲 To install: tap browser menu → <strong>Add to home screen</strong>
-          </div>
-        )}
+        <button onClick={()=>{
+            if(installPrompt){installPrompt.prompt();installPrompt.userChoice.then(()=>setInstallPrompt(null));return;}
+            const ua=navigator.userAgent;
+            const isIOS=ua.indexOf('iPhone')>-1||ua.indexOf('iPad')>-1;
+            const msg=isIOS?'On iPhone: tap Share then Add to Home Screen':'On Android Chrome: tap 3-dot menu then Add to Home Screen';
+            alert(msg);
+          }}
+          style={{width:'100%',padding:'11px',background:installPrompt?'linear-gradient(135deg,#5A7848,#3A5828)':'rgba(255,255,255,0.75)',color:installPrompt?'#fff':'#3A5828',border:'1.5px solid rgba(90,120,72,0.30)',borderRadius:100,fontFamily:'Georgia,serif',fontWeight:700,fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          📲 {installPrompt?'Install app — add to home screen':'How to add to home screen'}
+        </button>
       </div>
 
       {/* Logo */}
@@ -2754,9 +2754,16 @@ export default function App(){
 
       {/* Name input */}
       <div style={{padding:'20px 16px 0',textAlign:'center'}}>
-        <input value={userName} onChange={e=>{setUserName(e.target.value);try{localStorage.setItem('chores_username',e.target.value);}catch{}}}
-          placeholder="Enter your name for a personal greeting…"
-          style={{width:'100%',padding:'10px 14px',borderRadius:100,border:'1.5px solid rgba(180,160,140,0.35)',fontSize:13,color:'#1A1A10',background:'rgba(255,255,255,0.65)',textAlign:'center',outline:'none',boxSizing:'border-box'}}/>
+        <div style={{display:'flex',gap:8}}>
+          <input value={userName} onChange={e=>setUserName(e.target.value)}
+            onKeyDown={e=>{if(e.key==='Enter'){try{localStorage.setItem('chores_username',userName);}catch{};}}}
+            placeholder="Enter your name…"
+            style={{flex:1,padding:'10px 14px',borderRadius:100,border:'1.5px solid rgba(180,160,140,0.35)',fontSize:13,color:'#1A1A10',background:'rgba(255,255,255,0.65)',outline:'none'}}/>
+          <button onClick={()=>{try{localStorage.setItem('chores_username',userName);}catch{}}}
+            style={{padding:'10px 16px',background:'linear-gradient(135deg,#5A7848,#3A5828)',color:'#fff',border:'none',borderRadius:100,fontSize:13,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>
+            Save ✓
+          </button>
+        </div>
       </div>
 
       <NavBar current="home" setScreen={setScreen}/>
