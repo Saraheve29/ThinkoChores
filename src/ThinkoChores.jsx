@@ -147,6 +147,30 @@ function Header({ title, onBack, right }) {
 }
 
 
+function ColourPicker({current,onChange,onClose}) {
+  const ref=useRef(null);
+  useEffect(()=>{
+    const h=e=>{if(ref.current&&!ref.current.contains(e.target))onClose();};
+    document.addEventListener("mousedown",h);
+    return()=>document.removeEventListener("mousedown",h);
+  },[onClose]);
+  return (
+    <div ref={ref} style={{position:"absolute",zIndex:200,top:28,left:-8,background:"rgba(252,250,244,0.99)",borderRadius:18,padding:"10px 10px 8px",boxShadow:"0 8px 32px rgba(60,50,30,0.22)",border:"1.5px solid rgba(90,80,60,0.12)",minWidth:180}}>
+      <div style={{fontSize:10,fontWeight:700,color:"rgba(60,50,30,0.45)",letterSpacing:0.8,marginBottom:7,textTransform:"uppercase"}}>Colour label</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6}}>
+        {SWATCHES.map(s=>(
+          <button key={s.id} onClick={()=>{onChange(s.id);onClose();}}
+            style={{width:30,height:30,borderRadius:8,cursor:"pointer",background:s.fill,
+              border:current===s.id?`3px solid rgba(30,30,20,0.6)`:`2px solid ${s.border}`,
+              boxShadow:current===s.id?"0 0 0 2px rgba(255,255,255,0.8), 0 2px 8px rgba(0,0,0,0.15)":"0 1px 3px rgba(0,0,0,0.08)",
+              transform:current===s.id?"scale(1.15)":"scale(1)",
+              transition:"all 0.12s"}} title={s.id}/>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMoveToList,lists,onPrioritizeThis,onSendTo,onMoveUp,onMoveDown,isFirst,isLast,setScreen}) {
   const sw=swatchById(task.color);
   const [pickerOpen,setPickerOpen]=useState(false);
@@ -625,7 +649,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
           <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="#2C3820" strokeWidth="2.2" strokeLinecap="round"/></svg>
         </button>
         <button onClick={()=>setScreen&&setScreen("home")} style={{position:"absolute",top:16,right:16,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:"none",borderRadius:100,padding:"8px 14px",fontSize:12,fontWeight:700,color:"#2C3820",cursor:"pointer",backdropFilter:"blur(8px)"}}>🏠</button>
-        <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:28,color:"#1A2810",marginBottom:2,letterSpacing:-0.5}}>{list.name} 🌿</div>
+        <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:18,color:"#1A2810",marginBottom:2}}>{list.name} 🌿</div>
         <div style={{fontSize:12,color:"rgba(42,60,28,0.50)",fontStyle:"italic"}}>
           {active.length===0&&done.length>0?" All done! Well done you!":
            active.length>0?`${done.length} done · ${active.length} to go`:"Add your first task below"}
@@ -677,14 +701,14 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
         <BreakTimer setScreen={setScreen}/>
         {/* Add task — garden glass style matching main page */}
         <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",backdropFilter:"blur(16px)",borderRadius:22,padding:"14px 16px",marginBottom:14,border:"1.5px solid rgba(90,120,72,0.15)",boxShadow:"0 4px 20px rgba(42,80,28,0.07)"}}>
-          <div style={{fontSize:12,fontWeight:600,color:"rgba(42,60,28,0.50)",marginBottom:8,display:"flex",alignItems:"center",gap:5}}>
-            <span>✏️</span> What needs doing?
+          <div style={{fontSize:15,fontWeight:800,color:"#1A2810",marginBottom:8,display:"flex",alignItems:"center",gap:5}}>
+            <span>✏️</span> Add a task
           </div>
           <div style={{display:"flex",gap:10}}>
             <input value={newTask} onChange={e=>setNewTask(e.target.value)}
               onKeyDown={e=>e.key==="Enter"&&addTask()}
               placeholder="Add a task…"
-              style={{flex:1,padding:"11px 16px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.18)",fontSize:15,fontWeight:600,color:"#1A2810",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",outline:"none"}}/>
+              style={{flex:1,padding:"13px 16px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.25)",fontSize:16,fontWeight:700,color:"#1A2810",background:"rgba(255,255,255,0.85)",outline:"none"}}/>
             <button onClick={addTask}
               style={{width:46,height:46,borderRadius:"50%",background:"#FFD700",color:"#2C3820",border:"none",fontSize:24,fontWeight:900,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 3px 12px rgba(255,200,0,0.40)"}}>
               +
@@ -1601,7 +1625,7 @@ const sendMealToShop=(meal,label)=>{
       {mealTab==="ideas"&&(
         <div style={{padding:"0 14px 20px"}}>
           <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:18,color:"#1A1A10",marginBottom:4,marginTop:8}}>Meal Ideas</div>
-          <div style={{fontSize:12,color:"#8A8070",marginBottom:14,lineHeight:1.6}}>Save inspiration from Pinterest, websites or your own photos. Tap an idea to add it to your week plan.</div>
+          <div style={{fontSize:13,color:"#1A1A10",marginBottom:14,lineHeight:1.6,background:"rgba(255,255,255,0.85)",borderRadius:12,padding:"8px 12px"}}>Save inspiration from Pinterest, websites or your own photos. Tap an idea to add it to your week plan.</div>
 
           {/* Add idea form */}
           {addingRecipe?(
@@ -1730,7 +1754,7 @@ const sendMealToShop=(meal,label)=>{
             <div style={{textAlign:"center",marginTop:60}}>
               <div style={{fontSize:52,marginBottom:12}}>📖</div>
               <div style={{color:"#8A8070",fontSize:15,marginBottom:6,fontFamily:"Georgia,serif"}}>No recipes yet</div>
-              <div style={{color:"#A0907A",fontSize:13}}>Tap above to write your own or paste a link</div>
+              <div style={{color:"#1A1A10",fontSize:13,fontWeight:600,background:"rgba(255,255,255,0.85)",borderRadius:12,padding:"8px 12px",marginTop:4}}>Tap above to write your own or paste a link</div>
             </div>
           )}
           {recipes.map(r=>(
@@ -2006,6 +2030,7 @@ function Housework({setScreen}){
   const [celebration,setCelebration]=useState(null);
   const [motivMsg,setMotivMsg]=useState(null);
   const [newTask,setNewTask]=useState('');
+  const [dismissed,setDismissed]=useState([]);
   const [showTemplates,setShowTemplates]=useState(false);
   const [dragTask,setDragTask]=useState(null);
   const [dragOver,setDragOver]=useState(null);
@@ -2116,8 +2141,8 @@ function Housework({setScreen}){
   };
 
   const PRESETS={
-    upstairs:["Tidy floors","Hoovering","Hoover stairs","Mop bathroom floor","Clean surfaces","Dust","Change bedding","Tidy bedroom","Clean bathroom","Clean toilet","Clean bath/shower","Empty bins","Take rubbish out","Iron","Tidy wardrobe","Sort clothes","Put away laundry"],
-    downstairs:["Tidy floors","Hoovering","Mop floors","Clean surfaces","Wash up","Tidy sofa","Dust","Tidy living room","Clean toilet","Empty bins","Take rubbish out","Clean oven","Wipe cupboards","Do laundry","Cook dinner","Tidy food cupboard","Sort cleaning cupboard","Tidy under stairs"],
+    upstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop bathroom floor","Clean surfaces","Clean windows","Clean mirrors","Change bedding","Tidy bedroom","Clean bathroom","Clean toilet","Clean bath/shower","Take rubbish out","Iron","Organise clothes","Put away laundry","Take laundry upstairs","Put laundry load in"],
+    downstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop floors","Clean surfaces","Clean windows","Clean mirrors","Wash up","Clean kitchen sides","Tidy sofa","Tidy living room","Clean downstairs toilet","Take rubbish out","Clean oven","Wipe cupboards","Take laundry out","Put laundry load in","Iron","Make dinner","Make fruit juice/smoothie","Tidy food cupboard","Sort cleaning cupboard","Tidy under stairs"],
     garden:["Mow lawn","Weed","Water plants","Water greenhouse","Sweep path","Trim edges","Clear leaves","Tidy patio","Tidy shed","Plant/sow","Tidy flower beds","Clean pond","Tidy log cabin","Prune","Deadhead flowers"],
     garage:["Sweep floor","Tidy tools","Organise shelves","Take rubbish out","Clear clutter"],
   };
@@ -2424,7 +2449,7 @@ function Housework({setScreen}){
     const zt=getZT(activeZone);
     const todo=zt.filter(t=>!t.done).sort((a,b)=>a.score-b.score);
     const done=zt.filter(t=>t.done);
-    const availPresets=(PRESETS[activeZone]||[]).filter(p=>!zt.some(t=>t.name.toLowerCase()===p.toLowerCase()));
+    const availPresets=(PRESETS[activeZone]||[]).filter(p=>!zt.some(t=>t.name.toLowerCase()===p.toLowerCase())&&!dismissed.includes(p));
     return(
       <div style={{minHeight:'100vh',background:'transparent',fontFamily:"'Segoe UI',sans-serif",paddingBottom:90}}>
         {/* Header */}
@@ -2488,6 +2513,7 @@ function Housework({setScreen}){
                       <button onClick={()=>addTask(activeZone,p,1,'Urgent')} style={{background:'rgba(224,48,32,0.10)',border:'1px solid rgba(224,48,32,0.25)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#C03020',cursor:'pointer'}}>🔴</button>
                       <button onClick={()=>addTask(activeZone,p,3,'Normal')} style={{background:'rgba(90,120,72,0.10)',border:'1px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>Normal</button>
                       <button onClick={()=>addTask(activeZone,p,5,'Later')} style={{background:'rgba(72,120,168,0.10)',border:'1px solid rgba(72,120,168,0.25)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#2A5880',cursor:'pointer'}}>Later</button>
+                      <button onClick={()=>setDismissed(d=>[...d,p])} style={{background:'rgba(90,80,60,0.08)',border:'1px solid rgba(90,80,60,0.15)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#8A8070',cursor:'pointer'}}>✕</button>
                     </div>
                   ))
                 }
