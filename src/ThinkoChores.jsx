@@ -20,7 +20,7 @@ const SWATCHES = [
   {id:"amber", fill:"#f39c12",border:"#d68910",num:"#b7770d"},
   {id:"orange",fill:"#e67e22",border:"#ca6f1e",num:"#ca6f1e"},
   {id:"rose",  fill:"#e07090",border:"#c05070",num:"#c05070"},
-  {id:"lilac", fill:"#c4aee8",border:"#9b7dd4",num:"#7c5cbf"},
+  {id:"moss",  fill:"#7A9A58",border:"#5A7838",num:"#3A5818"},
 ];
 const swatchById = id => SWATCHES.find(s=>s.id===id)||SWATCHES[8];
 const BREAK_PRESETS = [5,10,15,20,30];
@@ -620,6 +620,33 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
       )}
 
 
+      {/* Add task at top */}
+<BreakTimer setScreen={setScreen}/>
+        {/* Add task — garden glass style matching main page */}
+        <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",backdropFilter:"blur(16px)",borderRadius:22,padding:"14px 16px",marginBottom:14,border:"1.5px solid rgba(90,120,72,0.15)",boxShadow:"0 4px 20px rgba(42,80,28,0.07)"}}>
+          <div style={{fontSize:15,fontWeight:800,color:"#1A2810",marginBottom:8,display:"flex",alignItems:"center",gap:5}}>
+            <span>✏️</span> Add a task
+          </div>
+          <div style={{display:"flex",gap:10}}>
+            <input value={newTask} onChange={e=>setNewTask(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&addTask()}
+              placeholder="Add a task…"
+              style={{flex:1,padding:"13px 16px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.25)",fontSize:16,fontWeight:700,color:"#1A2810",background:"rgba(255,255,255,0.85)",outline:"none"}}/>
+            <button onClick={addTask}
+              style={{width:46,height:46,borderRadius:"50%",background:"#FFD700",color:"#2C3820",border:"none",fontSize:24,fontWeight:900,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 3px 12px rgba(255,200,0,0.40)"}}>
+              +
+            </button>
+          </div>
+          {newUrl!==undefined&&(
+            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,background:"rgba(90,120,72,0.06)",borderRadius:100,padding:"6px 12px"}}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{flexShrink:0,opacity:0.5}}><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="#3A6020" strokeWidth="2" strokeLinecap="round"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="#3A6020" strokeWidth="2" strokeLinecap="round"/></svg>
+              <input value={newUrl} onChange={e=>setNewUrl(e.target.value)}
+                placeholder="Paste a link (optional)"
+                style={{flex:1,border:"none",outline:"none",fontSize:12,color:"rgba(42,60,28,0.70)",background:"transparent"}}/>
+            </div>
+          )}
+        </div>
+
       {/* Same vine background as main page */}
       <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:0,overflow:"hidden"}}>
         <svg width="100%" height="100%" viewBox="0 0 400 860" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
@@ -650,7 +677,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
         </button>
         <button onClick={()=>setScreen&&setScreen("home")} style={{position:"absolute",top:16,right:16,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:"none",borderRadius:100,padding:"8px 14px",fontSize:12,fontWeight:700,color:"#2C3820",cursor:"pointer",backdropFilter:"blur(8px)"}}>🏠</button>
         <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:18,color:"#1A2810",marginBottom:2}}>{list.name} 🌿</div>
-        <div style={{fontSize:12,color:"rgba(42,60,28,0.50)",fontStyle:"italic"}}>
+        <div style={{fontSize:12,color:"#3A5828",fontStyle:"italic",fontWeight:600}}>
           {active.length===0&&done.length>0?" All done! Well done you!":
            active.length>0?`${done.length} done · ${active.length} to go`:"Add your first task below"}
         </div>
@@ -697,31 +724,6 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
             </button>
             {focusLeft!==null&&<button onClick={()=>{setFocusLeft&&setFocusLeft(null);setFocusOn&&setFocusOn(false);setFocusAlerted&&setFocusAlerted(false);}} style={{flex:1,padding:"10px",background:"rgba(192,57,43,0.08)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.18)",borderRadius:100,fontWeight:700,fontSize:13,cursor:"pointer"}}>⏹ Stop</button>}
           </div>
-        </div>
-        <BreakTimer setScreen={setScreen}/>
-        {/* Add task — garden glass style matching main page */}
-        <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",backdropFilter:"blur(16px)",borderRadius:22,padding:"14px 16px",marginBottom:14,border:"1.5px solid rgba(90,120,72,0.15)",boxShadow:"0 4px 20px rgba(42,80,28,0.07)"}}>
-          <div style={{fontSize:15,fontWeight:800,color:"#1A2810",marginBottom:8,display:"flex",alignItems:"center",gap:5}}>
-            <span>✏️</span> Add a task
-          </div>
-          <div style={{display:"flex",gap:10}}>
-            <input value={newTask} onChange={e=>setNewTask(e.target.value)}
-              onKeyDown={e=>e.key==="Enter"&&addTask()}
-              placeholder="Add a task…"
-              style={{flex:1,padding:"13px 16px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.25)",fontSize:16,fontWeight:700,color:"#1A2810",background:"rgba(255,255,255,0.85)",outline:"none"}}/>
-            <button onClick={addTask}
-              style={{width:46,height:46,borderRadius:"50%",background:"#FFD700",color:"#2C3820",border:"none",fontSize:24,fontWeight:900,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 3px 12px rgba(255,200,0,0.40)"}}>
-              +
-            </button>
-          </div>
-          {newUrl!==undefined&&(
-            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,background:"rgba(90,120,72,0.06)",borderRadius:100,padding:"6px 12px"}}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{flexShrink:0,opacity:0.5}}><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="#3A6020" strokeWidth="2" strokeLinecap="round"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="#3A6020" strokeWidth="2" strokeLinecap="round"/></svg>
-              <input value={newUrl} onChange={e=>setNewUrl(e.target.value)}
-                placeholder="Paste a link (optional)"
-                style={{flex:1,border:"none",outline:"none",fontSize:12,color:"rgba(42,60,28,0.70)",background:"transparent"}}/>
-            </div>
-          )}
         </div>
         {active.map((task,i)=>(
           <div key={task.id}>
@@ -1688,10 +1690,10 @@ const sendMealToShop=(meal,label)=>{
 
           {/* Ideas grid */}
           {recipes.length===0&&!addingRecipe&&(
-            <div style={{textAlign:"center",padding:"24px 20px",color:"#8A8070"}}>
+            <div style={{textAlign:"center",padding:"24px 20px",color:"#1A1A10",background:"rgba(255,255,255,0.85)",borderRadius:16,padding:"16px"}}>
               <div style={{fontSize:40,marginBottom:8}}>🍽️</div>
               <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:16,color:"#1A1A10",marginBottom:4}}>No ideas yet</div>
-              <div style={{fontSize:13}}>Save recipes, Pinterest pins and photos here for inspiration.</div>
+              <div style={{fontSize:13,color:"#1A1A10",fontWeight:600}}>Save recipes, Pinterest pins and photos here for inspiration.</div>
             </div>
           )}
 
@@ -1753,7 +1755,7 @@ const sendMealToShop=(meal,label)=>{
           {recipes.length===0&&!addingRecipe&&(
             <div style={{textAlign:"center",marginTop:60}}>
               <div style={{fontSize:52,marginBottom:12}}>📖</div>
-              <div style={{color:"#8A8070",fontSize:15,marginBottom:6,fontFamily:"Georgia,serif"}}>No recipes yet</div>
+              <div style={{color:"#1A1A10",fontSize:15,marginBottom:6,fontFamily:"Georgia,serif",fontWeight:700,background:"rgba(255,255,255,0.85)",borderRadius:12,padding:"8px 12px"}}>No recipes yet</div>
               <div style={{color:"#1A1A10",fontSize:13,fontWeight:600,background:"rgba(255,255,255,0.85)",borderRadius:12,padding:"8px 12px",marginTop:4}}>Tap above to write your own or paste a link</div>
             </div>
           )}
@@ -2141,8 +2143,8 @@ function Housework({setScreen}){
   };
 
   const PRESETS={
-    upstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop bathroom floor","Clean surfaces","Clean windows","Clean mirrors","Change bedding","Tidy bedroom","Clean bathroom","Clean toilet","Clean bath/shower","Take rubbish out","Iron","Organise clothes","Put away laundry","Take laundry upstairs","Put laundry load in"],
-    downstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop floors","Clean surfaces","Clean windows","Clean mirrors","Wash up","Clean kitchen sides","Tidy sofa","Tidy living room","Clean downstairs toilet","Take rubbish out","Clean oven","Wipe cupboards","Take laundry out","Put laundry load in","Iron","Make dinner","Make fruit juice/smoothie","Tidy food cupboard","Sort cleaning cupboard","Tidy under stairs"],
+    upstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop bathroom floor","Clean surfaces","Clean windows","Clean mirrors","Change bedding","Tidy bedroom","Clean bathroom","Clean toilet","Clean bath/shower","Take rubbish out","Iron clothes","Organise clothes","Put away laundry","Take laundry upstairs","Put laundry load in","Iron clothes","Air freshener"],
+    downstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop floors","Clean surfaces","Clean windows","Clean mirrors","Wash up","Clean kitchen sides","Tidy sofa","Tidy living room","Clean downstairs toilet","Take rubbish out","Clean oven","Wipe cupboards","Take laundry out","Put laundry load in","Iron clothes","Air freshener","Make dinner","Make fruit juice/smoothie","Tidy food cupboard","Sort cleaning cupboard","Tidy under stairs"],
     garden:["Mow lawn","Weed","Water plants","Water greenhouse","Sweep path","Trim edges","Clear leaves","Tidy patio","Tidy shed","Plant/sow","Tidy flower beds","Clean pond","Tidy log cabin","Prune","Deadhead flowers"],
     garage:["Sweep floor","Tidy tools","Organise shelves","Take rubbish out","Clear clutter"],
   };
