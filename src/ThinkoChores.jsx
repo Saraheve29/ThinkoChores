@@ -2639,7 +2639,8 @@ export default function App(){
     window.addEventListener('beforeinstallprompt',handler);
     return()=>window.removeEventListener('beforeinstallprompt',handler);
   },[]);
-  const [userName,setUserName]=useState(()=>{try{return localStorage.getItem('chores_username')||'';}catch{return '';}});
+  const [userName,setUserName]=useState(()=>{try{return localStorage.getItem('chores_username')||'';}catch{return '';}}); 
+  const [nameSaved,setNameSaved]=useState(false);
 
   const [priData,setPriDataRaw]=useState(()=>{
     const saved=load('chores_pri',null);
@@ -2756,12 +2757,16 @@ export default function App(){
       <div style={{padding:'20px 16px 0',textAlign:'center'}}>
         <div style={{display:'flex',gap:8}}>
           <input value={userName} onChange={e=>setUserName(e.target.value)}
-            onKeyDown={e=>{if(e.key==='Enter'){try{localStorage.setItem('chores_username',userName);}catch{};}}}
+            onKeyDown={e=>{if(e.key==='Enter'){setUserName(e.target.value);try{localStorage.setItem('chores_username',e.target.value);}catch{};}}}
             placeholder="Enter your name…"
             style={{flex:1,padding:'10px 14px',borderRadius:100,border:'1.5px solid rgba(180,160,140,0.35)',fontSize:13,color:'#1A1A10',background:'rgba(255,255,255,0.65)',outline:'none'}}/>
-          <button onClick={()=>{try{localStorage.setItem('chores_username',userName);}catch{}}}
-            style={{padding:'10px 16px',background:'linear-gradient(135deg,#5A7848,#3A5828)',color:'#fff',border:'none',borderRadius:100,fontSize:13,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>
-            Save ✓
+          <button onClick={()=>{
+              try{localStorage.setItem('chores_username',userName);}catch{}
+              setNameSaved(true);
+              setTimeout(()=>setNameSaved(false),2000);
+            }}
+            style={{padding:'10px 16px',background:nameSaved?'#5A7848':'linear-gradient(135deg,#5A7848,#3A5828)',color:'#fff',border:'none',borderRadius:100,fontSize:13,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>
+            {nameSaved?'Saved! 🦔':'Save ✓'}
           </button>
         </div>
       </div>
