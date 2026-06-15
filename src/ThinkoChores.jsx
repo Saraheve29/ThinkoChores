@@ -6,6 +6,7 @@ const C = {
   wh:"#FFFFFF", txt:"#1A1A10", mid:"#5A5040",
   soft:"#8A8070", done:"#D8D0C0",
 };
+const MULTI="linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)";
 const headerGrad  = `linear-gradient(135deg,#3A5030 0%,#4A6840 50%,#5A7850 100%)`;
 const pageGrad    = `linear-gradient(180deg,#F5F0E4 0%,#EDE8D8 40%,#E5DFC8 100%)`;
 const btnGrad     = `linear-gradient(135deg,#3D5A2A,#6A9058)`;
@@ -620,33 +621,6 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
       )}
 
 
-      {/* Add task at top */}
-<BreakTimer setScreen={setScreen}/>
-        {/* Add task — garden glass style matching main page */}
-        <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",backdropFilter:"blur(16px)",borderRadius:22,padding:"14px 16px",marginBottom:14,border:"1.5px solid rgba(90,120,72,0.15)",boxShadow:"0 4px 20px rgba(42,80,28,0.07)"}}>
-          <div style={{fontSize:15,fontWeight:800,color:"#1A2810",marginBottom:8,display:"flex",alignItems:"center",gap:5}}>
-            <span>✏️</span> Add a task
-          </div>
-          <div style={{display:"flex",gap:10}}>
-            <input value={newTask} onChange={e=>setNewTask(e.target.value)}
-              onKeyDown={e=>e.key==="Enter"&&addTask()}
-              placeholder="Add a task…"
-              style={{flex:1,padding:"13px 16px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.25)",fontSize:16,fontWeight:700,color:"#1A2810",background:"rgba(255,255,255,0.85)",outline:"none"}}/>
-            <button onClick={addTask}
-              style={{width:46,height:46,borderRadius:"50%",background:"#FFD700",color:"#2C3820",border:"none",fontSize:24,fontWeight:900,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 3px 12px rgba(255,200,0,0.40)"}}>
-              +
-            </button>
-          </div>
-          {newUrl!==undefined&&(
-            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,background:"rgba(90,120,72,0.06)",borderRadius:100,padding:"6px 12px"}}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{flexShrink:0,opacity:0.5}}><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="#3A6020" strokeWidth="2" strokeLinecap="round"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="#3A6020" strokeWidth="2" strokeLinecap="round"/></svg>
-              <input value={newUrl} onChange={e=>setNewUrl(e.target.value)}
-                placeholder="Paste a link (optional)"
-                style={{flex:1,border:"none",outline:"none",fontSize:12,color:"rgba(42,60,28,0.70)",background:"transparent"}}/>
-            </div>
-          )}
-        </div>
-
       {/* Same vine background as main page */}
       <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:0,overflow:"hidden"}}>
         <svg width="100%" height="100%" viewBox="0 0 400 860" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
@@ -692,39 +666,35 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
       </div>
 
       <div style={{position:"relative",zIndex:1,padding:"0 14px"}}>
-        {/* Focus Timer — garden glass style */}
-        <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",backdropFilter:"blur(16px)",borderRadius:22,padding:"14px 16px",marginBottom:10,border:"1.5px solid rgba(90,120,72,0.18)",boxShadow:"0 4px 20px rgba(42,80,28,0.08)"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-            <span style={{fontFamily:"Georgia,serif",fontSize:14,fontWeight:700,color:"#1A2810",flex:1}}>🎯 Focus Timer</span>
-            {focusLeft!==null&&<span style={{fontFamily:"monospace",fontSize:18,fontWeight:700,color:focusLeft<60?"#c0392b":"#2C3820"}}>{fmtTimer?fmtTimer(focusLeft):""}</span>}
+
+        {/* Add task */}
+{/* Add task at top */}
+        {/* Add task — garden glass style matching main page */}
+        <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",backdropFilter:"blur(16px)",borderRadius:22,padding:"14px 16px",marginBottom:14,border:"1.5px solid rgba(90,120,72,0.15)",boxShadow:"0 4px 20px rgba(42,80,28,0.07)"}}>
+          <div style={{fontSize:15,fontWeight:800,color:"#1A2810",marginBottom:8,display:"flex",alignItems:"center",gap:5}}>
+            <span>✏️</span> Add a task
           </div>
-          {focusLeft!==null&&focusLeft>=0&&(
-            <div style={{height:4,background:"rgba(90,80,60,0.10)",borderRadius:100,overflow:"hidden",marginBottom:8}}>
-              <div style={{height:"100%",width:`${Math.round((focusLeft/((focusMins||25)*60))*100)}%`,background:focusLeft<60?"#c0392b":"#4A7838",borderRadius:100,transition:"width 1s linear"}}/>
-            </div>
-          )}
-          {focusLeft===null&&(
-            <div style={{display:"flex",gap:5,marginBottom:8}}>
-              {[10,20,30,60].map(m=>(
-                <button key={m} onClick={()=>setFocusMins&&setFocusMins(m)}
-                  style={{flex:1,padding:"6px 0",fontSize:11,fontWeight:700,cursor:"pointer",
-                    background:(focusMins||25)===m?"#4A7838":"rgba(90,120,72,0.10)",
-                    color:(focusMins||25)===m?"#fff":"#3A6020",
-                    border:`1px solid ${(focusMins||25)===m?"#4A7838":"rgba(90,120,72,0.20)"}`,
-                    borderRadius:100,transition:"all 0.15s"}}>
-                  {m===60?"1hr":`${m}m`}
-                </button>
-              ))}
-            </div>
-          )}
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>{if(focusLeft===null){setFocusLeft&&setFocusLeft((focusMins||25)*60);setFocusOn&&setFocusOn(true);setFocusAlerted&&setFocusAlerted(false);}else setFocusOn&&setFocusOn(o=>!o);}}
-              style={{flex:1,padding:"10px",background:focusOn?"rgba(192,57,43,0.10)":"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:focusOn?"#c0392b":"#fff",border:`1px solid ${focusOn?"rgba(192,57,43,0.25)":"transparent"}`,borderRadius:100,fontFamily:"Georgia,serif",fontWeight:700,fontSize:13,cursor:"pointer",boxShadow:focusOn?"none":"0 3px 12px rgba(58,80,38,0.25)"}}>
-              {focusLeft===null?"▶ Start":focusOn?"⏸ Pause":"▶ Resume"}
+          <div style={{display:"flex",gap:10}}>
+            <input value={newTask} onChange={e=>setNewTask(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&addTask()}
+              placeholder="Add a task…"
+              style={{flex:1,padding:"13px 16px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.25)",fontSize:16,fontWeight:700,color:"#1A2810",background:"rgba(255,255,255,0.85)",outline:"none"}}/>
+            <button onClick={addTask}
+              style={{width:46,height:46,borderRadius:"50%",background:"#FFD700",color:"#2C3820",border:"none",fontSize:24,fontWeight:900,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 3px 12px rgba(255,200,0,0.40)"}}>
+              +
             </button>
-            {focusLeft!==null&&<button onClick={()=>{setFocusLeft&&setFocusLeft(null);setFocusOn&&setFocusOn(false);setFocusAlerted&&setFocusAlerted(false);}} style={{flex:1,padding:"10px",background:"rgba(192,57,43,0.08)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.18)",borderRadius:100,fontWeight:700,fontSize:13,cursor:"pointer"}}>⏹ Stop</button>}
           </div>
+          {newUrl!==undefined&&(
+            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,background:"rgba(90,120,72,0.06)",borderRadius:100,padding:"6px 12px"}}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{flexShrink:0,opacity:0.5}}><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="#3A6020" strokeWidth="2" strokeLinecap="round"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="#3A6020" strokeWidth="2" strokeLinecap="round"/></svg>
+              <input value={newUrl} onChange={e=>setNewUrl(e.target.value)}
+                placeholder="Paste a link (optional)"
+                style={{flex:1,border:"none",outline:"none",fontSize:12,color:"rgba(42,60,28,0.70)",background:"transparent"}}/>
+            </div>
+          )}
         </div>
+
+
         {active.map((task,i)=>(
           <div key={task.id}>
             {i===0&&active.length>0&&(
@@ -759,12 +729,47 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
         {active.length>1&&(
           <div style={{position:"sticky",bottom:90,left:0,right:0,padding:"12px 0 4px",background:"transparent",pointerEvents:"none"}}>
             <button onClick={()=>setComparing(true)}
-              style={{width:"100%",padding:"17px",background:btnGrad,color:"#1A1A10",border:"none",borderRadius:18,fontWeight:900,fontSize:17,cursor:"pointer",boxShadow:"0 6px 22px rgba(45,10,94,0.5)",pointerEvents:"auto",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
-              <span style={{fontSize:22}}>⬆</span>
-              <span>{prioritized?"Reprioritize - sort again":"Prioritize - what is most important?"}</span>
+              style={{width:"100%",padding:"14px 20px",background:"linear-gradient(135deg,rgba(230,200,180,0.96) 0%,rgba(210,195,220,0.96) 35%,rgba(190,215,200,0.96) 70%,rgba(220,210,185,0.96) 100%)",color:"#2A3820",border:"1.5px solid rgba(90,120,72,0.25)",borderRadius:100,fontFamily:"Georgia,serif",fontWeight:700,fontSize:15,cursor:"pointer",boxShadow:"0 4px 18px rgba(90,120,72,0.20)",pointerEvents:"auto",display:"flex",alignItems:"center",justifyContent:"center",gap:8,backdropFilter:"blur(8px)"}}>
+              <span style={{fontSize:18}}>🎯</span>
+              <span>{prioritized?"Sort again — reprioritise":"Prioritise — what matters most?"}</span>
             </button>
           </div>
         )}
+
+        {/* Focus Timer — at bottom */}
+{/* Focus Timer — garden glass style */}
+        <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",backdropFilter:"blur(16px)",borderRadius:22,padding:"14px 16px",marginBottom:10,border:"1.5px solid rgba(90,120,72,0.18)",boxShadow:"0 4px 20px rgba(42,80,28,0.08)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+            <span style={{fontFamily:"Georgia,serif",fontSize:14,fontWeight:700,color:"#1A2810",flex:1}}>🎯 Focus Timer</span>
+            {focusLeft!==null&&<span style={{fontFamily:"monospace",fontSize:18,fontWeight:700,color:focusLeft<60?"#c0392b":"#2C3820"}}>{fmtTimer?fmtTimer(focusLeft):""}</span>}
+          </div>
+          {focusLeft!==null&&focusLeft>=0&&(
+            <div style={{height:4,background:"rgba(90,80,60,0.10)",borderRadius:100,overflow:"hidden",marginBottom:8}}>
+              <div style={{height:"100%",width:`${Math.round((focusLeft/((focusMins||25)*60))*100)}%`,background:focusLeft<60?"#c0392b":"#4A7838",borderRadius:100,transition:"width 1s linear"}}/>
+            </div>
+          )}
+          {focusLeft===null&&(
+            <div style={{display:"flex",gap:5,marginBottom:8}}>
+              {[10,20,30,60].map(m=>(
+                <button key={m} onClick={()=>setFocusMins&&setFocusMins(m)}
+                  style={{flex:1,padding:"6px 0",fontSize:11,fontWeight:700,cursor:"pointer",
+                    background:(focusMins||25)===m?"#4A7838":"rgba(90,120,72,0.10)",
+                    color:(focusMins||25)===m?"#fff":"#3A6020",
+                    border:`1px solid ${(focusMins||25)===m?"#4A7838":"rgba(90,120,72,0.20)"}`,
+                    borderRadius:100,transition:"all 0.15s"}}>
+                  {m===60?"1hr":`${m}m`}
+                </button>
+              ))}
+            </div>
+          )}
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>{if(focusLeft===null){setFocusLeft&&setFocusLeft((focusMins||25)*60);setFocusOn&&setFocusOn(true);setFocusAlerted&&setFocusAlerted(false);}else setFocusOn&&setFocusOn(o=>!o);}}
+              style={{flex:1,padding:"10px",background:focusOn?"rgba(192,57,43,0.10)":"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:focusOn?"#c0392b":"#fff",border:`1px solid ${focusOn?"rgba(192,57,43,0.25)":"transparent"}`,borderRadius:100,fontFamily:"Georgia,serif",fontWeight:700,fontSize:13,cursor:"pointer",boxShadow:focusOn?"none":"0 3px 12px rgba(58,80,38,0.25)"}}>
+              {focusLeft===null?"▶ Start":focusOn?"⏸ Pause":"▶ Resume"}
+            </button>
+            {focusLeft!==null&&<button onClick={()=>{setFocusLeft&&setFocusLeft(null);setFocusOn&&setFocusOn(false);setFocusAlerted&&setFocusAlerted(false);}} style={{flex:1,padding:"10px",background:"rgba(192,57,43,0.08)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.18)",borderRadius:100,fontWeight:700,fontSize:13,cursor:"pointer"}}>⏹ Stop</button>}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -821,12 +826,10 @@ function ShopListDetail({list,onBack,onUpdate,onDelete}){
         <div style={{display:"flex",gap:6,paddingBottom:6}}>
           <button onClick={()=>{
             const txt="🛒 "+list.name+"\n\n"+list.items.filter(i=>!i.done).map(i=>"☐ "+i.text).join("\n")+(list.items.filter(i=>i.done).length?"\n\n✅ Got:\n"+list.items.filter(i=>i.done).map(i=>"✓ "+i.text).join("\n"):"")+("\n\nFrom Thinko 🌿");
-            window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank");
-          }} style={{flex:1,background:"#25D366",color:"#fff",border:"none",borderRadius:12,padding:"11px",fontSize:14,fontWeight:800,cursor:"pointer"}}>💬 WhatsApp</button>
-          <button onClick={()=>{
-            const txt="🛒 "+list.name+"\n\n"+list.items.filter(i=>!i.done).map(i=>"☐ "+i.text).join("\n")+(list.items.filter(i=>i.done).length?"\n\n✅ Got:\n"+list.items.filter(i=>i.done).map(i=>"✓ "+i.text).join("\n"):"")+("\n\nFrom Thinko 🌿");
-            window.open("sms:?body="+encodeURIComponent(txt),"_blank");
-          }} style={{flex:1,background:"#3A6028",color:"#fff",border:"none",borderRadius:12,padding:"11px",fontSize:14,fontWeight:800,cursor:"pointer"}}>📱 Text</button>
+            if(navigator.share){navigator.share({title:'Shopping List',text:txt});}
+            else{window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}
+          }} style={{flex:1,background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:12,padding:'11px',fontSize:14,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 18px rgba(90,120,72,0.15)'}}>📤 Share list</button>
+
         </div>
       </div>
 
@@ -847,12 +850,10 @@ function ShopListDetail({list,onBack,onUpdate,onDelete}){
         <div style={{display:"flex",gap:8,marginBottom:16}}>
           <button onClick={()=>{
             const txt="🛒 "+list.name+"\n\n"+list.items.filter(i=>!i.done).map(i=>"☐ "+i.text).join("\n")+(list.items.filter(i=>i.done).length?"\n\n✅ Got:\n"+list.items.filter(i=>i.done).map(i=>"✓ "+i.text).join("\n"):"")+("\n\nFrom Thinko 🌿");
-            window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank");
-          }} style={{flex:1,background:"#25D366",color:"#fff",border:"none",borderRadius:14,padding:"12px 8px",fontSize:14,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>💬 WhatsApp</button>
-          <button onClick={()=>{
-            const txt="🛒 "+list.name+"\n\n"+list.items.filter(i=>!i.done).map(i=>"☐ "+i.text).join("\n")+(list.items.filter(i=>i.done).length?"\n\n✅ Got:\n"+list.items.filter(i=>i.done).map(i=>"✓ "+i.text).join("\n"):"")+("\n\nFrom Thinko 🌿");
-            window.open("sms:?body="+encodeURIComponent(txt),"_blank");
-          }} style={{flex:1,background:"#3A6028",color:"#fff",border:"none",borderRadius:14,padding:"12px 8px",fontSize:14,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>📱 Text</button>
+            if(navigator.share){navigator.share({title:'Shopping List',text:txt});}
+            else{window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}
+          }} style={{flex:1,background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:14,padding:'12px 8px',fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>📤 Share</button>
+          
         </div>
 
         {list.items.length===0&&(
@@ -955,14 +956,10 @@ function ShopListDetail({list,onBack,onUpdate,onDelete}){
           const items=list.items;
           if(!items.length){alert("No items yet");return;}
           const txt="🛒 "+list.name+"\n\n"+items.filter(i=>!i.done).map(i=>"☐ "+i.name).join("\n")+(items.filter(i=>i.done).length?"\n\n✅ Got:\n"+items.filter(i=>i.done).map(i=>"✓ "+i.name).join("\n"):"")+("\n\nFrom Thinko 🌿");
-          window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank");
-        }} style={{flex:1,background:"#25D366",color:"#fff",border:"none",padding:"16px 8px",fontSize:16,fontWeight:800,cursor:"pointer"}}>💬 WhatsApp</button>
-        <button onClick={()=>{
-          const items=list.items;
-          if(!items.length){alert("No items yet");return;}
-          const txt="🛒 "+list.name+"\n\n"+items.filter(i=>!i.done).map(i=>"☐ "+i.name).join("\n")+(items.filter(i=>i.done).length?"\n\n✅ Got:\n"+items.filter(i=>i.done).map(i=>"✓ "+i.name).join("\n"):"")+("\n\nFrom Thinko 🌿");
-          window.open("sms:?body="+encodeURIComponent(txt),"_blank");
-        }} style={{flex:1,background:"#3A6028",color:"#fff",border:"none",padding:"16px 8px",fontSize:16,fontWeight:800,cursor:"pointer"}}>📱 Text</button>
+          if(navigator.share){navigator.share({title:'Shopping List',text:txt});}
+        else{window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}
+        }} style={{flex:1,background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',padding:'16px 8px',fontSize:16,fontWeight:700,cursor:'pointer',borderRadius:14}}>📤 Share list</button>
+        
       </div>
       </div>
     </div>
@@ -1147,14 +1144,10 @@ function ShoppingList({data,setData,setScreen}){
               const name=custListName||customising.name;
               const items=customItems.filter(i=>i.on).map(i=>i.name);
               const txt="🛒 "+name+"\n\n"+items.map(i=>"☐ "+i).join("\n")+"\n\nFrom Thinko 🌿";
-              window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank");
-            }} style={{flex:1,background:"#25D366",color:"#fff",border:"none",borderRadius:20,padding:"13px",fontSize:14,fontWeight:700,cursor:"pointer"}}>💬 WhatsApp</button>
-            <button onClick={()=>{
-              const name=custListName||customising.name;
-              const items=customItems.filter(i=>i.on).map(i=>i.name);
-              const txt="🛒 "+name+"\n\n"+items.map(i=>"☐ "+i).join("\n")+"\n\nFrom Thinko 🌿";
-              window.open("sms:?body="+encodeURIComponent(txt),"_blank");
-            }} style={{flex:1,background:"#3A6028",color:"#fff",border:"none",borderRadius:20,padding:"13px",fontSize:14,fontWeight:700,cursor:"pointer"}}>📱 Text</button>
+              if(navigator.share){navigator.share({title:'Shopping List',text:txt});}
+            else{window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}
+            }} style={{flex:1,background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:20,padding:'13px',fontSize:14,fontWeight:700,cursor:'pointer'}}>📤 Share</button>
+            
           </div>
         )}
         <button onClick={()=>setCustomising(null)}
@@ -1361,15 +1354,10 @@ function ShoppingList({data,setData,setScreen}){
                   const items=list.items;
                   if(!items.length){alert("No items yet");return;}
                   const txt="🛒 "+list.name+"\n\n"+items.filter(i=>!i.done).map(i=>"☐ "+i.name).join("\n")+(items.filter(i=>i.done).length?"\n\n✅ Got:\n"+items.filter(i=>i.done).map(i=>"✓ "+i.name).join("\n"):"")+("\n\nFrom Thinko 🌿");
-                  window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank");
-                }} style={{flex:1,background:"#25D366",color:"#fff",border:"none",padding:"12px 8px",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>💬 WhatsApp</button>
-                <button onClick={e=>{
-                  e.stopPropagation();
-                  const items=list.items;
-                  if(!items.length){alert("No items yet");return;}
-                  const txt="🛒 "+list.name+"\n\n"+items.filter(i=>!i.done).map(i=>"☐ "+i.name).join("\n")+(items.filter(i=>i.done).length?"\n\n✅ Got:\n"+items.filter(i=>i.done).map(i=>"✓ "+i.name).join("\n"):"")+("\n\nFrom Thinko 🌿");
-                  window.open("sms:?body="+encodeURIComponent(txt),"_blank");
-                }} style={{flex:1,background:"#3A6028",color:"#fff",border:"none",padding:"12px 8px",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>📱 Text</button>
+                  if(navigator.share){navigator.share({title:'Shopping List',text:txt});}
+                else{window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}
+                }} style={{flex:1,background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',padding:'12px 8px',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6,borderRadius:12}}>📤 Share</button>
+                
               </div>
             </div>
           );
@@ -1596,16 +1584,16 @@ const sendMealToShop=(meal,label)=>{
           transition:"all 0.15s",
         }}>Week Plan</button>
         <button onClick={()=>setMealTab("ideas")} style={{
-          background:mealTab==="ideas"?"#E60023":"rgba(248,245,236,0.88)",
+          background:mealTab==="ideas"?"#5A7848":"rgba(248,245,236,0.88)",
           color:mealTab==="ideas"?"#fff":"#5A5040",
           border:mealTab==="ideas"?"none":"1.5px solid rgba(90,80,60,0.2)",
           borderRadius:100,padding:"10px 16px",
           fontWeight:700,fontSize:14,cursor:"pointer",
-          boxShadow:mealTab==="ideas"?"0 2px 10px rgba(230,0,35,0.3)":"none",
+          boxShadow:mealTab==="ideas"?"0 2px 10px rgba(90,120,72,0.3)":"none",
           transition:"all 0.15s",
         }}>📌 Ideas</button>
         <button onClick={()=>setMealTab("recipes")} style={{
-          background:mealTab==="recipes"?"#1A1A10":"rgba(248,245,236,0.88)",
+          background:mealTab==="recipes"?"#5A7848":"rgba(248,245,236,0.88)",
           color:mealTab==="recipes"?"#fff":"#5A5040",
           border:mealTab==="recipes"?"none":"1.5px solid rgba(90,80,60,0.2)",
           borderRadius:100,padding:"10px 20px",
@@ -1877,7 +1865,7 @@ const sendMealToShop=(meal,label)=>{
                               <button onClick={()=>sendIngredientsToShop(dayIdx,meal.id,meal.text)}
                                 style={{background:"#5A7848",color:"#fff",border:"none",borderRadius:20,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>🛒 Send needed to Shopping</button>
                               <button onClick={()=>shareShoppingList(dayIdx,meal.id,meal.text)}
-                                style={{background:"#25D366",color:"#fff",border:"none",borderRadius:20,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>💬 Share via WhatsApp</button>
+                                style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:"#2A3820",border:"1.5px solid rgba(90,120,72,0.25)",borderRadius:20,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>📤 Share</button>
                             </div>
                           )}
                         </div>
@@ -2143,7 +2131,7 @@ function Housework({setScreen}){
   };
 
   const PRESETS={
-    upstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop bathroom floor","Clean surfaces","Clean windows","Clean mirrors","Change bedding","Tidy bedroom","Clean bathroom","Clean toilet","Clean bath/shower","Take rubbish out","Iron clothes","Organise clothes","Put away laundry","Take laundry upstairs","Put laundry load in","Iron clothes","Air freshener"],
+    upstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop bathroom floor","Clean surfaces","Clean windows","Clean mirrors","Change bedding","Tidy bedroom","Clean bathroom","Clean toilet","Clean bath/shower","Take rubbish out","Iron clothes","Organise clothes","Put away laundry","Take laundry upstairs","Put laundry load in","Air freshener"],
     downstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop floors","Clean surfaces","Clean windows","Clean mirrors","Wash up","Clean kitchen sides","Tidy sofa","Tidy living room","Clean downstairs toilet","Take rubbish out","Clean oven","Wipe cupboards","Take laundry out","Put laundry load in","Iron clothes","Air freshener","Make dinner","Make fruit juice/smoothie","Tidy food cupboard","Sort cleaning cupboard","Tidy under stairs"],
     garden:["Mow lawn","Weed","Water plants","Water greenhouse","Sweep path","Trim edges","Clear leaves","Tidy patio","Tidy shed","Plant/sow","Tidy flower beds","Clean pond","Tidy log cabin","Prune","Deadhead flowers"],
     garage:["Sweep floor","Tidy tools","Organise shelves","Take rubbish out","Clear clutter"],
@@ -2318,8 +2306,7 @@ function Housework({setScreen}){
                 setSetupAnswers(ans);setMultiSel([]);setOtherText('');
                 if(isLast){const z=buildZones(ans);saveZones(z);save('hw_profile',ans);setProfile(ans);setView('hub');}
                 else setSetupStep(s=>s+1);
-              }} style={{width:'100%',marginTop:14,padding:'13px',background:'linear-gradient(135deg,#5A7848,#3A5828)',color:'#fff',border:'none',borderRadius:100,fontFamily:'Georgia,serif',fontWeight:700,fontSize:15,cursor:'pointer'}}>
-                Next →
+              }} style={{width:'100%',marginTop:14,padding:'13px',background:'linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)',color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:100,fontFamily:'Georgia,serif',fontWeight:700,fontSize:15,cursor:'pointer',boxShadow:'0 4px 18px rgba(90,120,72,0.20)'}}>\n                Next →
               </button>
             )}
           </div>
@@ -2427,9 +2414,9 @@ function Housework({setScreen}){
           <div style={{fontFamily:'Georgia,serif',fontWeight:700,fontSize:18,color:'#1A1A10',flex:1}}>🏆 Your priority list!</div>
         </div>
         <div style={{padding:'16px'}}>
-          <div style={{background:'linear-gradient(135deg,#5A7848,#3A5828)',borderRadius:20,padding:'16px 18px',marginBottom:14,textAlign:'center'}}>
-            <div style={{fontSize:12,color:'rgba(255,255,255,0.8)',marginBottom:4}}>Start with</div>
-            <div style={{fontFamily:'Georgia,serif',fontWeight:700,fontSize:18,color:'#fff'}}>{todo[0]?.name||'Your first task'}</div>
+          <div style={{background:'linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)',borderRadius:20,padding:'16px 18px',marginBottom:14,textAlign:'center',border:'1.5px solid rgba(90,120,72,0.25)',boxShadow:'0 4px 18px rgba(90,120,72,0.15)'}}>
+            <div style={{fontSize:12,color:'#5A4A30',marginBottom:4,fontWeight:600}}>Start with</div>
+            <div style={{fontFamily:'Georgia,serif',fontWeight:700,fontSize:18,color:'#1A2810'}}>{todo[0]?.name||'Your first task'}</div>
           </div>
           {todo.map((t,i)=>(
             <div key={t.id} style={{background:MULTI,borderRadius:14,padding:'12px 14px',marginBottom:8,display:'flex',alignItems:'center',gap:10,boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
@@ -2437,7 +2424,7 @@ function Housework({setScreen}){
               <div style={{fontWeight:700,fontSize:14,color:'#1A1A10',flex:1}}>{t.name}</div>
             </div>
           ))}
-          <button onClick={()=>{setView('zone');setShowTemplates(false);}} style={{width:'100%',marginTop:8,padding:'14px',background:'linear-gradient(135deg,#5A7848,#3A5828)',color:'#fff',border:'none',borderRadius:100,fontFamily:'Georgia,serif',fontWeight:700,fontSize:16,cursor:'pointer'}}>
+          <button onClick={()=>{setView('zone');setShowTemplates(false);}} style={{width:'100%',marginTop:8,padding:'14px',background:'linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)',color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:100,fontFamily:'Georgia,serif',fontWeight:700,fontSize:16,cursor:'pointer',boxShadow:'0 4px 18px rgba(90,120,72,0.20)'}}>
             ✨ Let's get started!
           </button>
         </div>
@@ -2456,38 +2443,18 @@ function Housework({setScreen}){
       <div style={{minHeight:'100vh',background:'transparent',fontFamily:"'Segoe UI',sans-serif",paddingBottom:90}}>
         {/* Header */}
         <div style={{background:MULTI,padding:'14px 18px',display:'flex',alignItems:'center',gap:10,borderBottom:'1px solid rgba(90,80,60,0.08)',position:'sticky',top:0,zIndex:50}}>
-          <button onClick={()=>{setView('hub');resetTimer();}} style={{background:'none',border:'none',cursor:'pointer',width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+          <button onClick={()=>{setView('hub');}} style={{background:'none',border:'none',cursor:'pointer',width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
             <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="#1A1A10" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
           <div style={{flex:1,fontFamily:'Georgia,serif',fontWeight:700,fontSize:19,color:'#1A1A10'}}>{z?.icon} {z?.name}</div>
         </div>
         <div style={{padding:'14px 16px'}}>
 
-          {/* Focus Timer */}
-          <div style={{background:MULTI,borderRadius:18,padding:'11px 16px',marginBottom:12,border:'1.5px solid rgba(180,160,140,0.35)'}}>
-            <div style={{display:'flex',alignItems:'center',gap:10}}>
-              <span style={{fontSize:15}}>⏱</span>
-              <div style={{fontFamily:'Georgia,serif',fontWeight:700,fontSize:13,color:'#1A1A10',flex:1}}>Focus Timer</div>
-              <div style={{fontFamily:'monospace',fontSize:20,fontWeight:700,color:timerLeft<60?'#E03020':'#1A2810'}}>{fmtT(timerLeft)}</div>
-            </div>
-            <div style={{display:'flex',gap:6,marginTop:9}}>
-              {[10,15,25,45].map(m=>(
-                <button key={m} onClick={()=>{setTimerMins(m);setTimerLeft(m*60);setTimerOn(false);}}
-                  style={{flex:1,padding:'5px 0',background:timerMins===m?'rgba(90,120,72,0.20)':'rgba(255,255,255,0.6)',border:`1.5px solid ${timerMins===m?'rgba(90,120,72,0.40)':'rgba(180,160,140,0.25)'}`,borderRadius:9,fontSize:11,fontWeight:700,color:timerMins===m?'#3A5828':'#5A4A30',cursor:'pointer'}}>{m}m</button>
-              ))}
-              <button onClick={()=>timerLeft===0?resetTimer():setTimerOn(!timerOn)}
-                style={{flex:1,padding:'5px 0',background:'linear-gradient(135deg,#5A7848,#3A5828)',border:'none',borderRadius:9,fontSize:15,cursor:'pointer'}}>
-                {timerLeft===0?'↺':timerOn?'⏸':'▶'}
-              </button>
-              <button onClick={resetTimer} style={{flex:1,padding:'5px 0',background:'rgba(180,160,140,0.15)',border:'1.5px solid rgba(180,160,140,0.25)',borderRadius:9,fontSize:10,fontWeight:600,color:'#5A4A30',cursor:'pointer'}}>Reset</button>
-            </div>
-          </div>
-
-          {/* Action buttons */}
+          {/* A vs B button */}
           <div style={{display:'flex',gap:8,marginBottom:12}}>
             <button onClick={startAvB}
-              style={{flex:1,background:'linear-gradient(135deg,#5A7848,#3A5828)',color:'#fff',border:'none',borderRadius:14,padding:'10px',fontSize:13,fontWeight:700,cursor:'pointer'}}>
-              A vs B — rank my tasks
+              style={{flex:1,background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:100,padding:'10px',fontSize:13,fontFamily:'Georgia,serif',fontWeight:700,cursor:'pointer',boxShadow:'0 4px 18px rgba(90,120,72,0.20)'}}>
+              🎯 A vs B — rank tasks
             </button>
           </div>
 
@@ -2499,7 +2466,7 @@ function Housework({setScreen}){
                 placeholder="Add a task…"
                 style={{flex:1,padding:'9px 13px',borderRadius:11,border:'1.5px solid rgba(90,120,72,0.25)',fontSize:14,color:'#1A1A10',background:'rgba(255,255,255,0.9)',outline:'none'}}/>
               <button onClick={()=>{if(newTask.trim()){addTask(activeZone,newTask.trim(),3,'');setNewTask('');}}}
-                style={{background:'linear-gradient(135deg,#5A7848,#3A5828)',color:'#fff',border:'none',borderRadius:11,padding:'9px 14px',fontSize:13,fontWeight:700,cursor:'pointer'}}>Add</button>
+                style={{background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:11,padding:'9px 14px',fontSize:13,fontWeight:700,cursor:'pointer'}}>Add</button>
             </div>
             <button onClick={()=>setShowTemplates(!showTemplates)}
               style={{width:'100%',padding:'8px',background:'rgba(255,255,255,0.6)',border:'1px solid rgba(90,120,72,0.20)',borderRadius:10,fontSize:12,fontWeight:700,color:'#3A5828',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
@@ -2513,7 +2480,7 @@ function Housework({setScreen}){
                     <div key={p} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 0',borderBottom:'1px solid rgba(90,80,60,0.06)'}}>
                       <div style={{flex:1,fontSize:13,color:'#1A1A10'}}>{p}</div>
                       <button onClick={()=>addTask(activeZone,p,1,'Urgent')} style={{background:'rgba(224,48,32,0.10)',border:'1px solid rgba(224,48,32,0.25)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#C03020',cursor:'pointer'}}>🔴</button>
-                      <button onClick={()=>addTask(activeZone,p,3,'Normal')} style={{background:'rgba(90,120,72,0.10)',border:'1px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>Normal</button>
+                      <button onClick={()=>addTask(activeZone,p,3,'Normal')} style={{background:MULTI,border:'1px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>Normal</button>
                       <button onClick={()=>addTask(activeZone,p,5,'Later')} style={{background:'rgba(72,120,168,0.10)',border:'1px solid rgba(72,120,168,0.25)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#2A5880',cursor:'pointer'}}>Later</button>
                       <button onClick={()=>setDismissed(d=>[...d,p])} style={{background:'rgba(90,80,60,0.08)',border:'1px solid rgba(90,80,60,0.15)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#8A8070',cursor:'pointer'}}>✕</button>
                     </div>
@@ -2548,10 +2515,9 @@ function Housework({setScreen}){
                 setDragTask(null);setDragOver(null);
               }}
               onDragEnd={()=>{setDragTask(null);setDragOver(null);}}
-              style={{background:dragOver===t.id?'rgba(90,120,72,0.10)':MULTI,borderRadius:14,padding:'11px 13px',marginBottom:8,boxShadow:'0 2px 8px rgba(0,0,0,0.05)',display:'flex',alignItems:'flex-start',gap:9,border:`1.5px solid ${dragOver===t.id?'rgba(90,120,72,0.30)':'transparent'}`,cursor:'grab'}}>
+              style={{background:dragOver===t.id?'rgba(90,120,72,0.10)':MULTI,borderRadius:14,padding:'11px 13px',marginBottom:8,boxShadow:'0 2px 8px rgba(0,0,0,0.05)',display:'flex',alignItems:'flex-start',gap:9,border:(dragOver===t.id?'1.5px solid rgba(90,120,72,0.30)':'1.5px solid transparent'),cursor:'grab'}}>
               <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2,flexShrink:0}}>
                 <div style={{width:30,height:30,borderRadius:8,background:SCORE_C[t.score],display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:800}}>{t.score}</div>
-                <div style={{fontSize:10,color:'#A09080'}}>⠿</div>
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontWeight:700,fontSize:14,color:'#1A1A10'}}>{t.name}</div>
@@ -2559,7 +2525,7 @@ function Housework({setScreen}){
                 {t.reason&&<div style={{fontSize:10,color:'#8A8070'}}>{t.reason}</div>}
               </div>
               <div style={{display:'flex',gap:4,flexShrink:0}}>
-                <button onClick={()=>tickDone(activeZone,t.id)} style={{background:'rgba(90,120,72,0.12)',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'5px 8px',fontSize:11,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>✓</button>
+                <button onClick={()=>tickDone(activeZone,t.id)} style={{background:MULTI,border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'5px 8px',fontSize:11,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>✓</button>
                 <button onClick={()=>delTask(activeZone,t.id)} style={{background:'rgba(200,80,60,0.08)',border:'1.5px solid rgba(200,80,60,0.15)',borderRadius:7,padding:'5px 8px',fontSize:11,fontWeight:700,color:'#C04030',cursor:'pointer'}}>✕</button>
               </div>
             </div>
@@ -2577,16 +2543,37 @@ function Housework({setScreen}){
               ))}
             </div>
           )}
+
+          {/* Focus Timer — at bottom */}
+          <div style={{background:MULTI,borderRadius:18,padding:'11px 16px',marginTop:16,border:'1.5px solid rgba(180,160,140,0.35)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <span style={{fontSize:15}}>⏱</span>
+              <div style={{fontFamily:'Georgia,serif',fontWeight:700,fontSize:13,color:'#1A1A10',flex:1}}>Focus Timer</div>
+              <div style={{fontFamily:'monospace',fontSize:20,fontWeight:700,color:timerLeft<=59?'#E03020':'#1A2810'}}>{fmtT(timerLeft)}</div>
+            </div>
+            <div style={{display:'flex',gap:6,marginTop:9}}>
+              {[10,15,25,45].map(m=>(
+                <button key={m} onClick={()=>{setTimerMins(m);setTimerLeft(m*60);setTimerOn(false);}}
+                  style={{flex:1,padding:'5px 0',background:timerMins===m?'rgba(90,120,72,0.20)':'rgba(255,255,255,0.6)',border:(timerMins===m?'1.5px solid rgba(90,120,72,0.40)':'1.5px solid rgba(180,160,140,0.25)'),borderRadius:9,fontSize:11,fontWeight:700,color:timerMins===m?'#3A5828':'#5A4A30',cursor:'pointer'}}>{m}m</button>
+              ))}
+              <button onClick={()=>timerLeft===0?resetTimer():setTimerOn(!timerOn)}
+                style={{flex:1,padding:'5px 0',background:MULTI,border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:9,fontSize:15,cursor:'pointer'}}>
+                {timerLeft===0?'↺':timerOn?'⏸':'▶'}
+              </button>
+              <button onClick={resetTimer} style={{flex:1,padding:'5px 0',background:'rgba(180,160,140,0.15)',border:'1.5px solid rgba(180,160,140,0.25)',borderRadius:9,fontSize:10,fontWeight:600,color:'#5A4A30',cursor:'pointer'}}>Reset</button>
+            </div>
+          </div>
+
         </div>
 
-        {motivMsg&&<div style={{position:'fixed',bottom:100,left:'50%',transform:'translateX(-50%)',background:'linear-gradient(135deg,#5A7848,#3A5828)',color:'#fff',borderRadius:100,padding:'11px 22px',fontFamily:'Georgia,serif',fontWeight:700,fontSize:14,boxShadow:'0 4px 20px rgba(0,0,0,0.25)',zIndex:200,whiteSpace:'nowrap'}}>{motivMsg}</div>}
+        {motivMsg&&<div style={{position:'fixed',bottom:100,left:'50%',transform:'translateX(-50%)',background:MULTI,color:'#1A2810',borderRadius:100,padding:'11px 22px',fontFamily:'Georgia,serif',fontWeight:700,fontSize:14,boxShadow:'0 4px 20px rgba(90,120,72,0.25)',zIndex:200,whiteSpace:'nowrap',border:'1.5px solid rgba(90,120,72,0.25)'}}>{motivMsg}</div>}
 
         {celebration&&celebration.zoneId===activeZone&&(
           <div style={{position:'fixed',inset:0,zIndex:800,background:'rgba(20,30,10,0.75)',backdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',padding:24}} onClick={()=>setCelebration(null)}>
             <div style={{background:'rgba(250,248,240,0.99)',borderRadius:32,padding:'36px 28px',maxWidth:320,width:'100%',textAlign:'center'}} onClick={e=>e.stopPropagation()}>
               <div style={{fontSize:64,marginBottom:8}}>🎉</div>
-              <div style={{fontFamily:'Georgia,serif',fontWeight:900,fontSize:22,color:'#3A5828',marginBottom:12}}>All {celebration.name} tasks done! Amazing! 🏡</div>
-              <button onClick={()=>setCelebration(null)} style={{width:'100%',padding:'14px',background:'linear-gradient(135deg,#5A7848,#3A5828)',color:'#fff',border:'none',borderRadius:100,fontFamily:'Georgia,serif',fontWeight:700,fontSize:16,cursor:'pointer'}}>✨ Keep going!</button>
+              <div style={{fontFamily:'Georgia,serif',fontWeight:900,fontSize:22,color:'#3A5828',marginBottom:12}}>All {celebration.name} tasks done! 🏡</div>
+              <button onClick={()=>setCelebration(null)} style={{width:'100%',padding:'14px',background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:100,fontFamily:'Georgia,serif',fontWeight:700,fontSize:16,cursor:'pointer',boxShadow:'0 4px 18px rgba(90,120,72,0.20)'}}>✨ Keep going!</button>
             </div>
           </div>
         )}
