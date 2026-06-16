@@ -1958,8 +1958,47 @@ const statusByKey=k=>STATUSES.find(s=>s.key===k)||STATUSES[0];
 //   HOUSEWORK  — clean rebuild
 // ═══════════════════════════════════════════════════════════
 function Housework({setScreen}){
+  // Inject confetti animation
+  React.useEffect(()=>{
+    const style=document.createElement('style');
+    style.innerHTML=`
+      @keyframes confettiFall {
+        0%{transform:translateY(0) rotate(0deg);opacity:1;}
+        100%{transform:translateY(110vh) rotate(720deg);opacity:0;}
+      }
+      @keyframes popIn {
+        0%{transform:scale(0.5);opacity:0;}
+        100%{transform:scale(1);opacity:1;}
+      }
+    `;
+    document.head.appendChild(style);
+    return()=>document.head.removeChild(style);
+  },[]);
   const MULTI="linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)";
-  const MOT=["Great job! 🌟","You're smashing it! 💪","One less thing to worry about 🌿","Amazing work! ✨","Keep going! 🎉","Brilliant! 🌸"];
+  const MOT=[
+    "That's one down! You're doing brilliantly! 🌟",
+    "Yes!! Look at you go! 💪",
+    "One less thing to worry about — you're amazing! 🌿",
+    "Smashing it! Every task counts! ✨",
+    "You're on fire! Keep going! 🔥",
+    "Brilliant work! Your home thanks you! 🏡",
+    "Tick! That felt good, didn't it? 🎉",
+    "Another one done! You should be proud! 🦔",
+    "Look at you crushing it! 💫",
+    "That's the spirit! One task at a time! 🌸",
+    "You're making this home shine! ⭐",
+    "Every small step adds up — well done! 🌈",
+  ];
+  const CHORE_DONE_MSGS=[
+    {title:"Nailed it! 🎉",msg:"One task down — you're unstoppable!"},
+    {title:"YES!! 🌟",msg:"Your home is getting cleaner every minute!"},
+    {title:"Brilliant! 💪",msg:"That's one less thing on your mind — amazing!"},
+    {title:"You did it! ✨",msg:"Every task you complete is a win for you and your home!"},
+    {title:"Look at you go! 🔥",msg:"Seriously impressive — keep that energy!"},
+    {title:"One down! 🦔",msg:"Thinko is proud of you — now what's next?"},
+    {title:"Smashing it! 🏡",msg:"Your future self will thank you for this!"},
+    {title:"Incredible! 🌈",msg:"You showed up and got it done — that's everything!"},
+  ];
 
   // ── Persistent state ──
   const load=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}};
@@ -2018,6 +2057,8 @@ function Housework({setScreen}){
   const [pairIdx,setPairIdx]=useState(0);
   const [ranked,setRanked]=useState([]);
   const [celebration,setCelebration]=useState(null);
+  const [taskCelebration,setTaskCelebration]=useState(null);
+  const [confetti,setConfetti]=useState([]);
   const [motivMsg,setMotivMsg]=useState(null);
   const [newTask,setNewTask]=useState('');
   const [dismissed,setDismissed]=useState([]);
@@ -2159,14 +2200,26 @@ function Housework({setScreen}){
 
   const tickDone=(zoneId,taskId)=>{
     const zt=getZT(zoneId);
-    const wasDone=zt.find(t=>t.id===taskId)?.done;
+    const task=zt.find(t=>t.id===taskId);
+    const wasDone=task?.done;
     const updated={...tasks,[zoneId]:zt.map(t=>t.id===taskId?{...t,done:!t.done}:t)};
     saveTasks(updated);
     if(!wasDone){
-      setMotivMsg(MOT[Math.floor(Math.random()*MOT.length)]);
-      setTimeout(()=>setMotivMsg(null),2500);
+      // Show task celebration popup
+      const msg=CHORE_DONE_MSGS[Math.floor(Math.random()*CHORE_DONE_MSGS.length)];
+      setTaskCelebration({title:msg.title,msg:msg.msg,task:task?.name||''});
+      // Generate confetti
+      const pieces=Array.from({length:40},(_,i)=>({
+        id:i,x:Math.random()*100,delay:Math.random()*0.8,
+        color:['#5A7848','#C07040','#4878A8','#D4A020','#E07020','#9b59b6','#e67e22','#1abc9c'][Math.floor(Math.random()*8)],
+        size:Math.random()*8+4,
+        rotation:Math.random()*360,
+      }));
+      setConfetti(pieces);
+      setTimeout(()=>{setTaskCelebration(null);setConfetti([]);},3500);
+      // Check if all tasks done
       if(updated[zoneId].filter(t=>!t.done).length===0&&updated[zoneId].length>0){
-        setCelebration({zoneId,name:zones?.find(z=>z.id===zoneId)?.name||''});
+        setTimeout(()=>setCelebration({zoneId,name:zones?.find(z=>z.id===zoneId)?.name||''}),3600);
       }
     }
   };
@@ -2566,7 +2619,46 @@ function Housework({setScreen}){
 
         </div>
 
-        {motivMsg&&<div style={{position:'fixed',bottom:100,left:'50%',transform:'translateX(-50%)',background:MULTI,color:'#1A2810',borderRadius:100,padding:'11px 22px',fontFamily:'Georgia,serif',fontWeight:700,fontSize:14,boxShadow:'0 4px 20px rgba(90,120,72,0.25)',zIndex:200,whiteSpace:'nowrap',border:'1.5px solid rgba(90,120,72,0.25)'}}>{motivMsg}</div>}
+        {/* Task celebration overlay */}
+        {taskCelebration&&(
+          <div style={{position:'fixed',inset:0,zIndex:900,display:'flex',alignItems:'center',justifyContent:'center',padding:24,pointerEvents:'none'}}>
+            {/* Confetti */}
+            {confetti.map(p=>(
+              <div key={p.id} style={{
+                position:'fixed',
+                left:p.x+'%',
+                top:'-20px',
+                width:p.size+'px',
+                height:p.size+'px',
+                background:p.color,
+                borderRadius:p.size>7?'50%':'2px',
+                animation:`confettiFall 3s ${p.delay}s ease-in forwards`,
+                transform:`rotate(${p.rotation}deg)`,
+                zIndex:901,
+              }}/>
+            ))}
+            {/* Message card */}
+            <div style={{
+              background:'rgba(250,248,240,0.98)',
+              borderRadius:32,
+              padding:'32px 28px',
+              maxWidth:320,
+              width:'100%',
+              textAlign:'center',
+              boxShadow:'0 20px 60px rgba(0,0,0,0.25)',
+              border:'2px solid rgba(90,120,72,0.20)',
+              pointerEvents:'auto',
+              animation:'popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275)',
+            }}>
+              <div style={{fontSize:56,marginBottom:8}}>🎉</div>
+              <div style={{fontFamily:'Georgia,serif',fontWeight:900,fontSize:24,color:'#3A5828',marginBottom:6}}>{taskCelebration.title}</div>
+              <div style={{fontSize:13,color:'#5A4A30',fontWeight:600,marginBottom:12,background:'rgba(90,120,72,0.08)',borderRadius:12,padding:'8px 12px'}}>"{taskCelebration.task}"</div>
+              <div style={{fontSize:14,color:'#2A3820',fontWeight:600,lineHeight:1.5}}>{taskCelebration.msg}</div>
+            </div>
+          </div>
+        )}
+
+                {motivMsg&&<div style={{position:'fixed',bottom:100,left:'50%',transform:'translateX(-50%)',background:MULTI,color:'#1A2810',borderRadius:100,padding:'11px 22px',fontFamily:'Georgia,serif',fontWeight:700,fontSize:14,boxShadow:'0 4px 20px rgba(90,120,72,0.25)',zIndex:200,whiteSpace:'nowrap',border:'1.5px solid rgba(90,120,72,0.25)'}}>{motivMsg}</div>}
 
         {celebration&&celebration.zoneId===activeZone&&(
           <div style={{position:'fixed',inset:0,zIndex:800,background:'rgba(20,30,10,0.75)',backdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',padding:24}} onClick={()=>setCelebration(null)}>
