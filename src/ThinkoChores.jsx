@@ -2064,6 +2064,8 @@ function Housework({setScreen}){
   const [dismissed,setDismissed]=useState([]);
   const [showTemplates,setShowTemplates]=useState(false);
   const [dragTask,setDragTask]=useState(null);
+  const [dragZone,setDragZone]=useState(null);
+  const [dragOverZone,setDragOverZone]=useState(null);
   const [dragOver,setDragOver]=useState(null);
 
   // Focus timer
@@ -2174,7 +2176,7 @@ function Housework({setScreen}){
   const PRESETS={
     upstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop bathroom floor","Clean surfaces","Clean windows","Clean mirrors","Clean doors","Change bedding","Tidy bedroom","Clean bathroom","Clean toilet","Bleach toilet","Clean bath/shower","Take rubbish out","Iron clothes","Organise clothes","Put away laundry","Take laundry upstairs","Put laundry load in","Air freshener","Brush hair","Get dressed","Make up","Brush teeth"],
     downstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop floors","Clean surfaces","Clean windows","Clean mirrors","Clean doors","Wash up","Clean kitchen sides","Tidy sofa","Tidy living room","Clean downstairs toilet","Bleach toilet","Take rubbish out","Clean oven","Wipe cupboards","Take laundry out","Put laundry load in","Iron clothes","Air freshener","Make dinner","Make fruit juice/smoothie","Tidy food cupboard","Sort cleaning cupboard","Tidy under stairs"],
-    garden:["Tidy garden","Mow lawn","Weed","Water plants","Water greenhouse","Sweep path","Trim edges","Clear leaves","Tidy patio","Tidy shed","Plant/sow","Tidy flower beds","Clean pond","Tidy log cabin","Prune","Deadhead flowers"],
+    garden:["Tidy garden","Mow lawn","Weed","Water plants","Water greenhouse","Sweep path","Trim edges","Clear leaves","Tidy patio","Tidy shed","Sweep shed","Organise shed","Plant/sow","Tidy flower beds","Clean pond","Tidy log cabin","Prune","Deadhead flowers"],
     garage:["Sweep floor","Tidy tools","Organise shelves","Take rubbish out","Clear clutter"],
   };
 
@@ -2698,6 +2700,8 @@ function Housework({setScreen}){
             </button>
           </div>
         ):(
+          <>
+          <div style={{fontSize:10,color:'#8A8070',textAlign:'center',marginBottom:4,fontWeight:600}}>⠿ Hold to drag and reorder</div>
           <div style={{display:'flex',flexDirection:'column',gap:12}}>
             {zoneList.map(z=>{
               const zt=getZT(z.id);
@@ -2705,8 +2709,23 @@ function Housework({setScreen}){
               const urgent=zt.filter(t=>!t.done&&t.score<=2).length;
               const doneC=zt.filter(t=>t.done).length;
               return(
-                <button key={z.id} onClick={()=>{setActiveZone(z.id);setView('zone');setShowTemplates(false);}}
-                  style={{background:MULTI,borderRadius:20,padding:'16px 18px',border:'1.5px solid rgba(255,255,255,0.6)',boxShadow:'0 2px 12px rgba(0,0,0,0.07)',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:14}}>
+                <div key={z.id}
+                  draggable
+                  onDragStart={e=>{e.dataTransfer.effectAllowed='move';setDragZone(z.id);}}
+                  onDragEnd={()=>{setDragZone(null);setDragOverZone(null);}}
+                  onDragOver={e=>{e.preventDefault();setDragOverZone(z.id);}}
+                  onDrop={e=>{
+                    e.preventDefault();
+                    if(!dragZone||dragZone===z.id){setDragZone(null);setDragOverZone(null);return;}
+                    const newZones=[...zoneList];
+                    const from=newZones.findIndex(x=>x.id===dragZone);
+                    const to=newZones.findIndex(x=>x.id===z.id);
+                    newZones.splice(to,0,...newZones.splice(from,1));
+                    saveZones(newZones);
+                    setDragZone(null);setDragOverZone(null);
+                  }}
+                  onClick={()=>{setActiveZone(z.id);setView('zone');setShowTemplates(false);}}
+                  style={{background:dragOverZone===z.id?'rgba(90,120,72,0.12)':MULTI,borderRadius:20,padding:'16px 18px',border:dragOverZone===z.id?'1.5px solid rgba(90,120,72,0.40)':'1.5px solid rgba(255,255,255,0.6)',boxShadow:'0 2px 12px rgba(0,0,0,0.07)',cursor:'grab',textAlign:'left',display:'flex',alignItems:'center',gap:14}}>
                   <div style={{fontSize:36,flexShrink:0}}>{z.icon}</div>
                   <div style={{flex:1}}>
                     <div style={{fontFamily:'Georgia,serif',fontWeight:700,fontSize:17,color:'#1A1A10',marginBottom:3}}>{z.name}</div>
@@ -2718,10 +2737,11 @@ function Housework({setScreen}){
                     </div>}
                   </div>
                   {urgent>0&&<div style={{background:'#E03020',color:'#fff',borderRadius:100,padding:'2px 8px',fontSize:11,fontWeight:700,flexShrink:0}}>{urgent} urgent</div>}
-                </button>
+                </div>
               );
             })}
           </div>
+          </>
         )}
       </div>
     </div>
