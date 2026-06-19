@@ -679,7 +679,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
             </div>
           )}
           {focusLeft===null&&(
-            <div style={{display:"flex",gap:5,marginBottom:8}}>
+            <div style={{display:"flex",gap:5,marginBottom:8,alignItems:"center"}}>
               {[10,20,30,60].map(m=>(
                 <button key={m} onClick={()=>setFocusMins&&setFocusMins(m)}
                   style={{flex:1,padding:"6px 0",fontSize:11,fontWeight:700,cursor:"pointer",
@@ -690,6 +690,10 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
                   {m===60?"1hr":`${m}m`}
                 </button>
               ))}
+              <input type="number" inputMode="numeric" min="1" max="180" placeholder="Custom"
+                value={[10,20,30,60].includes(focusMins||25)?"":(focusMins||"")}
+                onChange={e=>{const v=parseInt(e.target.value);setFocusMins&&setFocusMins(isNaN(v)?"":v);}}
+                style={{width:60,padding:"6px 4px",fontSize:11,fontWeight:700,textAlign:"center",color:"#3A6020",background:"rgba(255,255,255,0.85)",border:"1px solid rgba(90,120,72,0.25)",borderRadius:100,outline:"none"}}/>
             </div>
           )}
           <div style={{display:"flex",gap:8}}>
