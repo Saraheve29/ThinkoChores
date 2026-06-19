@@ -172,7 +172,7 @@ function ColourPicker({current,onChange,onClose}) {
   );
 }
 
-function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMoveToList,lists,onPrioritizeThis,onSendTo,onMoveUp,onMoveDown,isFirst,isLast,setScreen}) {
+function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMoveToList,lists,onPrioritizeThis,onSendTo,onSaveForLater,onMoveUp,onMoveDown,isFirst,isLast,setScreen}) {
   const sw=swatchById(task.color);
   const [pickerOpen,setPickerOpen]=useState(false);
   const [menuOpen,setMenuOpen]=useState(false);
@@ -233,7 +233,7 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
         </div>
         {/* Task name */}
         <div style={{flex:1}}>
-          <div style={{fontWeight:700,fontSize:16,lineHeight:1.4,color:task.done?C.soft:"#1A1A10",textDecoration:task.done?"line-through":"none",wordBreak:"break-word"}}>{task.name}</div>
+          <div style={{fontWeight:700,fontSize:16,lineHeight:1.4,color:task.done?C.soft:"#1A1A10",textDecoration:task.done?"line-through":"none",wordBreak:"break-word"}}>{task.savedForLater&&<span style={{marginRight:5}}>⭐</span>}{task.name}</div>
           {task.url&&<UrlBadge url={task.url}/>}
           {subs.length>0&&<div style={{fontSize:11,color:C.soft,marginTop:2,fontWeight:600}}>{subsDone}/{subs.length} sub-items done</div>}
         </div>
@@ -289,11 +289,7 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
                 → {l.name}
               </button>
             ))}
-            <MenuItem icon="📅" label="Schedule in Calendar" onClick={()=>window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent("📋 "+task.name)}`,"_blank")}/>
-            <MenuItem icon="🎯" label="Send to Matrix — Do First" onClick={()=>onSendTo&&onSendTo(task,"matrix","do")}/>
-            <MenuItem icon="🟠" label="Send to Matrix — Schedule" onClick={()=>onSendTo&&onSendTo(task,"matrix","plan")}/>
-            <MenuItem icon="🔵" label="Send to Matrix — Ask for Help" onClick={()=>onSendTo&&onSendTo(task,"matrix","help")}/>
-            <MenuItem icon="⚡" label="Send to The Wipe Out" onClick={()=>onSendTo&&onSendTo(task,"charge")}/>
+            <MenuItem icon={task.savedForLater?"⭐":"💾"} label={task.savedForLater?"Remove from Saved":"Save for later"} onClick={()=>{onSaveForLater&&onSaveForLater(task.id);setMenuOpen(false);}}/>
             <MenuItem icon="🗑" label="Delete task" onClick={()=>onDelete(task.id)} danger/>
             {/* Big close button at bottom for easy thumb reach */}
             <div style={{padding:"10px 16px 0"}}>
@@ -483,6 +479,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
     }
   };
   const colorTask=(id,color)=>onUpdate({...list,tasks:list.tasks.map(t=>t.id===id?{...t,color}:t)});
+  const saveForLaterTask=id=>onUpdate({...list,tasks:list.tasks.map(t=>t.id===id?{...t,savedForLater:!t.savedForLater}:t)});
   const [dragTaskId,setDragTaskId]=useState(null);
   const priTaskTouchRef=useRef(null);
   const priTaskDragOver=(toId)=>{
@@ -688,7 +685,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
                 onTouchMove={priTaskTouchMove}
                 onTouchEnd={priTaskTouchEnd}
                 style={{opacity:dragTaskId===task.id?0.5:1,transform:dragTaskId===task.id?"scale(1.02)":"scale(1)",transition:"all 0.15s",touchAction:"none"}}>
-              <PriTaskRow task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onAddSub={addSubItems} lists={[]} onPrioritizeThis={()=>setComparing(true)} onSendTo={sendTaskTo} onMoveUp={()=>moveTask(task.id,-1)} onMoveDown={()=>moveTask(task.id,1)} isFirst={i===0} isLast={i===active.length-1} setScreen={setScreen}/>
+              <PriTaskRow task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onAddSub={addSubItems} lists={[]} onPrioritizeThis={()=>setComparing(true)} onSendTo={sendTaskTo} onSaveForLater={saveForLaterTask} onMoveUp={()=>moveTask(task.id,-1)} onMoveDown={()=>moveTask(task.id,1)} isFirst={i===0} isLast={i===active.length-1} setScreen={setScreen}/>
             </div>)
           </div>
         ))}
