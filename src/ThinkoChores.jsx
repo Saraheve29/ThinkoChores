@@ -242,7 +242,7 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
         {/* Delete — visible on card */}
         {onDelete&&<button onClick={()=>onDelete(task.id)} style={{background:"rgba(192,57,43,0.09)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.18)",borderRadius:9,width:34,height:34,cursor:"pointer",fontSize:14,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>🗑</button>}
         {/* 3-dot menu */}
-        <button onClick={()=>setMenuOpen(m=>!m)} style={{background:C.ll,color:C.mp,border:"none",borderRadius:9,width:34,height:34,cursor:"pointer",fontSize:18,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}}>⋮</button>
+        <button onClick={()=>{onSaveForLater&&onSaveForLater(task.id);}} style={{background:task.savedForLater?"rgba(212,160,32,0.18)":C.ll,color:task.savedForLater?"#B8860B":C.mp,border:"none",borderRadius:9,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{task.savedForLater?"⭐":"💾"}</button>
       </div>
 
       {/* Sub-items */}
@@ -265,42 +265,6 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
       )}
 
       {/* ── 3-dot menu sheet ── */}
-      {menuOpen&&(
-        <div style={{position:"fixed",inset:0,zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setMenuOpen(false)}>
-          <div style={{background:C.wh,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,boxShadow:"0 -8px 32px rgba(90,80,60,0.35)",paddingBottom:34}} onClick={e=>e.stopPropagation()}>
-            {/* Drag handle */}
-            <div style={{display:"flex",justifyContent:"center",paddingTop:10,paddingBottom:4}}>
-              <div style={{width:40,height:4,borderRadius:2,background:C.ll}}/>
-            </div>
-            {/* Header — back button LEFT, task name centre, close RIGHT */}
-            <div style={{display:"flex",alignItems:"center",gap:10,padding:"6px 12px 10px",borderBottom:`2px solid ${C.ll}`}}>
-              <button onClick={()=>setMenuOpen(false)}
-                style={{background:C.pp,color:"#1A1A10",border:"none",borderRadius:10,width:40,height:40,fontSize:20,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:900,boxShadow:"0 2px 8px rgba(90,80,60,0.25)"}}>←</button>
-              <div style={{flex:1,fontWeight:800,color:C.dp,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.name}</div>
-              <button onClick={()=>setMenuOpen(false)}
-                style={{background:C.ll,color:C.mid,border:"none",borderRadius:10,width:36,height:36,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>✕</button>
-            </div>
-            <MenuItem icon="📝" label="Add sub-item" onClick={()=>setSubOpen(s=>!s)}/>
-            <MenuItem icon="🎯" label="Prioritize sub-items" onClick={()=>onPrioritizeThis&&onPrioritizeThis(task.id)}/>
-            <MenuItem icon="📋" label="Move to another list" onClick={()=>{}}/>
-            {(lists||[]).filter(l=>l.id!==task._listId).map(l=>(
-              <button key={l.id} onClick={()=>{onMoveToList&&onMoveToList(task.id,l.id);setMenuOpen(false);}}
-                style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px 10px 44px",background:C.pale,border:"none",borderBottom:`1px solid ${C.ll}`,cursor:"pointer",width:"100%",textAlign:"left",fontSize:13,fontWeight:600,color:C.txt}}>
-                → {l.name}
-              </button>
-            ))}
-            <MenuItem icon={task.savedForLater?"⭐":"💾"} label={task.savedForLater?"Remove from Saved":"Save for later"} onClick={()=>{onSaveForLater&&onSaveForLater(task.id);setMenuOpen(false);}}/>
-            <MenuItem icon="🗑" label="Delete task" onClick={()=>onDelete(task.id)} danger/>
-            {/* Big close button at bottom for easy thumb reach */}
-            <div style={{padding:"10px 16px 0"}}>
-              <button onClick={()=>setMenuOpen(false)}
-                style={{width:"100%",padding:"14px",background:C.ll,color:C.mp,border:`1.5px solid ${C.lp}`,borderRadius:14,fontWeight:800,fontSize:15,cursor:"pointer"}}>
-                ← Back
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -524,8 +488,9 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
     setComparing(false);setPrioritized(true);
   };
   if(comparing) return <PriCompare tasks={list.tasks} onDone={onPriDone}/>;
-  const active=list.tasks.filter(t=>!t.done);
+  const active=list.tasks.filter(t=>!t.done&&!t.savedForLater);
   const done=list.tasks.filter(t=>t.done);
+  const savedLater=list.tasks.filter(t=>!t.done&&t.savedForLater);
   return (
     <div style={{minHeight:"100vh",background:"transparent",fontFamily:"'Segoe UI',sans-serif",position:"relative",overflow:"hidden"}}>
       <style>{`
@@ -689,6 +654,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
             </div>)
           </div>
         ))}
+        {savedLater.length>0&&<><div style={{fontSize:11,fontWeight:700,color:"#B8860B",textTransform:"uppercase",letterSpacing:1.5,margin:"16px 0 8px",display:"flex",alignItems:"center",gap:6}}>⭐ Saved for later</div>{savedLater.map((task,i)=>(<PriTaskRow key={task.id} task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onSaveForLater={saveForLaterTask}/>))}</>}
         {done.length>0&&<><div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:1.5,margin:"16px 0 8px"}}>✓ Completed</div>{done.map((task,i)=>(<PriTaskRow key={task.id} task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask}/>))}</>}
         {active.length>1&&(
           <div style={{position:"sticky",bottom:90,left:0,right:0,padding:"12px 0 4px",background:"transparent",pointerEvents:"none"}}>
