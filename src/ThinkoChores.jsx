@@ -674,9 +674,9 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
             <div style={{fontFamily:"monospace",fontSize:20,fontWeight:700,color:(focusLeft!==null&&focusLeft<=59)?"#E03020":"#1A2810"}}>{focusLeft!==null?fmtTimer(focusLeft):fmtTimer((focusMins||25)*60)}</div>
           </div>
           <div style={{display:"flex",gap:6,marginTop:9}}>
-            {[10,15,25,45].map(m=>(
+            {[10,20,30,60].map(m=>(
               <button key={m} onClick={()=>{setFocusMins&&setFocusMins(m);setFocusLeft&&setFocusLeft(null);setFocusOn&&setFocusOn(false);}}
-                style={{flex:1,padding:"5px 0",background:(focusMins||25)===m?"rgba(90,120,72,0.20)":"rgba(255,255,255,0.6)",border:((focusMins||25)===m?"1.5px solid rgba(90,120,72,0.40)":"1.5px solid rgba(180,160,140,0.25)"),borderRadius:9,fontSize:11,fontWeight:700,color:(focusMins||25)===m?"#3A5828":"#5A4A30",cursor:"pointer"}}>{m}m</button>
+                style={{flex:1,padding:"5px 0",background:(focusMins||25)===m?"rgba(90,120,72,0.20)":"rgba(255,255,255,0.6)",border:((focusMins||25)===m?"1.5px solid rgba(90,120,72,0.40)":"1.5px solid rgba(180,160,140,0.25)"),borderRadius:9,fontSize:11,fontWeight:700,color:(focusMins||25)===m?"#3A5828":"#5A4A30",cursor:"pointer"}}>{m===60?"1hr":m+"m"}</button>
             ))}
             <button onClick={()=>{
               if(focusLeft===null){setFocusLeft&&setFocusLeft((focusMins||25)*60);setFocusOn&&setFocusOn(true);setFocusAlerted&&setFocusAlerted(false);}
@@ -2526,9 +2526,9 @@ function Housework({setScreen}){
               <div style={{fontFamily:'monospace',fontSize:20,fontWeight:700,color:timerLeft<=59?'#E03020':'#1A2810'}}>{fmtT(timerLeft)}</div>
             </div>
             <div style={{display:'flex',gap:6,marginTop:9}}>
-              {[10,15,25,45].map(m=>(
+              {[10,20,30,60].map(m=>(
                 <button key={m} onClick={()=>{setTimerMins(m);setTimerLeft(m*60);setTimerOn(false);}}
-                  style={{flex:1,padding:'5px 0',background:timerMins===m?'rgba(90,120,72,0.20)':'rgba(255,255,255,0.6)',border:(timerMins===m?'1.5px solid rgba(90,120,72,0.40)':'1.5px solid rgba(180,160,140,0.25)'),borderRadius:9,fontSize:11,fontWeight:700,color:timerMins===m?'#3A5828':'#5A4A30',cursor:'pointer'}}>{m}m</button>
+                  style={{flex:1,padding:'5px 0',background:timerMins===m?'rgba(90,120,72,0.20)':'rgba(255,255,255,0.6)',border:(timerMins===m?'1.5px solid rgba(90,120,72,0.40)':'1.5px solid rgba(180,160,140,0.25)'),borderRadius:9,fontSize:11,fontWeight:700,color:timerMins===m?'#3A5828':'#5A4A30',cursor:'pointer'}}>{m===60?"1hr":m+"m"}</button>
               ))}
               <button onClick={()=>timerLeft===0?resetTimer():setTimerOn(!timerOn)}
                 style={{flex:1,padding:'5px 0',background:MULTI,border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:9,fontSize:15,cursor:'pointer'}}>
@@ -2677,6 +2677,22 @@ export default function App(){
     const p=new URLSearchParams(window.location.search).get('screen');
     return(['todo','housework','shopping','meals'].includes(p))?p:'home';
   });
+  // Real focus timer state for Todo list
+  const [focusMins,setFocusMins]=useState(25);
+  const [focusLeft,setFocusLeft]=useState(null);
+  const [focusOn,setFocusOn]=useState(false);
+  const [focusAlerted,setFocusAlerted]=useState(false);
+  const focusRef=useRef(null);
+  useEffect(()=>{
+    if(focusOn&&focusLeft>0){
+      focusRef.current=setInterval(()=>setFocusLeft(l=>l-1),1000);
+    } else {
+      clearInterval(focusRef.current);
+      if(focusLeft===0&&focusOn) setFocusOn(false);
+    }
+    return()=>clearInterval(focusRef.current);
+  },[focusOn,focusLeft]);
+  const fmtTimer=s=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
   const [installPrompt,setInstallPrompt]=useState(null);
   const DEFAULT_TILE_IDS=['todo','housework','shopping','meals'];
   const [tileOrder,setTileOrderRaw]=useState(()=>load('chores_tile_order',DEFAULT_TILE_IDS));
@@ -2719,7 +2735,7 @@ export default function App(){
 
   // ── SCREENS ──
   if(screen==='todo') return(<><GardenBg/><div style={{position:'relative',zIndex:10,minHeight:'100vh',paddingBottom:80}}>
-    <PriList list={{...( priData.length>0?priData[0]:{id:'main',name:'To Do',tasks:[]}),tasks:(priData.length>0&&priData[0].tasks)?priData[0].tasks:[]}} onBack={()=>setScreen('home')} onUpdate={(l)=>setPriData([l])} matrixData={{}} setMatrixData={()=>{}} setScreen={setScreen} focusMins={25} setFocusMins={()=>{}} focusLeft={0} setFocusLeft={()=>{}} focusOn={false} setFocusOn={()=>{}} setFocusAlerted={()=>{}} fmtTimer={s=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}/>
+    <PriList list={{...( priData.length>0?priData[0]:{id:'main',name:'To Do',tasks:[]}),tasks:(priData.length>0&&priData[0].tasks)?priData[0].tasks:[]}} onBack={()=>setScreen('home')} onUpdate={(l)=>setPriData([l])} matrixData={{}} setMatrixData={()=>{}} setScreen={setScreen} focusMins={focusMins} setFocusMins={setFocusMins} focusLeft={focusLeft} setFocusLeft={setFocusLeft} focusOn={focusOn} setFocusOn={setFocusOn} setFocusAlerted={setFocusAlerted} fmtTimer={fmtTimer}/>
     <NavBar current="todo" setScreen={setScreen}/>
   </div></>);
 
