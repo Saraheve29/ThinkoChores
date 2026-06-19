@@ -264,39 +264,6 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
         </div>
       )}
 
-      {/* Compact inline timer — not a full widget */}
-      {!task.done&&(
-        <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6,padding:"7px 10px",background:"rgba(90,120,72,0.06)",borderRadius:12,border:"1px solid rgba(90,120,72,0.12)"}}>
-          <span style={{fontSize:14}}>⏱</span>
-          {left!==null?(
-            <>
-              <span style={{fontFamily:"monospace",fontSize:15,fontWeight:700,color:left<60?"#c0392b":"#3A6020",flex:1}}>{fmt(left)}</span>
-              <div style={{height:4,flex:1,background:"rgba(90,80,60,0.10)",borderRadius:100,overflow:"hidden",margin:"0 4px"}}>
-                <div style={{height:"100%",width:`${Math.round((left/(on?left+1:mins*60||300))*100)}%`,background:left<60?"#c0392b":sw.fill,borderRadius:100,transition:"width 1s linear"}}/>
-              </div>
-              <button onClick={stop} style={{background:"rgba(192,57,43,0.12)",color:"#c0392b",border:"none",borderRadius:8,padding:"3px 8px",fontSize:11,fontWeight:700,cursor:"pointer"}}>✕</button>
-            </>
-          ):(
-            <>
-              <span style={{fontSize:12,color:"#8A8070",flex:1}}>Task timer</span>
-              <div style={{display:"flex",gap:4,alignItems:"center"}}>
-                {[10,20,30,50].map(t=>(
-                  <button key={t} onClick={()=>{setMins(t);start(t*60);}} style={{background:"rgba(90,120,72,0.10)",color:"#3A6020",border:"1px solid rgba(90,120,72,0.18)",borderRadius:8,padding:"3px 7px",fontSize:11,fontWeight:600,cursor:"pointer"}}>{t}m</button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Calendar */}
-      {!task.done&&(
-        <button onClick={()=>window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent("📋 "+task.name)}`,"_blank")}
-          style={{marginTop:8,width:"100%",display:"flex",alignItems:"center",gap:8,background:"#e8f5e9",color:"#2e7d32",border:"1.5px solid #a5d6a7",borderRadius:10,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>
-          <span>📅</span><span>Schedule in Google Calendar</span>
-        </button>
-      )}
-
       {/* ── 3-dot menu sheet ── */}
       {menuOpen&&(
         <div style={{position:"fixed",inset:0,zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setMenuOpen(false)}>
