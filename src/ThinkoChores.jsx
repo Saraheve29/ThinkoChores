@@ -666,42 +666,27 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
           </div>
         )}
 
-        {/* Focus Timer — at bottom */}
-{/* Focus Timer — garden glass style */}
-        <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",backdropFilter:"blur(16px)",borderRadius:22,padding:"14px 16px",marginBottom:10,border:"1.5px solid rgba(90,120,72,0.18)",boxShadow:"0 4px 20px rgba(42,80,28,0.08)"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-            <span style={{fontFamily:"Georgia,serif",fontSize:14,fontWeight:700,color:"#1A2810",flex:1}}>🎯 Focus Timer</span>
-            {focusLeft!==null&&<span style={{fontFamily:"monospace",fontSize:18,fontWeight:700,color:focusLeft<60?"#c0392b":"#2C3820"}}>{fmtTimer?fmtTimer(focusLeft):""}</span>}
+        {/* Focus Timer — at bottom, matches Chores style */}
+        <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:18,padding:"11px 16px",marginBottom:10,border:"1.5px solid rgba(180,160,140,0.35)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:15}}>⏱</span>
+            <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:13,color:"#1A1A10",flex:1}}>Focus Timer</div>
+            <div style={{fontFamily:"monospace",fontSize:20,fontWeight:700,color:(focusLeft!==null&&focusLeft<=59)?"#E03020":"#1A2810"}}>{focusLeft!==null?fmtTimer(focusLeft):fmtTimer((focusMins||25)*60)}</div>
           </div>
-          {focusLeft!==null&&focusLeft>=0&&(
-            <div style={{height:4,background:"rgba(90,80,60,0.10)",borderRadius:100,overflow:"hidden",marginBottom:8}}>
-              <div style={{height:"100%",width:`${Math.round((focusLeft/((focusMins||25)*60))*100)}%`,background:focusLeft<60?"#c0392b":"#4A7838",borderRadius:100,transition:"width 1s linear"}}/>
-            </div>
-          )}
-          {focusLeft===null&&(
-            <div style={{display:"flex",gap:5,marginBottom:8,alignItems:"center"}}>
-              {[10,20,30,60].map(m=>(
-                <button key={m} onClick={()=>setFocusMins&&setFocusMins(m)}
-                  style={{flex:1,padding:"6px 0",fontSize:11,fontWeight:700,cursor:"pointer",
-                    background:(focusMins||25)===m?"#4A7838":"rgba(90,120,72,0.10)",
-                    color:(focusMins||25)===m?"#fff":"#3A6020",
-                    border:`1px solid ${(focusMins||25)===m?"#4A7838":"rgba(90,120,72,0.20)"}`,
-                    borderRadius:100,transition:"all 0.15s"}}>
-                  {m===60?"1hr":`${m}m`}
-                </button>
-              ))}
-              <input type="number" inputMode="numeric" min="1" max="180" placeholder="Custom"
-                value={[10,20,30,60].includes(focusMins||25)?"":(focusMins||"")}
-                onChange={e=>{const v=parseInt(e.target.value);setFocusMins&&setFocusMins(isNaN(v)?"":v);}}
-                style={{width:60,padding:"6px 4px",fontSize:11,fontWeight:700,textAlign:"center",color:"#3A6020",background:"rgba(255,255,255,0.85)",border:"1px solid rgba(90,120,72,0.25)",borderRadius:100,outline:"none"}}/>
-            </div>
-          )}
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>{if(focusLeft===null){setFocusLeft&&setFocusLeft((focusMins||25)*60);setFocusOn&&setFocusOn(true);setFocusAlerted&&setFocusAlerted(false);}else setFocusOn&&setFocusOn(o=>!o);}}
-              style={{flex:1,padding:"10px",background:focusOn?"rgba(192,57,43,0.10)":"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:focusOn?"#c0392b":"#fff",border:`1px solid ${focusOn?"rgba(192,57,43,0.25)":"transparent"}`,borderRadius:100,fontFamily:"Georgia,serif",fontWeight:700,fontSize:13,cursor:"pointer",boxShadow:focusOn?"none":"0 3px 12px rgba(58,80,38,0.25)"}}>
-              {focusLeft===null?"▶ Start":focusOn?"⏸ Pause":"▶ Resume"}
+          <div style={{display:"flex",gap:6,marginTop:9}}>
+            {[10,15,25,45].map(m=>(
+              <button key={m} onClick={()=>{setFocusMins&&setFocusMins(m);setFocusLeft&&setFocusLeft(null);setFocusOn&&setFocusOn(false);}}
+                style={{flex:1,padding:"5px 0",background:(focusMins||25)===m?"rgba(90,120,72,0.20)":"rgba(255,255,255,0.6)",border:((focusMins||25)===m?"1.5px solid rgba(90,120,72,0.40)":"1.5px solid rgba(180,160,140,0.25)"),borderRadius:9,fontSize:11,fontWeight:700,color:(focusMins||25)===m?"#3A5828":"#5A4A30",cursor:"pointer"}}>{m}m</button>
+            ))}
+            <button onClick={()=>{
+              if(focusLeft===null){setFocusLeft&&setFocusLeft((focusMins||25)*60);setFocusOn&&setFocusOn(true);setFocusAlerted&&setFocusAlerted(false);}
+              else if(focusLeft===0){setFocusLeft&&setFocusLeft(null);setFocusOn&&setFocusOn(false);}
+              else{setFocusOn&&setFocusOn(o=>!o);}
+            }}
+              style={{flex:1,padding:"5px 0",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:"1.5px solid rgba(90,120,72,0.25)",borderRadius:9,fontSize:15,cursor:"pointer"}}>
+              {focusLeft===0?"↺":focusOn?"⏸":"▶"}
             </button>
-            {focusLeft!==null&&<button onClick={()=>{setFocusLeft&&setFocusLeft(null);setFocusOn&&setFocusOn(false);setFocusAlerted&&setFocusAlerted(false);}} style={{flex:1,padding:"10px",background:"rgba(192,57,43,0.08)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.18)",borderRadius:100,fontWeight:700,fontSize:13,cursor:"pointer"}}>⏹ Stop</button>}
+            <button onClick={()=>{setFocusLeft&&setFocusLeft(null);setFocusOn&&setFocusOn(false);setFocusAlerted&&setFocusAlerted(false);}} style={{flex:1,padding:"5px 0",background:"rgba(180,160,140,0.15)",border:"1.5px solid rgba(180,160,140,0.25)",borderRadius:9,fontSize:10,fontWeight:600,color:"#5A4A30",cursor:"pointer"}}>Reset</button>
           </div>
         </div>
       </div>
