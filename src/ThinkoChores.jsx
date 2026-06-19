@@ -2011,7 +2011,7 @@ function Housework({setScreen}){
     {id:'downstairs',q:"What rooms do you have downstairs?",opts:["Living room","Kitchen","Hallway","Downstairs toilet","Dining room","Utility room","Other"],multi:true},
     {id:'garden',q:"Do you have a garden?",opts:["Yes","No"]},
     {id:'garden_features',q:"What does your garden have?",opts:["Lawn","Plants/Flower beds","Patio/Decking","Shed","Greenhouse","Vegetable patch","Log cabin","Other"],multi:true},
-    {id:'garage',q:"Do you have a garage or shed?",opts:["Garage","Shed","Both","Neither"]},
+    {id:'garage',q:"Do you have a garage?",opts:["Yes","No"]},
     {id:'cupboards',q:"Any cupboards to organise?",opts:["Bedroom wardrobes","Airing/linen cupboard","Food cupboards","Cleaning/laundry cupboard","Under stairs","None"],multi:true},
   ];
 
@@ -2026,8 +2026,7 @@ function Housework({setScreen}){
     if(ans.garden==="Yes"){
       z.push({id:'garden',name:'Garden',icon:'🌿',color:'#4A8A5A',rooms:ans.garden_features||[]});
     }
-    const g=ans.garage||'Neither';
-    if(g!=='Neither') z.push({id:'garage',name:g==='Shed'?'Shed':g==='Both'?'Garage & Shed':'Garage',icon:'🔧',color:'#7A6848',rooms:[]});
+    if(ans.garage==='Yes') z.push({id:'garage',name:'Garage',icon:'🔧',color:'#7A6848',rooms:[]});
     return z;
   };
 
@@ -2095,7 +2094,7 @@ function Housework({setScreen}){
   const PRESETS={
     upstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop bathroom floor","Clean surfaces","Clean windows","Clean mirrors","Clean doors","Change bedding","Tidy bedroom","Clean bathroom","Clean toilet","Bleach toilet","Clean bath/shower","Take rubbish out","Iron clothes","Organise clothes","Put away laundry","Take laundry upstairs","Put laundry load in","Air freshener","Brush hair","Get dressed","Make up","Brush teeth"],
     downstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop floors","Clean surfaces","Clean windows","Clean mirrors","Clean doors","Wash up","Clean kitchen sides","Tidy sofa","Tidy living room","Clean downstairs toilet","Bleach toilet","Take rubbish out","Clean oven","Wipe cupboards","Take laundry out","Put laundry load in","Iron clothes","Air freshener","Make dinner","Make fruit juice/smoothie","Tidy food cupboard","Sort cleaning cupboard","Tidy under stairs"],
-    garden:["Tidy garden","Mow lawn","Weed","Water plants","Water greenhouse","Sweep path","Trim edges","Clear leaves","Tidy patio","Tidy shed","Sweep shed","Organise shed","Plant/sow","Tidy flower beds","Clean pond","Tidy log cabin","Prune","Deadhead flowers"],
+    garden:["Tidy garden","Mow lawn","Weed","Water plants","Water greenhouse","Sweep path","Trim edges","Clear leaves","Tidy patio","Tidy shed","Organise shed","Plant/sow","Tidy flower beds","Clean pond","Tidy log cabin","Prune","Deadhead flowers"],
     garage:["Sweep floor","Tidy tools","Organise shelves","Take rubbish out","Clear clutter"],
   };
 
