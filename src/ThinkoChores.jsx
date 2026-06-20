@@ -1927,7 +1927,7 @@ function Housework({setScreen}){
 
   const [profile,setProfile]=useState(()=>load('hw_profile',null));
   const [zones,setZonesRaw]=useState(()=>{
-    const clean=arr=>arr?arr.filter(z=>z.id!=='shed'):arr; // remove old shed-only zone
+    const clean=arr=>arr?arr.filter(z=>z.id!=='shed'&&z.id!=='garage'):arr; // remove old shed/garage zones
     const z=load('hw_zones',null);
     if(z) return clean(z);
     // Try old key thinko_hw_zones
@@ -2014,7 +2014,6 @@ function Housework({setScreen}){
     {id:'downstairs',q:"What rooms do you have downstairs?",opts:["Living room","Kitchen","Hallway","Downstairs toilet","Dining room","Utility room","Other"],multi:true},
     {id:'garden',q:"Do you have a garden?",opts:["Yes","No"]},
     {id:'garden_features',q:"What does your garden have?",opts:["Lawn","Plants/Flower beds","Patio/Decking","Shed","Greenhouse","Vegetable patch","Log cabin","Other"],multi:true},
-    {id:'garage',q:"Do you have a garage?",opts:["Yes","No"]},
     {id:'cupboards',q:"Any cupboards to organise?",opts:["Bedroom wardrobes","Airing/linen cupboard","Food cupboards","Cleaning/laundry cupboard","Under stairs","None"],multi:true},
   ];
 
@@ -2029,7 +2028,6 @@ function Housework({setScreen}){
     if(ans.garden==="Yes"){
       z.push({id:'garden',name:'Garden',icon:'🌿',color:'#4A8A5A',rooms:ans.garden_features||[]});
     }
-    if(ans.garage==='Yes') z.push({id:'garage',name:'Garage',icon:'🔧',color:'#7A6848',rooms:[]});
     return z;
   };
 
