@@ -172,7 +172,7 @@ function ColourPicker({current,onChange,onClose}) {
   );
 }
 
-function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMoveToList,lists,onPrioritizeThis,onSendTo,onSaveForLater,onMoveUp,onMoveDown,isFirst,isLast,setScreen}) {
+function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMoveToList,lists,onPrioritizeThis,onSendTo,onSaveForLater,onMoveUp,onMoveDown,isFirst,isLast,setScreen,dragHandlers}) {
   const sw=swatchById(task.color);
   const [pickerOpen,setPickerOpen]=useState(false);
   const [menuOpen,setMenuOpen]=useState(false);
@@ -218,7 +218,7 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
         {/* Index */}
         <div style={{minWidth:28,height:28,borderRadius:"50%",background:task.done?C.done:sw.num,color:"#1A1A10",fontWeight:800,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>{index+1}</div>
         <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"grab",color:"rgba(90,120,72,0.35)",fontSize:16,lineHeight:1,padding:"0 2px",letterSpacing:1}}>⠿</div>
+          <div {...(dragHandlers||{})} style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"grab",color:"rgba(90,120,72,0.35)",fontSize:20,lineHeight:1,padding:"4px 8px",letterSpacing:1,touchAction:"none"}}>⠿</div>
         </div>
         {/* Colour picker dot — prominent */}
         <div style={{position:"relative",flexShrink:0,marginTop:5}}>
@@ -642,15 +642,17 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
             )}
             <div key={task.id}
                 data-pritaskid={task.id}
-                draggable
-                onDragStart={e=>{e.dataTransfer.effectAllowed="move";setDragTaskId(task.id);}}
-                onDragOver={e=>{e.preventDefault();priTaskDragOver(task.id);}}
-                onDragEnd={()=>setDragTaskId(null)}
-                onTouchStart={e=>priTaskTouchStart(e,task.id)}
-                onTouchMove={priTaskTouchMove}
-                onTouchEnd={priTaskTouchEnd}
-                style={{opacity:dragTaskId===task.id?0.5:1,transform:dragTaskId===task.id?"scale(1.02)":"scale(1)",transition:"all 0.15s",touchAction:"none"}}>
-              <PriTaskRow task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onAddSub={addSubItems} lists={[]} onPrioritizeThis={()=>setComparing(true)} onSendTo={sendTaskTo} onSaveForLater={saveForLaterTask} onMoveUp={()=>moveTask(task.id,-1)} onMoveDown={()=>moveTask(task.id,1)} isFirst={i===0} isLast={i===active.length-1} setScreen={setScreen}/>
+                style={{opacity:dragTaskId===task.id?0.5:1,transform:dragTaskId===task.id?"scale(1.02)":"scale(1)",transition:"all 0.15s"}}>
+              <PriTaskRow task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onAddSub={addSubItems} lists={[]} onPrioritizeThis={()=>setComparing(true)} onSendTo={sendTaskTo} onSaveForLater={saveForLaterTask} onMoveUp={()=>moveTask(task.id,-1)} onMoveDown={()=>moveTask(task.id,1)} isFirst={i===0} isLast={i===active.length-1} setScreen={setScreen}
+                dragHandlers={{
+                  draggable:true,
+                  onDragStart:e=>{e.dataTransfer.effectAllowed="move";setDragTaskId(task.id);},
+                  onDragOver:e=>{e.preventDefault();priTaskDragOver(task.id);},
+                  onDragEnd:()=>setDragTaskId(null),
+                  onTouchStart:e=>priTaskTouchStart(e,task.id),
+                  onTouchMove:priTaskTouchMove,
+                  onTouchEnd:priTaskTouchEnd,
+                }}/>
             </div>)
           </div>
         ))}
