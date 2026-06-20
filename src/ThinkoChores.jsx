@@ -1927,15 +1927,16 @@ function Housework({setScreen}){
 
   const [profile,setProfile]=useState(()=>load('hw_profile',null));
   const [zones,setZonesRaw]=useState(()=>{
+    const clean=arr=>arr?arr.filter(z=>z.id!=='shed'):arr; // remove old shed-only zone
     const z=load('hw_zones',null);
-    if(z) return z;
+    if(z) return clean(z);
     // Try old key thinko_hw_zones
     const old1=load('thinko_hw_zones',null);
-    if(old1) return old1;
+    if(old1) return clean(old1);
     // Try thinko_hw_cats for zone structure
     const old2=load('thinko_hw_cats',null);
     if(old2){
-      return Object.values(old2).map(z=>({id:z.id,name:z.name,icon:z.icon,color:z.color,rooms:z.rooms||[]}));
+      return clean(Object.values(old2).map(z=>({id:z.id,name:z.name,icon:z.icon,color:z.color,rooms:z.rooms||[]})));
     }
     return null;
   });
