@@ -1383,6 +1383,20 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
     const days=plan.days.map((d,di)=>di!==dayIdx?d:d.map(m=>m.id!==mealId?m:{...m,ingredients:(m.ingredients||[]).filter(ig=>ig.id!==ingId)}));
     save({...plan,days});
   };
+  const sendSingleIngredientToShop=(dayIdx,mealId,ingId,mealName)=>{
+    if(!shopData||!setShopData)return;
+    const meal=plan.days[dayIdx]?.find(m=>m.id===mealId);
+    const ing=meal?.ingredients?.find(i=>i.id===ingId);
+    if(!ing)return;
+    const listName=`🍽 ${mealName}`;
+    const existing=shopData.find(l=>l.name===listName);
+    const newItem={id:Date.now()+Math.random(),text:ing.text,done:false,cat:""};
+    if(existing){
+      setShopData(shopData.map(l=>l.id===existing.id?{...l,items:[...l.items,newItem]}:l));
+    } else {
+      setShopData([...shopData,{id:Date.now(),name:listName,icon:"🍽️",items:[newItem],created:Date.now()}]);
+    }
+  };
   const sendIngredientsToShop=(dayIdx,mealId,mealName)=>{
     if(!shopData||!setShopData)return;
     const meal=plan.days[dayIdx]?.find(m=>m.id===mealId);
@@ -1391,11 +1405,11 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
     if(!needed.length){alert("You already have everything! ✅");return;}
     const listName=`🍽 ${mealName}`;
     const existing=shopData.find(l=>l.name===listName);
-    const newItems=needed.map(ig=>({id:Date.now()+Math.random(),name:ig.text,qty:"",unit:"",cat:"",checked:false}));
+    const newItems=needed.map(ig=>({id:Date.now()+Math.random(),text:ig.text,done:false,cat:""}));
     if(existing){
       setShopData(shopData.map(l=>l.id===existing.id?{...l,items:[...l.items,...newItems]}:l));
     } else {
-      setShopData([...shopData,{id:Date.now(),name:listName,items:newItems}]);
+      setShopData([...shopData,{id:Date.now(),name:listName,icon:"🍽️",items:newItems,created:Date.now()}]);
     }
     alert("Added "+needed.length+" ingredient"+(needed.length>1?"s":"")+" to Shopping List ✅");
   };
@@ -1412,7 +1426,7 @@ const sendMealToShop=(meal,label)=>{
     if(!shopData||!setShopData)return;
     // Find or create a "Meal Plan" shopping list
     const existing=shopData.find(l=>l.name==="Meal Plan");
-    const newItem={id:Date.now(),name:meal.text,qty:"1",unit:"",cat:"Fresh Food",note:label||"",url:meal.url||"",checked:false};
+    const newItem={id:Date.now()+Math.random(),text:meal.text,done:false,cat:""};
     if(existing){
       setShopData(ls=>ls.map(l=>l.id===existing.id?{...l,items:[...l.items,newItem]}:l));
     } else {
@@ -1749,7 +1763,6 @@ const sendMealToShop=(meal,label)=>{
                       <div key={meal.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderTop:"1px solid "+border}}>
                         <div style={{width:6,height:6,borderRadius:"50%",background:textCol,flexShrink:0,opacity:0.6}}/>
                         <div style={{flex:1}}><div style={{fontSize:14,fontWeight:600,color:textCol,lineHeight:1.4}}>{meal.text}</div>{meal.url&&<UrlBadge url={meal.url}/>}</div>
-                        <button onClick={()=>sendMealToShop(meal,label)} title="Shopping list" style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🛒</button>
                         <button onClick={()=>scheduleMeal(meal,label)} title="Calendar" style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>📅</button>
                         <button onClick={()=>{const key=dayIdx+"-"+meal.id;setExpandedMeal(expandedMeal===key?null:key);}} title="Ingredients" style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🥦</button>
                         <button onClick={()=>openEditMeal(dayIdx,meal)} style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>✏️</button>
@@ -1760,17 +1773,24 @@ const sendMealToShop=(meal,label)=>{
                         <div style={{padding:"10px 14px 14px",borderTop:"1px solid "+border,background:"rgba(255,255,255,0.25)"}}>
                           <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:13,color:textCol,marginBottom:8}}>🥦 Ingredients for {meal.text}</div>
                           {/* Ingredient list */}
-                          {(meal.ingredients||[]).map(ig=>(
-                            <div key={ig.id} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0"}}>
+                          <div style={{background:"rgba(255,255,255,0.55)",borderRadius:14,overflow:"hidden"}}>
+                          {(meal.ingredients||[]).map((ig,igi)=>(
+                            <div key={ig.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderTop:igi>0?"1px solid rgba(90,80,60,0.08)":"none"}}>
                               <button onClick={()=>toggleIngGot(dayIdx,meal.id,ig.id)}
-                                style={{width:20,height:20,borderRadius:4,border:"1.5px solid "+(ig.got?"#5A7848":"rgba(90,120,72,0.4)"),background:ig.got?"#5A7848":"transparent",color:"#fff",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10}}>
+                                style={{width:20,height:20,borderRadius:5,border:"1.5px solid "+(ig.got?"#5A7848":"rgba(90,120,72,0.4)"),background:ig.got?"#5A7848":"transparent",color:"#fff",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11}}>
                                 {ig.got?"✓":""}
                               </button>
-                              <span style={{flex:1,fontSize:13,color:textCol,textDecoration:ig.got?"line-through":"none",opacity:ig.got?0.6:1}}>{ig.text}</span>
-                              <span style={{fontSize:10,color:textCol,opacity:0.7,fontWeight:600}}>{ig.got?"✅ Got it":"🛒 Need"}</span>
-                              <button onClick={()=>deleteIng(dayIdx,meal.id,ig.id)} style={{background:"none",border:"none",color:"rgba(192,57,43,0.5)",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
+                              <span style={{flex:1,fontSize:13,fontWeight:600,color:textCol,textDecoration:ig.got?"line-through":"none",opacity:ig.got?0.55:1}}>{ig.text}</span>
+                              <button onClick={()=>sendSingleIngredientToShop(dayIdx,meal.id,ig.id,meal.text)} title="Send to Shopping list"
+                                style={{background:"rgba(90,120,72,0.12)",border:"1px solid rgba(90,120,72,0.20)",borderRadius:7,width:26,height:26,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🛒</button>
+                              <button onClick={()=>deleteIng(dayIdx,meal.id,ig.id)} title="Delete"
+                                style={{background:"rgba(192,57,43,0.08)",border:"1px solid rgba(192,57,43,0.15)",borderRadius:7,width:26,height:26,cursor:"pointer",color:"#c0392b",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>✕</button>
                             </div>
                           ))}
+                          {(meal.ingredients||[]).length===0&&(
+                            <div style={{padding:"10px",fontSize:12,color:textCol,opacity:0.6,textAlign:"center"}}>No ingredients yet — add some below</div>
+                          )}
+                          </div>
                           {/* Add ingredient */}
                           <div style={{display:"flex",gap:6,marginTop:8}}>
                             <input value={ingInput} onChange={e=>setIngInput(e.target.value)}
