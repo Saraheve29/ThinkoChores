@@ -601,7 +601,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
         {/* Add task — garden glass style matching main page */}
         <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",backdropFilter:"blur(16px)",borderRadius:22,padding:"14px 16px",marginBottom:14,border:"1.5px solid rgba(90,120,72,0.15)",boxShadow:"0 4px 20px rgba(42,80,28,0.07)"}}>
           <div style={{fontSize:15,fontWeight:800,color:"#1A2810",marginBottom:8,display:"flex",alignItems:"center",gap:5}}>
-            <span>✏️</span> Add a task
+            <span>✏️</span> Add a chore
           </div>
           <div style={{display:"flex",gap:10}}>
             <input value={newTask} onChange={e=>setNewTask(e.target.value)}
@@ -2003,9 +2003,16 @@ function Housework({setScreen}){
   const [confetti,setConfetti]=useState([]);
   const [motivMsg,setMotivMsg]=useState(null);
   const [newTask,setNewTask]=useState('');
-  const [dismissed,setDismissed]=useState([]);
+  const [dismissed,setDismissed]=useState(()=>load('hw_dismissed',[]));
+  const saveDismissed=d=>{setDismissed(d);save('hw_dismissed',d);};
+  const [customChores,setCustomChores]=useState(()=>load('hw_custom_chores',{})); // {zoneId:[names]}
+  const saveCustomChores=c=>{setCustomChores(c);save('hw_custom_chores',c);};
+  const [newChoreName,setNewChoreName]=useState('');
   const [showTemplates,setShowTemplates]=useState(false);
   const [dragTask,setDragTask]=useState(null);
+  const [showBorrow,setShowBorrow]=useState(false);
+  const [borrowZone,setBorrowZone]=useState(null); // which other zone's dropdown is open
+  const [borrowedIds,setBorrowedIds]=useState([]); // [{taskId, fromZone}]
   const [dragZone,setDragZone]=useState(null);
   const [dragOverZone,setDragOverZone]=useState(null);
   const [dragOver,setDragOver]=useState(null);
@@ -2113,8 +2120,8 @@ function Housework({setScreen}){
   };
 
   const PRESETS={
-    upstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop bathroom floor","Clean surfaces","Clean windows","Clean mirrors","Clean doors","Change bedding","Tidy bedroom","Clean bathroom","Clean toilet","Bleach toilet","Clean bath/shower","Take rubbish out","Iron clothes","Organise clothes","Put away laundry","Take laundry upstairs","Put laundry load in","Air freshener","Brush hair","Get dressed","Make up","Brush teeth"],
-    downstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop floors","Clean surfaces","Clean windows","Clean mirrors","Clean doors","Wash up","Clean kitchen sides","Tidy sofa","Tidy living room","Clean downstairs toilet","Bleach toilet","Take rubbish out","Clean oven","Wipe cupboards","Take laundry out","Put laundry load in","Iron clothes","Air freshener","Make dinner","Make fruit juice/smoothie","Tidy food cupboard","Sort cleaning cupboard","Tidy under stairs"],
+    upstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop bathroom floor","Robo mop floors","Clean surfaces","Clean windows","Clean mirrors","Clean doors","Change bedding","Tidy bedroom","Clean bathroom","Clean toilet","Bleach toilet","Clean bath/shower","Take rubbish out","Iron clothes","Organise clothes","Put away laundry","Take laundry upstairs","Put laundry load in","Air freshener","Brush hair","Get dressed","Make up","Brush teeth"],
+    downstairs:["Tidy all floors","Hoovering","Hoover stairs","Clean stairs","Mop floors","Robo mop floors","Clean surfaces","Clean windows","Clean mirrors","Clean doors","Wash up","Clean kitchen sides","Tidy sofa","Tidy living room","Clean downstairs toilet","Bleach toilet","Take rubbish out","Clean oven","Wipe cupboards","Take laundry out","Put laundry load in","Iron clothes","Air freshener","Make dinner","Make fruit juice/smoothie","Tidy food cupboard","Sort cleaning cupboard","Tidy under stairs"],
     garden:["Tidy garden","Mow lawn","Weed","Water plants","Water greenhouse","Sweep path","Trim edges","Clear leaves","Tidy patio","Tidy shed","Organise shed","Plant/sow","Tidy flower beds","Clean pond","Tidy log cabin","Prune","Deadhead flowers"],
     garage:["Sweep floor","Tidy tools","Organise shelves","Take rubbish out","Clear clutter"],
   };
@@ -2168,12 +2175,44 @@ function Housework({setScreen}){
   const delTask=(zoneId,taskId)=>saveTasks({...tasks,[zoneId]:getZT(zoneId).filter(t=>t.id!==taskId)});
 
   // ── A vs B ──
+  // Build pairs that compare EVERY task against several others (not just neighbours)
+  const buildSmartPairs=(todo)=>{
+    const n=todo.length;
+    const pairSet=new Set();
+    const pairs=[];
+    const addPair=(a,b)=>{
+      const key=a<b?a+'_'+b:b+'_'+a;
+      if(a===b||pairSet.has(key))return;
+      pairSet.add(key);
+      pairs.push([todo[a],todo[b]]);
+    };
+    // Round 1: compare neighbours (i vs i+1)
+    for(let i=0;i<n-1;i++) addPair(i,i+1);
+    // Round 2: compare with a skip of 2 (i vs i+2) — catches more comparisons
+    for(let i=0;i<n-2;i++) addPair(i,i+2);
+    // Round 3: random extra comparisons so every task gets compared a few times
+    const extra=Math.min(n*2,20);
+    let tries=0;
+    while(pairs.length<Math.min(n*3,extra+n*2)&&tries<200){
+      const a=Math.floor(Math.random()*n),b=Math.floor(Math.random()*n);
+      addPair(a,b);
+      tries++;
+    }
+    return pairs;
+  };
+
   const startAvB=()=>{
-    const todo=getZT(activeZone).filter(t=>!t.done);
-    if(todo.length<2){alert("Add at least 2 tasks first!");return;}
-    const p=[];
-    for(let i=0;i<todo.length-1;i++) p.push([todo[i],todo[i+1]]);
-    setPairs(p);setPairIdx(0);setRanked([...todo]);setView('avb');
+    const ownTasks=getZT(activeZone).filter(t=>!t.done).map(t=>({...t,_fromZone:activeZone}));
+    // Pull in any borrowed tasks from other zones, tagging their true origin
+    const borrowed=borrowedIds.map(b=>{
+      const zt=getZT(b.fromZone);
+      const t=zt.find(x=>x.id===b.taskId);
+      return t?{...t,_fromZone:b.fromZone,_borrowed:true}:null;
+    }).filter(Boolean);
+    const todo=[...ownTasks,...borrowed];
+    if(todo.length<2){alert("Add at least 2 chores first!");return;}
+    const p=buildSmartPairs(todo);
+    setPairs(p);setPairIdx(0);setRanked(todo);setView('avb');
   };
 
   const chooseAvB=(winner,loser)=>{
@@ -2184,8 +2223,19 @@ function Housework({setScreen}){
     }).sort((a,b)=>a.score-b.score);
     const next=pairIdx+1;
     if(next>=pairs.length){
-      saveTasks({...tasks,[activeZone]:newRanked});
+      // Write each task's new score back to ITS OWN zone (not just activeZone)
+      const byZone={};
+      newRanked.forEach(t=>{
+        const fz=t._fromZone||activeZone;
+        if(!byZone[fz]) byZone[fz]=[...getZT(fz)];
+        const idx=byZone[fz].findIndex(x=>x.id===t.id);
+        if(idx>-1) byZone[fz][idx]={...byZone[fz][idx],score:t.score};
+      });
+      const updatedTasks={...tasks};
+      Object.keys(byZone).forEach(fz=>{updatedTasks[fz]=byZone[fz];});
+      saveTasks(updatedTasks);
       setRanked(newRanked);
+      setBorrowedIds([]); // clear borrowed tasks — they were only for this session
       setView('avbdone');
     } else {
       setRanked(newRanked);
@@ -2380,7 +2430,10 @@ function Housework({setScreen}){
                 <div style={{width:38,height:38,borderRadius:'50%',background:'linear-gradient(135deg,#5A7848,#3A5828)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Georgia,serif',fontWeight:800,fontSize:18,flexShrink:0}}>{label}</div>
                 <div style={{flex:1}}>
                   <div style={{fontWeight:700,fontSize:16,color:'#1A1A10',marginBottom:3}}>{task.name}</div>
-                  <div style={{fontSize:11,color:SCORE_C[task.score],fontWeight:600}}>{SCORE_L[task.score]}</div>
+                  <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                    <div style={{fontSize:11,color:SCORE_C[task.score],fontWeight:600}}>{SCORE_L[task.score]}</div>
+                    {task._borrowed&&<div style={{fontSize:10,color:'#5A7040',fontWeight:600,background:'rgba(90,120,72,0.10)',borderRadius:8,padding:'1px 6px'}}>🔄 {zones?.find(z=>z.id===task._fromZone)?.name}</div>}
+                  </div>
                 </div>
               </button>
             ))}
@@ -2388,7 +2441,20 @@ function Housework({setScreen}){
           <div style={{textAlign:'center',marginTop:16}}>
             <button onClick={()=>{
               const next=pairIdx+1;
-              if(next>=pairs.length){saveTasks({...tasks,[activeZone]:ranked});setView('avbdone');}
+              if(next>=pairs.length){
+                const byZone={};
+                ranked.forEach(t=>{
+                  const fz=t._fromZone||activeZone;
+                  if(!byZone[fz]) byZone[fz]=[...getZT(fz)];
+                  const idx=byZone[fz].findIndex(x=>x.id===t.id);
+                  if(idx>-1) byZone[fz][idx]={...byZone[fz][idx],score:t.score};
+                });
+                const updatedTasks={...tasks};
+                Object.keys(byZone).forEach(fz=>{updatedTasks[fz]=byZone[fz];});
+                saveTasks(updatedTasks);
+                setBorrowedIds([]);
+                setView('avbdone');
+              }
               else setPairIdx(next);
             }} style={{background:'none',border:'1px solid rgba(90,80,60,0.20)',borderRadius:100,padding:'8px 20px',fontSize:12,color:'#8A8070',cursor:'pointer'}}>
               Equal — skip
@@ -2405,20 +2471,41 @@ function Housework({setScreen}){
     return(
       <div style={{minHeight:'100vh',background:'transparent',fontFamily:"'Segoe UI',sans-serif",paddingBottom:90}}>
         <div style={{background:MULTI,padding:'14px 18px',display:'flex',alignItems:'center',gap:12,borderBottom:'1px solid rgba(90,80,60,0.08)',position:'sticky',top:0,zIndex:50}}>
+          <button onClick={()=>setView('zone')} style={{background:'none',border:'none',cursor:'pointer',width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="#1A1A10" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
           <div style={{fontFamily:'Georgia,serif',fontWeight:700,fontSize:18,color:'#1A1A10',flex:1}}>🏆 Your priority list!</div>
         </div>
         <div style={{padding:'16px'}}>
-          <div style={{background:'linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)',borderRadius:20,padding:'16px 18px',marginBottom:14,textAlign:'center',border:'1.5px solid rgba(90,120,72,0.25)',boxShadow:'0 4px 18px rgba(90,120,72,0.15)'}}>
+          <div style={{background:MULTI,borderRadius:20,padding:'16px 18px',marginBottom:14,textAlign:'center',border:'1.5px solid rgba(90,120,72,0.25)',boxShadow:'0 4px 18px rgba(90,120,72,0.15)'}}>
             <div style={{fontSize:12,color:'#5A4A30',marginBottom:4,fontWeight:600}}>Start with</div>
-            <div style={{fontFamily:'Georgia,serif',fontWeight:700,fontSize:18,color:'#1A2810'}}>{todo[0]?.name||'Your first task'}</div>
+            <div style={{fontFamily:'Georgia,serif',fontWeight:700,fontSize:18,color:'#1A2810'}}>{todo[0]?.name||'Your first chore'}</div>
           </div>
+          <div style={{fontSize:10,color:'#8A8070',textAlign:'center',marginBottom:8,fontWeight:600}}>⠿ Hold to drag and reorder if you'd like it different</div>
           {todo.map((t,i)=>(
-            <div key={t.id} style={{background:MULTI,borderRadius:14,padding:'12px 14px',marginBottom:8,display:'flex',alignItems:'center',gap:10,boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+            <div key={t.id}
+              draggable
+              onDragStart={()=>setDragTask(t.id)}
+              onDragOver={e=>{e.preventDefault();setDragOver(t.id);}}
+              onDrop={e=>{
+                e.preventDefault();
+                if(!dragTask||dragTask===t.id){setDragTask(null);setDragOver(null);return;}
+                const newRanked=[...ranked];
+                const from=newRanked.findIndex(x=>x.id===dragTask);
+                const to=newRanked.findIndex(x=>x.id===t.id);
+                newRanked.splice(to,0,...newRanked.splice(from,1));
+                setRanked(newRanked);
+                saveTasks({...tasks,[activeZone]:newRanked});
+                setDragTask(null);setDragOver(null);
+              }}
+              onDragEnd={()=>{setDragTask(null);setDragOver(null);}}
+              style={{background:dragOver===t.id?'rgba(90,120,72,0.10)':MULTI,borderRadius:14,padding:'12px 14px',marginBottom:8,display:'flex',alignItems:'center',gap:10,boxShadow:'0 2px 8px rgba(0,0,0,0.06)',border:(dragOver===t.id?'1.5px solid rgba(90,120,72,0.30)':'1.5px solid transparent'),cursor:'grab'}}>
               <div style={{width:28,height:28,borderRadius:8,background:SCORE_C[t.score]||'#5A7848',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:13,flexShrink:0}}>{i+1}</div>
               <div style={{fontWeight:700,fontSize:14,color:'#1A1A10',flex:1}}>{t.name}</div>
+              <div style={{fontSize:14,color:'#A09080',flexShrink:0}}>⠿</div>
             </div>
           ))}
-          <button onClick={()=>{setView('zone');setShowTemplates(false);}} style={{width:'100%',marginTop:8,padding:'14px',background:'linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)',color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:100,fontFamily:'Georgia,serif',fontWeight:700,fontSize:16,cursor:'pointer',boxShadow:'0 4px 18px rgba(90,120,72,0.20)'}}>
+          <button onClick={()=>{setView('zone');setShowTemplates(false);}} style={{width:'100%',marginTop:8,padding:'14px',background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:100,fontFamily:'Georgia,serif',fontWeight:700,fontSize:16,cursor:'pointer',boxShadow:'0 4px 18px rgba(90,120,72,0.20)'}}>
             ✨ Let's get started!
           </button>
         </div>
@@ -2432,7 +2519,8 @@ function Housework({setScreen}){
     const zt=getZT(activeZone);
     const todo=zt.filter(t=>!t.done).sort((a,b)=>a.score-b.score);
     const done=zt.filter(t=>t.done);
-    const availPresets=(PRESETS[activeZone]||[]).filter(p=>!zt.some(t=>t.name.toLowerCase()===p.toLowerCase())&&!dismissed.includes(p));
+    const allPresetsForZone=[...(PRESETS[activeZone]||[]),...(customChores[activeZone]||[])];
+    const availPresets=allPresetsForZone.filter(p=>!zt.some(t=>t.name.toLowerCase()===p.toLowerCase())&&!dismissed.includes(p));
     return(
       <div style={{minHeight:'100vh',background:'transparent',fontFamily:"'Segoe UI',sans-serif",paddingBottom:90}}>
         {/* Header */}
@@ -2444,41 +2532,130 @@ function Housework({setScreen}){
         </div>
         <div style={{padding:'14px 16px'}}>
 
-          {/* A vs B button */}
-          <div style={{display:'flex',gap:8,marginBottom:12}}>
+          {/* A vs B button + Borrow task */}
+          <div style={{display:'flex',gap:8,marginBottom:8}}>
             <button onClick={startAvB}
               style={{flex:1,background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:100,padding:'10px',fontSize:13,fontFamily:'Georgia,serif',fontWeight:700,cursor:'pointer',boxShadow:'0 4px 18px rgba(90,120,72,0.20)'}}>
-              🎯 A vs B — rank tasks
+              🎯 A vs B — rank chores
             </button>
           </div>
+          {borrowedIds.length>0&&(
+            <div style={{fontSize:11,color:'#5A7040',marginBottom:8,fontWeight:600,textAlign:'center'}}>
+              🔄 {borrowedIds.length} chore{borrowedIds.length>1?'s':''} borrowed for this round — will go back after ranking
+            </div>
+          )}
 
           {/* Add task */}
           <div style={{background:MULTI,borderRadius:16,padding:'12px',marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
             <div style={{display:'flex',gap:8,marginBottom:8}}>
               <input value={newTask} onChange={e=>setNewTask(e.target.value)}
                 onKeyDown={e=>{if(e.key==='Enter'&&newTask.trim()){addTask(activeZone,newTask.trim(),3,'');setNewTask('');}}}
-                placeholder="Add a task…"
+                placeholder="Add a chore…"
                 style={{flex:1,padding:'9px 13px',borderRadius:11,border:'1.5px solid rgba(90,120,72,0.25)',fontSize:14,color:'#1A1A10',background:'rgba(255,255,255,0.9)',outline:'none'}}/>
               <button onClick={()=>{if(newTask.trim()){addTask(activeZone,newTask.trim(),3,'');setNewTask('');}}}
                 style={{background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:11,padding:'9px 14px',fontSize:13,fontWeight:700,cursor:'pointer'}}>Add</button>
             </div>
+            <button onClick={()=>setShowBorrow(!showBorrow)}
+              style={{width:'100%',padding:'8px',marginBottom:8,background:'rgba(255,255,255,0.6)',border:'1px solid rgba(90,120,72,0.20)',borderRadius:10,fontSize:12,fontWeight:700,color:'#3A5828',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span>🔄 Borrow a chore from another zone</span><span>{showBorrow?'▲':'▼'}</span>
+            </button>
+            {showBorrow&&(
+              <div style={{marginBottom:8}}>
+                {(zones||[]).filter(z=>z.id!==activeZone).length===0&&(
+                  <div style={{fontSize:12,color:'#8A8070',textAlign:'center',padding:'8px'}}>No other zones set up yet</div>
+                )}
+                {(zones||[]).filter(z=>z.id!==activeZone).map(z=>{
+                  // Combine real tasks already added AND saved chores not yet added, for that zone
+                  const realTasks=getZT(z.id).filter(t=>!t.done);
+                  const realNames=realTasks.map(t=>t.name.toLowerCase());
+                  const savedForZone=[...(PRESETS[z.id]||[]),...(customChores[z.id]||[])]
+                    .filter(name=>!realNames.includes(name.toLowerCase()));
+                  const isOpen=borrowZone===z.id;
+                  const totalCount=realTasks.length+savedForZone.length;
+                  return(
+                    <div key={z.id} style={{marginBottom:6,borderRadius:12,overflow:'hidden',border:'1px solid rgba(90,120,72,0.15)'}}>
+                      <button onClick={()=>setBorrowZone(isOpen?null:z.id)}
+                        style={{width:'100%',padding:'9px 12px',background:'rgba(255,255,255,0.55)',border:'none',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer'}}>
+                        <span style={{fontSize:13,fontWeight:700,color:'#3A5828'}}>{z.icon} {z.name}</span>
+                        <span style={{fontSize:11,color:'#8A8070'}}>{totalCount} chore{totalCount!==1?'s':''} {isOpen?'▲':'▼'}</span>
+                      </button>
+                      {isOpen&&(
+                        <div style={{padding:'6px 10px',background:'rgba(255,255,255,0.35)',maxHeight:220,overflowY:'auto'}}>
+                          {totalCount===0&&<div style={{fontSize:12,color:'#8A8070',textAlign:'center',padding:'8px'}}>Nothing to borrow from {z.name} yet</div>}
+                          {realTasks.filter(t=>!borrowedIds.some(b=>b.taskId===t.id)).map(t=>(
+                            <div key={t.id} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 0',borderBottom:'1px solid rgba(90,80,60,0.06)'}}>
+                              <div style={{flex:1,fontSize:13,color:'#1A1A10'}}>{t.name}</div>
+                              <button onClick={()=>setBorrowedIds(b=>[...b,{taskId:t.id,fromZone:z.id}])}
+                                style={{background:'rgba(90,120,72,0.10)',border:'1px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'4px 9px',fontSize:10,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>+ Borrow</button>
+                            </div>
+                          ))}
+                          {savedForZone.length>0&&(
+                            <div style={{fontSize:10,fontWeight:700,color:'#8A8070',padding:'6px 0 2px',textTransform:'uppercase',letterSpacing:0.5}}>📋 Saved chores (not added yet)</div>
+                          )}
+                          {savedForZone.map(name=>(
+                            <div key={name} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 0',borderBottom:'1px solid rgba(90,80,60,0.06)'}}>
+                              <div style={{flex:1,fontSize:13,color:'#1A1A10'}}>{name}</div>
+                              <button onClick={()=>{
+                                  // Add the chore into its real zone first, then borrow it
+                                  const newTaskObj={id:Date.now()+Math.random(),name,score:3,reason:'',done:false};
+                                  const updatedZoneTasks=[...getZT(z.id),newTaskObj];
+                                  saveTasks({...tasks,[z.id]:updatedZoneTasks});
+                                  setBorrowedIds(b=>[...b,{taskId:newTaskObj.id,fromZone:z.id}]);
+                                }}
+                                style={{background:'rgba(90,120,72,0.10)',border:'1px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'4px 9px',fontSize:10,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>+ Borrow</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <button onClick={()=>setShowTemplates(!showTemplates)}
               style={{width:'100%',padding:'8px',background:'rgba(255,255,255,0.6)',border:'1px solid rgba(90,120,72,0.20)',borderRadius:10,fontSize:12,fontWeight:700,color:'#3A5828',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <span>📋 Template tasks</span><span>{showTemplates?'▲':'▼'}</span>
+              <span>📋 Saved Chores</span><span>{showTemplates?'▲':'▼'}</span>
             </button>
             {showTemplates&&(
-              <div style={{marginTop:8,maxHeight:200,overflowY:'auto'}}>
+              <div style={{marginTop:8,maxHeight:280,overflowY:'auto'}}>
+                {/* Add a new saved chore */}
+                <div style={{display:'flex',gap:6,marginBottom:8}}>
+                  <input value={newChoreName} onChange={e=>setNewChoreName(e.target.value)}
+                    onKeyDown={e=>{
+                      if(e.key==='Enter'&&newChoreName.trim()){
+                        const nc={...customChores,[activeZone]:[...(customChores[activeZone]||[]),newChoreName.trim()]};
+                        saveCustomChores(nc);setNewChoreName('');
+                      }
+                    }}
+                    placeholder="Save a new chore for next time…"
+                    style={{flex:1,padding:'7px 11px',borderRadius:9,border:'1.5px solid rgba(90,120,72,0.20)',fontSize:12,color:'#1A1A10',background:'rgba(255,255,255,0.85)',outline:'none'}}/>
+                  <button onClick={()=>{
+                      if(newChoreName.trim()){
+                        const nc={...customChores,[activeZone]:[...(customChores[activeZone]||[]),newChoreName.trim()]};
+                        saveCustomChores(nc);setNewChoreName('');
+                      }
+                    }} style={{background:MULTI,border:'1px solid rgba(90,120,72,0.25)',borderRadius:9,padding:'7px 12px',fontSize:12,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>Save</button>
+                </div>
                 {availPresets.length===0
-                  ?<div style={{fontSize:12,color:'#8A8070',textAlign:'center',padding:'8px'}}>All templates added ✓</div>
-                  :availPresets.map(p=>(
+                  ?<div style={{fontSize:12,color:'#8A8070',textAlign:'center',padding:'8px'}}>All saved chores added ✓</div>
+                  :availPresets.map(p=>{
+                    const isCustom=(customChores[activeZone]||[]).includes(p);
+                    return(
                     <div key={p} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 0',borderBottom:'1px solid rgba(90,80,60,0.06)'}}>
-                      <div style={{flex:1,fontSize:13,color:'#1A1A10'}}>{p}</div>
+                      <div style={{flex:1,fontSize:13,color:'#1A1A10'}}>{p}{isCustom&&<span style={{fontSize:9,color:'#5A7040',marginLeft:5}}>★</span>}</div>
                       <button onClick={()=>addTask(activeZone,p,1,'Urgent')} style={{background:'rgba(224,48,32,0.10)',border:'1px solid rgba(224,48,32,0.25)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#C03020',cursor:'pointer'}}>🔴</button>
                       <button onClick={()=>addTask(activeZone,p,3,'Normal')} style={{background:MULTI,border:'1px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>Normal</button>
                       <button onClick={()=>addTask(activeZone,p,5,'Later')} style={{background:'rgba(72,120,168,0.10)',border:'1px solid rgba(72,120,168,0.25)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#2A5880',cursor:'pointer'}}>Later</button>
-                      <button onClick={()=>setDismissed(d=>[...d,p])} style={{background:'rgba(90,80,60,0.08)',border:'1px solid rgba(90,80,60,0.15)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#8A8070',cursor:'pointer'}}>✕</button>
+                      {isCustom?(
+                        <button onClick={()=>{
+                            const nc={...customChores,[activeZone]:(customChores[activeZone]||[]).filter(x=>x!==p)};
+                            saveCustomChores(nc);
+                          }} title="Delete this saved chore" style={{background:'rgba(192,57,43,0.08)',border:'1px solid rgba(192,57,43,0.18)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#c0392b',cursor:'pointer'}}>🗑</button>
+                      ):(
+                        <button onClick={()=>saveDismissed([...dismissed,p])} title="Hide this one" style={{background:'rgba(90,80,60,0.08)',border:'1px solid rgba(90,80,60,0.15)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#8A8070',cursor:'pointer'}}>✕</button>
+                      )}
                     </div>
-                  ))
+                  );})
                 }
               </div>
             )}
@@ -2488,7 +2665,7 @@ function Housework({setScreen}){
           {todo.length===0&&done.length===0&&(
             <div style={{textAlign:'center',padding:'30px 20px',color:'#8A8070'}}>
               <div style={{fontSize:40,marginBottom:8}}>{z?.icon}</div>
-              <div style={{fontFamily:'Georgia,serif',fontSize:15,marginBottom:12}}>No tasks yet — add one above or use templates!</div>
+              <div style={{fontFamily:'Georgia,serif',fontSize:15,marginBottom:12}}>No chores yet — add one above or use Saved Chores!</div>
             </div>
           )}
 
@@ -2610,6 +2787,7 @@ function Housework({setScreen}){
             </div>
           </div>
         )}
+
       </div>
     );
   }
