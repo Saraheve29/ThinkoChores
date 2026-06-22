@@ -272,27 +272,71 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
 
 function PriCompare({tasks,onDone}) {
   const pending=tasks.filter(t=>!t.done);
-  const pairs=[];
-  for(let i=0;i<pending.length;i++) for(let j=i+1;j<pending.length;j++) pairs.push([pending[i],pending[j]]);
-  const [idx,setIdx]=useState(0);
-  const [scores,setScores]=useState({});
+  const [sortedList,setSortedList]=useState(()=>{
+    const shuffled=[...pending].sort(()=>Math.random()-0.5);
+    return shuffled.length>0?[shuffled[0]]:[];
+  });
+  const [pendingQueue,setPendingQueue]=useState(()=>{
+    const shuffled=[...pending];
+    return shuffled.length>0?shuffled.slice(1):[];
+  });
+  const [insLo,setInsLo]=useState(0);
+  const [insHi,setInsHi]=useState(1);
+  const n=pending.length;
+  const [doneCount,setDoneCount]=useState(0);
+  // Accurate total = comparisons already done + comparisons still needed for remaining queue
+  const comparisonsNeededFor=size=>size<=1?0:Math.ceil(Math.log2(size+1));
+  let remainingWork=0;
+  for(let i=sortedList.length;i<pending.length;i++) remainingWork+=comparisonsNeededFor(i+1);
+  const totalComparisons=Math.max(1,doneCount+remainingWork);
 
-  if(pairs.length===0){onDone(pending);return null;}
+  if(pending.length===0){onDone(pending);return null;}
+  if(pendingQueue.length===0){
+    // Sort finished — return final order
+    if(sortedList.length===pending.length){
+      onDone(sortedList);
+      return null;
+    }
+  }
 
-  const choose=w=>{
-    const ns={...scores,[w.id]:(scores[w.id]||0)+1};
-    setScores(ns);
-    if(idx+1>=pairs.length) onDone([...pending].sort((a,b)=>(ns[b.id]||0)-(ns[a.id]||0)));
-    else setIdx(i=>i+1);
+  const pendingItem=pendingQueue[0];
+  const mid=Math.floor((insLo+insHi)/2);
+  const pivot=sortedList[mid];
+
+  const finishIfDone=(finalList)=>onDone(finalList);
+
+  const choose=winner=>{
+    const pendingWon=winner.id===pendingItem.id;
+    let newLo=insLo,newHi=insHi;
+    if(pendingWon) newHi=mid; else newLo=mid+1;
+    setDoneCount(d=>d+1);
+    if(newLo>=newHi){
+      const newSorted=[...sortedList];
+      newSorted.splice(newLo,0,pendingItem);
+      const newQueue=pendingQueue.slice(1);
+      setSortedList(newSorted);
+      setPendingQueue(newQueue);
+      if(newQueue.length===0){ finishIfDone(newSorted); }
+      else { setInsLo(0);setInsHi(newSorted.length); }
+    } else {
+      setInsLo(newLo);setInsHi(newHi);
+    }
   };
 
   const skip=()=>{
-    if(idx+1>=pairs.length) onDone([...pending].sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)));
-    else setIdx(i=>i+1);
+    const newSorted=[...sortedList];
+    newSorted.splice(mid,0,pendingItem);
+    const newQueue=pendingQueue.slice(1);
+    setDoneCount(d=>d+1);
+    setSortedList(newSorted);
+    setPendingQueue(newQueue);
+    if(newQueue.length===0){ finishIfDone(newSorted); }
+    else { setInsLo(0);setInsHi(newSorted.length); }
   };
 
-  const [a,b]=pairs[idx];
-  const pct=Math.round((idx/pairs.length)*100);
+  if(!pivot){onDone(sortedList.length===pending.length?sortedList:pending);return null;}
+
+  const pct=totalComparisons>0?Math.min(100,Math.round((doneCount/totalComparisons)*100)):0;
 
   const TaskCard=({task,onPick})=>{
     const sw=swatchById(task.color);
@@ -313,10 +357,10 @@ function PriCompare({tasks,onDone}) {
 
       {/* Header */}
       <div style={{width:"100%",background:"rgba(90,80,60,0.05)",padding:"14px 16px",display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
-        <button onClick={()=>onDone([...pending].sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)))}
+        <button onClick={()=>onDone(sortedList.length===pending.length?sortedList:pending)}
           style={{background:"rgba(255,255,255,0.15)",color:"#1A1A10",border:"none",borderRadius:10,width:36,height:36,fontSize:18,cursor:"pointer",flexShrink:0}}>←</button>
         <div style={{flex:1,color:"#1A1A10",fontWeight:800,fontSize:16}}>To Do List</div>
-        <div style={{color:"rgba(255,255,255,0.55)",fontSize:13,fontWeight:600}}>{idx+1} / {pairs.length}</div>
+        <div style={{color:"rgba(255,255,255,0.55)",fontSize:13,fontWeight:600}}>~{doneCount+1} / {totalComparisons}</div>
       </div>
 
       {/* Progress bar */}
@@ -327,19 +371,22 @@ function PriCompare({tasks,onDone}) {
       <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"32px 20px",width:"100%",maxWidth:480,gap:0}}>
 
         {/* Question */}
-        <div style={{fontSize:22,fontWeight:900,color:"#1A1A10",marginBottom:32,textAlign:"center",lineHeight:1.3}}>
+        <div style={{fontSize:22,fontWeight:900,color:"#1A1A10",marginBottom:8,textAlign:"center",lineHeight:1.3}}>
           Which one is most important?
+        </div>
+        <div style={{fontSize:12,color:"rgba(0,0,0,0.4)",marginBottom:24,textAlign:"center"}}>
+          {sortedList.length} placed · {pendingQueue.length} left to place
         </div>
 
         {/* Side by side cards */}
         <div style={{display:"flex",gap:16,width:"100%",alignItems:"stretch"}}>
-          <TaskCard task={a} onPick={()=>choose(a)}/>
+          <TaskCard task={pendingItem} onPick={()=>choose(pendingItem)}/>
 
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             <div style={{fontWeight:900,fontSize:22,color:"rgba(255,255,255,0.7)",letterSpacing:2}}>OR</div>
           </div>
 
-          <TaskCard task={b} onPick={()=>choose(b)}/>
+          <TaskCard task={pivot} onPick={()=>choose(pivot)}/>
         </div>
 
         {/* Skip */}
@@ -1960,7 +2007,13 @@ function Housework({setScreen}){
     }
     return null;
   });
-  const saveZones=z=>{setZonesRaw(z);save('hw_zones',z);};
+  const saveZones=z=>{
+    setZonesRaw(prev=>{
+      const next=typeof z==='function'?z(prev):z;
+      save('hw_zones',next);
+      return next;
+    });
+  };
 
   // Tasks stored as {zoneId:[{id,name,score,done}]}
   const [tasks,setTasksRaw]=useState(()=>{
@@ -1981,7 +2034,13 @@ function Housework({setScreen}){
     }
     return {};
   });
-  const saveTasks=t=>{setTasksRaw(t);save('hw_tasks',t);};
+  const saveTasks=t=>{
+    setTasksRaw(prev=>{
+      const next=typeof t==='function'?t(prev):t;
+      save('hw_tasks',next);
+      return next;
+    });
+  };
 
   const getZT=zid=>tasks[zid]||[];
 
@@ -1998,6 +2057,13 @@ function Housework({setScreen}){
   const [pairs,setPairs]=useState([]);
   const [pairIdx,setPairIdx]=useState(0);
   const [ranked,setRanked]=useState([]);
+  // Binary-insertion sort state (exact ordering)
+  const [sortedList,setSortedList]=useState([]); // already-placed items, best to worst
+  const [pendingQueue,setPendingQueue]=useState([]); // items waiting to be inserted
+  const [insLo,setInsLo]=useState(0);
+  const [insHi,setInsHi]=useState(0);
+  const [totalComparisons,setTotalComparisons]=useState(0);
+  const [doneComparisons,setDoneComparisons]=useState(0);
   const [celebration,setCelebration]=useState(null);
   const [taskCelebration,setTaskCelebration]=useState(null);
   const [confetti,setConfetti]=useState([]);
@@ -2055,6 +2121,14 @@ function Housework({setScreen}){
     if(ans.garden==="Yes"){
       z.push({id:'garden',name:'Garden',icon:'🌿',color:'#4A8A5A',rooms:ans.garden_features||[]});
     }
+    // Safety net: never let setup silently delete a zone that already has chores saved in it.
+    // If a zone existed before and has tasks, keep it even if this run of setup says "No".
+    const existing=zones||[];
+    existing.forEach(ez=>{
+      const hasChores=(getZT(ez.id)||[]).length>0;
+      const stillIncluded=z.some(nz=>nz.id===ez.id);
+      if(hasChores&&!stillIncluded) z.push(ez);
+    });
     return z;
   };
 
@@ -2172,38 +2246,14 @@ function Housework({setScreen}){
     }
   };
 
-  const delTask=(zoneId,taskId)=>saveTasks({...tasks,[zoneId]:getZT(zoneId).filter(t=>t.id!==taskId)});
+  const delTask=(zoneId,taskId)=>saveTasks(prev=>({...prev,[zoneId]:(prev[zoneId]||[]).filter(t=>t.id!==taskId)}));
 
   // ── A vs B ──
   // Build pairs that compare EVERY task against several others (not just neighbours)
-  const buildSmartPairs=(todo)=>{
-    const n=todo.length;
-    const pairSet=new Set();
-    const pairs=[];
-    const addPair=(a,b)=>{
-      const key=a<b?a+'_'+b:b+'_'+a;
-      if(a===b||pairSet.has(key))return;
-      pairSet.add(key);
-      pairs.push([todo[a],todo[b]]);
-    };
-    // Round 1: compare neighbours (i vs i+1)
-    for(let i=0;i<n-1;i++) addPair(i,i+1);
-    // Round 2: compare with a skip of 2 (i vs i+2) — catches more comparisons
-    for(let i=0;i<n-2;i++) addPair(i,i+2);
-    // Round 3: random extra comparisons so every task gets compared a few times
-    const extra=Math.min(n*2,20);
-    let tries=0;
-    while(pairs.length<Math.min(n*3,extra+n*2)&&tries<200){
-      const a=Math.floor(Math.random()*n),b=Math.floor(Math.random()*n);
-      addPair(a,b);
-      tries++;
-    }
-    return pairs;
-  };
-
+  // ── Exact binary-insertion sort ──
+  // Guarantees mathematically correct order with minimum comparisons (~n*log2(n))
   const startAvB=()=>{
     const ownTasks=getZT(activeZone).filter(t=>!t.done).map(t=>({...t,_fromZone:activeZone}));
-    // Pull in any borrowed tasks from other zones, tagging their true origin
     const borrowed=borrowedIds.map(b=>{
       const zt=getZT(b.fromZone);
       const t=zt.find(x=>x.id===b.taskId);
@@ -2211,37 +2261,88 @@ function Housework({setScreen}){
     }).filter(Boolean);
     const todo=[...ownTasks,...borrowed];
     if(todo.length<2){alert("Add at least 2 chores first!");return;}
-    const p=buildSmartPairs(todo);
-    setPairs(p);setPairIdx(0);setRanked(todo);setView('avb');
+    // Shuffle slightly so the starting order doesn't bias the sort
+    const shuffled=[...todo].sort(()=>Math.random()-0.5);
+    const first=[shuffled[0]];
+    const queue=shuffled.slice(1);
+    setSortedList(first);
+    setPendingQueue(queue);
+    setDoneComparisons(0);
+    if(queue.length>0){
+      setInsLo(0);setInsHi(first.length); // binary search range for first pending item
+    }
+    setView('avb');
   };
 
+  // winner is more urgent than loser in this comparison
   const chooseAvB=(winner,loser)=>{
-    const newRanked=ranked.map(t=>{
-      if(t.id===winner.id) return {...t,score:Math.max(1,t.score-1)};
-      if(t.id===loser.id) return {...t,score:Math.min(5,t.score+1)};
-      return t;
-    }).sort((a,b)=>a.score-b.score);
-    const next=pairIdx+1;
-    if(next>=pairs.length){
-      // Write each task's new score back to ITS OWN zone (not just activeZone)
-      const byZone={};
-      newRanked.forEach(t=>{
-        const fz=t._fromZone||activeZone;
-        if(!byZone[fz]) byZone[fz]=[...getZT(fz)];
-        const idx=byZone[fz].findIndex(x=>x.id===t.id);
-        if(idx>-1) byZone[fz][idx]={...byZone[fz][idx],score:t.score};
-      });
-      const updatedTasks={...tasks};
-      Object.keys(byZone).forEach(fz=>{updatedTasks[fz]=byZone[fz];});
-      saveTasks(updatedTasks);
-      setRanked(newRanked);
-      setBorrowedIds([]); // clear borrowed tasks — they were only for this session
-      setView('avbdone');
+    const pendingItem=pendingQueue[0];
+    const mid=Math.floor((insLo+insHi)/2);
+    const pivot=sortedList[mid];
+    const pendingWon=winner.id===pendingItem.id; // pending item is MORE urgent than pivot
+    let newLo=insLo,newHi=insHi;
+    if(pendingWon) newHi=mid; else newLo=mid+1;
+    setDoneComparisons(d=>d+1);
+
+    if(newLo>=newHi){
+      // Found insertion point — insert pendingItem at position newLo
+      const newSorted=[...sortedList];
+      newSorted.splice(newLo,0,pendingItem);
+      const newQueue=pendingQueue.slice(1);
+      setSortedList(newSorted);
+      setPendingQueue(newQueue);
+      if(newQueue.length===0){
+        finishSort(newSorted);
+      } else {
+        setInsLo(0);setInsHi(newSorted.length);
+      }
     } else {
-      setRanked(newRanked);
-      setPairIdx(next);
+      setInsLo(newLo);setInsHi(newHi);
     }
   };
+
+  const finishSort=(finalList)=>{
+    // Assign scores 1-5 spread evenly across the final order
+    const n=finalList.length;
+    const withScores=finalList.map((t,i)=>{
+      const pct=n>1?i/(n-1):0;
+      const score=Math.max(1,Math.min(5,Math.round(1+pct*4)));
+      return {...t,score};
+    });
+    const byZone={};
+    withScores.forEach(t=>{
+      const fz=t._fromZone||activeZone;
+      if(!byZone[fz]) byZone[fz]=[...getZT(fz)];
+      const idx=byZone[fz].findIndex(x=>x.id===t.id);
+      if(idx>-1) byZone[fz][idx]={...byZone[fz][idx],score:t.score};
+    });
+    saveTasks(prev=>{
+      const updated={...prev};
+      Object.keys(byZone).forEach(fz=>{updated[fz]=byZone[fz];});
+      return updated;
+    });
+    setRanked(withScores);
+    setBorrowedIds([]);
+    setView('avbdone');
+  };
+
+  const skipEqual=()=>{
+    // Treat as a tie — insert pending item right where it currently sits (mid), no further narrowing
+    const pendingItem=pendingQueue[0];
+    const mid=Math.floor((insLo+insHi)/2);
+    const newSorted=[...sortedList];
+    newSorted.splice(mid,0,pendingItem);
+    const newQueue=pendingQueue.slice(1);
+    setDoneComparisons(d=>d+1);
+    setSortedList(newSorted);
+    setPendingQueue(newQueue);
+    if(newQueue.length===0){
+      finishSort(newSorted);
+    } else {
+      setInsLo(0);setInsHi(newSorted.length);
+    }
+  };
+
 
   // ── AI complete ──
   const finishAI=async(allAnswers)=>{
@@ -2281,7 +2382,7 @@ function Housework({setScreen}){
       .filter(t=>!existingNames.includes((t.name||'').toLowerCase()))
       .flatMap(t=>splitTask(t.name||'').map(n=>({id:Date.now()+Math.random(),name:n,score:t.score||3,reason:t.reason||'AI suggested',done:false})));
     const merged=[...existing,...toAdd].sort((a,b)=>a.score-b.score);
-    saveTasks({...tasks,[activeZone]:merged});
+    saveTasks(prev=>({...prev,[activeZone]:merged}));
     const todo=merged.filter(t=>!t.done);
     if(todo.length>=2){
       const p=[];
@@ -2408,8 +2509,16 @@ function Housework({setScreen}){
 
   // ── A vs B ──
   if(view==='avb'){
-    if(pairs.length===0||pairIdx>=pairs.length){setView('zone');return null;}
-    const [taskA,taskB]=pairs[pairIdx];
+    if(pendingQueue.length===0){setView('zone');return null;}
+    const pendingItem=pendingQueue[0];
+    const mid=Math.floor((insLo+insHi)/2);
+    const pivot=sortedList[mid];
+    if(!pivot){setView('zone');return null;}
+    const comparisonsNeededFor=size=>size<=1?0:Math.ceil(Math.log2(size+1));
+    let remainingWork=0;
+    for(let i=sortedList.length;i<sortedList.length+pendingQueue.length;i++) remainingWork+=comparisonsNeededFor(i+1);
+    const liveTotalComparisons=Math.max(1,doneComparisons+remainingWork);
+    const progressPct=Math.min(100,Math.round((doneComparisons/liveTotalComparisons)*100));
     return(
       <div style={{minHeight:'100vh',background:'transparent',fontFamily:"'Segoe UI',sans-serif",paddingBottom:90}}>
         <div style={{background:MULTI,padding:'14px 18px',display:'flex',alignItems:'center',gap:12,borderBottom:'1px solid rgba(90,80,60,0.08)',position:'sticky',top:0,zIndex:50}}>
@@ -2417,21 +2526,21 @@ function Housework({setScreen}){
             <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="#1A1A10" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
           <div style={{fontFamily:'Georgia,serif',fontWeight:700,fontSize:18,color:'#1A1A10',flex:1}}>Which is more urgent?</div>
-          <div style={{fontSize:11,color:'#8A8070'}}>{pairIdx+1}/{pairs.length}</div>
+          <div style={{fontSize:11,color:'#8A8070'}}>~{doneComparisons+1}/{liveTotalComparisons}</div>
         </div>
         <div style={{padding:'20px 16px'}}>
           <div style={{height:4,borderRadius:2,background:'rgba(90,80,60,0.10)',marginBottom:20,overflow:'hidden'}}>
-            <div style={{height:'100%',width:`${((pairIdx+1)/pairs.length)*100}%`,background:'#5A7848',borderRadius:2}}/>
+            <div style={{height:'100%',width:`${progressPct}%`,background:'#5A7848',borderRadius:2,transition:'width 0.3s'}}/>
           </div>
+          <div style={{fontSize:11,color:'#8A8070',textAlign:'center',marginBottom:10}}>{sortedList.length} placed · {pendingQueue.length} left to place</div>
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
-            {[{label:'A',task:taskA},{label:'B',task:taskB}].map(({label,task})=>(
-              <button key={task.id} onClick={()=>chooseAvB(task,label==='A'?taskB:taskA)}
+            {[{label:'A',task:pendingItem},{label:'B',task:pivot}].map(({label,task})=>(
+              <button key={task.id+label} onClick={()=>chooseAvB(task,label==='A'?pivot:pendingItem)}
                 style={{background:MULTI,border:'2px solid rgba(180,160,140,0.25)',borderRadius:20,padding:'20px',textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',gap:14,boxShadow:'0 2px 12px rgba(0,0,0,0.07)'}}>
                 <div style={{width:38,height:38,borderRadius:'50%',background:'linear-gradient(135deg,#5A7848,#3A5828)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Georgia,serif',fontWeight:800,fontSize:18,flexShrink:0}}>{label}</div>
                 <div style={{flex:1}}>
                   <div style={{fontWeight:700,fontSize:16,color:'#1A1A10',marginBottom:3}}>{task.name}</div>
                   <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                    <div style={{fontSize:11,color:SCORE_C[task.score],fontWeight:600}}>{SCORE_L[task.score]}</div>
                     {task._borrowed&&<div style={{fontSize:10,color:'#5A7040',fontWeight:600,background:'rgba(90,120,72,0.10)',borderRadius:8,padding:'1px 6px'}}>🔄 {zones?.find(z=>z.id===task._fromZone)?.name}</div>}
                   </div>
                 </div>
@@ -2439,24 +2548,7 @@ function Housework({setScreen}){
             ))}
           </div>
           <div style={{textAlign:'center',marginTop:16}}>
-            <button onClick={()=>{
-              const next=pairIdx+1;
-              if(next>=pairs.length){
-                const byZone={};
-                ranked.forEach(t=>{
-                  const fz=t._fromZone||activeZone;
-                  if(!byZone[fz]) byZone[fz]=[...getZT(fz)];
-                  const idx=byZone[fz].findIndex(x=>x.id===t.id);
-                  if(idx>-1) byZone[fz][idx]={...byZone[fz][idx],score:t.score};
-                });
-                const updatedTasks={...tasks};
-                Object.keys(byZone).forEach(fz=>{updatedTasks[fz]=byZone[fz];});
-                saveTasks(updatedTasks);
-                setBorrowedIds([]);
-                setView('avbdone');
-              }
-              else setPairIdx(next);
-            }} style={{background:'none',border:'1px solid rgba(90,80,60,0.20)',borderRadius:100,padding:'8px 20px',fontSize:12,color:'#8A8070',cursor:'pointer'}}>
+            <button onClick={skipEqual} style={{background:'none',border:'1px solid rgba(90,80,60,0.20)',borderRadius:100,padding:'8px 20px',fontSize:12,color:'#8A8070',cursor:'pointer'}}>
               Equal — skip
             </button>
           </div>
@@ -2495,7 +2587,7 @@ function Housework({setScreen}){
                 const to=newRanked.findIndex(x=>x.id===t.id);
                 newRanked.splice(to,0,...newRanked.splice(from,1));
                 setRanked(newRanked);
-                saveTasks({...tasks,[activeZone]:newRanked});
+                saveTasks(prev=>({...prev,[activeZone]:newRanked}));
                 setDragTask(null);setDragOver(null);
               }}
               onDragEnd={()=>{setDragTask(null);setDragOver(null);}}
@@ -2598,8 +2690,7 @@ function Housework({setScreen}){
                               <button onClick={()=>{
                                   // Add the chore into its real zone first, then borrow it
                                   const newTaskObj={id:Date.now()+Math.random(),name,score:3,reason:'',done:false};
-                                  const updatedZoneTasks=[...getZT(z.id),newTaskObj];
-                                  saveTasks({...tasks,[z.id]:updatedZoneTasks});
+                                  saveTasks(prevTasks=>({...prevTasks,[z.id]:[...(prevTasks[z.id]||[]),newTaskObj]}));
                                   setBorrowedIds(b=>[...b,{taskId:newTaskObj.id,fromZone:z.id}]);
                                 }}
                                 style={{background:'rgba(90,120,72,0.10)',border:'1px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'4px 9px',fontSize:10,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>+ Borrow</button>
@@ -2682,7 +2773,7 @@ function Housework({setScreen}){
                 const list=[...getZT(activeZone)];
                 const from=list.findIndex(x=>x.id===dragTask),to=list.findIndex(x=>x.id===t.id);
                 list.splice(to,0,...list.splice(from,1));
-                saveTasks({...tasks,[activeZone]:list});
+                saveTasks(prev=>({...prev,[activeZone]:list}));
                 setDragTask(null);setDragOver(null);
               }}
               onDragEnd={()=>{setDragTask(null);setDragOver(null);}}
@@ -2801,6 +2892,20 @@ function Housework({setScreen}){
           <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="#1A1A10" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <div style={{fontFamily:'Georgia,serif',fontWeight:700,fontSize:20,color:'#1A1A10',flex:1}}>🏠 Housework</div>
+        <button onClick={()=>{
+            const current=zones||[];
+            const has=id=>current.some(z=>z.id===id);
+            const missing=[];
+            if(!has('garden')) missing.push({id:'garden',name:'Garden',icon:'🌿',color:'#4A8A5A',rooms:[]});
+            if(!has('upstairs')) missing.push({id:'upstairs',name:'Upstairs',icon:'🛏️',color:'#6878B8',rooms:[]});
+            if(!has('downstairs')) missing.push({id:'downstairs',name:'Downstairs',icon:'🛋️',color:'#7A8A5A',rooms:[]});
+            if(missing.length===0){alert('All zones already present: '+current.map(z=>z.name).join(', '));return;}
+            saveZones([...current,...missing]);
+            alert('Added back: '+missing.map(z=>z.name).join(', '));
+          }}
+          style={{background:'rgba(72,120,168,0.10)',border:'1px solid rgba(72,120,168,0.20)',borderRadius:16,padding:'5px 10px',fontSize:11,fontWeight:700,color:'#2A5880',cursor:'pointer',marginRight:6}}>
+          🔧 Fix zones
+        </button>
         <button onClick={()=>{setSetupStep(0);setSetupAnswers({});setMultiSel([]);setOtherText('');setView('setup');}}
           style={{background:'rgba(90,120,72,0.10)',border:'1px solid rgba(90,120,72,0.20)',borderRadius:16,padding:'5px 12px',fontSize:12,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>
           🤖 Setup
