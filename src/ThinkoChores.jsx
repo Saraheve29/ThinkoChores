@@ -149,24 +149,22 @@ function Header({ title, onBack, right }) {
 
 
 function ColourPicker({current,onChange,onClose}) {
-  const ref=useRef(null);
-  useEffect(()=>{
-    const h=e=>{if(ref.current&&!ref.current.contains(e.target))onClose();};
-    document.addEventListener("mousedown",h);
-    return()=>document.removeEventListener("mousedown",h);
-  },[onClose]);
   return (
-    <div ref={ref} style={{position:"absolute",zIndex:200,top:28,left:-8,background:"rgba(252,250,244,0.99)",borderRadius:18,padding:"10px 10px 8px",boxShadow:"0 8px 32px rgba(60,50,30,0.22)",border:"1.5px solid rgba(90,80,60,0.12)",minWidth:180}}>
-      <div style={{fontSize:10,fontWeight:700,color:"rgba(60,50,30,0.45)",letterSpacing:0.8,marginBottom:7,textTransform:"uppercase"}}>Colour label</div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6}}>
-        {SWATCHES.map(s=>(
-          <button key={s.id} onClick={()=>{onChange(s.id);onClose();}}
-            style={{width:30,height:30,borderRadius:8,cursor:"pointer",background:s.fill,
-              border:current===s.id?`3px solid rgba(30,30,20,0.6)`:`2px solid ${s.border}`,
-              boxShadow:current===s.id?"0 0 0 2px rgba(255,255,255,0.8), 0 2px 8px rgba(0,0,0,0.15)":"0 1px 3px rgba(0,0,0,0.08)",
-              transform:current===s.id?"scale(1.15)":"scale(1)",
-              transition:"all 0.12s"}} title={s.id}/>
-        ))}
+    <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:900,background:"rgba(20,30,10,0.45)",backdropFilter:"blur(3px)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"rgba(252,250,244,0.99)",borderRadius:"24px 24px 0 0",padding:"18px 18px 28px",boxShadow:"0 -8px 32px rgba(60,50,30,0.25)",width:"100%",maxWidth:480}}>
+        <div style={{width:36,height:4,borderRadius:2,background:"rgba(90,80,60,0.20)",margin:"0 auto 14px"}}/>
+        <div style={{fontSize:12,fontWeight:700,color:"rgba(60,50,30,0.55)",letterSpacing:0.8,marginBottom:12,textTransform:"uppercase",textAlign:"center"}}>Colour label</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12}}>
+          {SWATCHES.map(s=>(
+            <button key={s.id} onClick={()=>{onChange(s.id);onClose();}}
+              style={{width:"100%",aspectRatio:"1",borderRadius:12,cursor:"pointer",background:s.fill,
+                border:current===s.id?`3px solid rgba(30,30,20,0.6)`:`2px solid ${s.border}`,
+                boxShadow:current===s.id?"0 0 0 3px rgba(255,255,255,0.8), 0 2px 8px rgba(0,0,0,0.15)":"0 1px 3px rgba(0,0,0,0.08)",
+                transform:current===s.id?"scale(1.08)":"scale(1)",
+                transition:"all 0.12s"}} title={s.id}/>
+          ))}
+        </div>
+        <button onClick={onClose} style={{width:"100%",marginTop:18,padding:"12px",background:"rgba(90,80,60,0.08)",border:"none",borderRadius:100,fontSize:13,fontWeight:700,color:"#5A4A30",cursor:"pointer"}}>Cancel</button>
       </div>
     </div>
   );
