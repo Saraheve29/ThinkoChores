@@ -269,7 +269,14 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
 
 
 function PriCompare({tasks,onDone}) {
-  const pending=tasks.filter(t=>!t.done);
+  // Snapshot the task list ONCE on mount — completely immune to any parent re-render
+  // (e.g. a running Focus Timer ticking every second) changing the tasks prop mid-sort.
+  const pendingRef=useRef(null);
+  if(pendingRef.current===null){
+    pendingRef.current=tasks.filter(t=>!t.done);
+    alert('STARTING SORT. Total tasks received: '+tasks.length+'. Not-done count: '+pendingRef.current.length+'. Names: '+pendingRef.current.map(t=>t.name).join(' | '));
+  }
+  const pending=pendingRef.current;
   const [sortedList,setSortedList]=useState(()=>{
     const shuffled=[...pending].sort(()=>Math.random()-0.5);
     return shuffled.length>0?[shuffled[0]]:[];
@@ -292,8 +299,11 @@ function PriCompare({tasks,onDone}) {
   if(pendingQueue.length===0){
     // Sort finished — return final order
     if(sortedList.length===pending.length){
+      alert('SORT FINISHED. Started with: '+pending.length+' items. Returning: '+sortedList.length+' items.');
       onDone(sortedList);
       return null;
+    } else {
+      alert('MISMATCH! pendingQueue empty but sortedList.length('+sortedList.length+') !== pending.length('+pending.length+'). This means items were lost mid-sort.');
     }
   }
 
@@ -557,15 +567,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
     setComparing(false);setPrioritized(true);
   };
   if(comparing){
-    // Always de-dupe by name+done right before comparing, in case any duplicate snuck into storage
-    const seenN=new Set();
-    const dedupedForCompare=list.tasks.filter(t=>{
-      const k=(t.name||'').trim().toLowerCase()+'|'+(t.done?'1':'0');
-      if(seenN.has(k))return false;
-      seenN.add(k);
-      return true;
-    });
-    return <PriCompare tasks={dedupedForCompare} onDone={onPriDone}/>;
+    return <PriCompare tasks={list.tasks} onDone={onPriDone}/>;
   }
   const active=list.tasks.filter(t=>!t.done);
   const done=list.tasks.filter(t=>t.done);
@@ -3072,15 +3074,15 @@ export default function App(){
   const [priData,setPriDataRaw]=useState(()=>{
     const saved=load('chores_pri',null);
     if(saved&&Array.isArray(saved)&&saved.length>0){
-      // One-time cleanup: remove duplicate tasks (same name, case-insensitive) left over from before the fix
+      // Clean up: de-dupe by ID only (never by name — same-named tasks are legitimately separate),
+      // un-hide any previously saved-for-later tasks
       const cleaned=saved.map(list=>{
-        const seenNames=new Set();
+        const seenIds=new Set();
         const dedupedTasks=(list.tasks||[]).filter(t=>{
-          const key=(t.name||'').trim().toLowerCase()+'|'+(t.done?'1':'0');
-          if(seenNames.has(key)) return false;
-          seenNames.add(key);
+          if(seenIds.has(t.id)) return false;
+          seenIds.add(t.id);
           return true;
-        }).map(t=>{const {savedForLater,...rest}=t;return rest;}); // un-hide any previously saved-for-later tasks
+        }).map(t=>{const {savedForLater,...rest}=t;return rest;});
         return {...list,tasks:dedupedTasks};
       });
       return cleaned;
@@ -3088,11 +3090,11 @@ export default function App(){
     return [{id:'main',name:'To Do',tasks:[],created:Date.now()}];
   });
   const dedupePriList=list=>{
+    // De-duplicate by unique ID only — tasks with the same name but different IDs are genuinely separate
     const seen=new Set();
     const dedupedTasks=(list.tasks||[]).filter(t=>{
-      const key=(t.name||'').trim().toLowerCase()+'|'+(t.done?'1':'0');
-      if(seen.has(key)) return false;
-      seen.add(key);
+      if(seen.has(t.id)) return false;
+      seen.add(t.id);
       return true;
     });
     return {...list,tasks:dedupedTasks};
