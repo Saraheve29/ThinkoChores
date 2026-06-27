@@ -170,7 +170,7 @@ function ColourPicker({current,onChange,onClose}) {
   );
 }
 
-function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMoveToList,lists,onPrioritizeThis,onSendTo,onSaveForLater,onMoveUp,onMoveDown,isFirst,isLast,setScreen,dragHandlers}) {
+function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMoveToList,lists,onPrioritizeThis,onSendTo,onMoveUp,onMoveDown,isFirst,isLast,setScreen,dragHandlers}) {
   const sw=swatchById(task.color);
   const [pickerOpen,setPickerOpen]=useState(false);
   const [menuOpen,setMenuOpen]=useState(false);
@@ -213,7 +213,7 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
 
       {/* Task name — full width on its own line */}
       <div style={{marginBottom:8}}>
-        <div style={{fontWeight:700,fontSize:16,lineHeight:1.4,color:task.done?C.soft:"#1A1A10",textDecoration:task.done?"line-through":"none",overflowWrap:"break-word"}}>{task.savedForLater&&<span style={{marginRight:5}}>⭐</span>}{task.name}</div>
+        <div style={{fontWeight:700,fontSize:16,lineHeight:1.4,color:task.done?C.soft:"#1A1A10",textDecoration:task.done?"line-through":"none",overflowWrap:"break-word"}}>{task.name}</div>
         {task.url&&<UrlBadge url={task.url}/>}
         {subs.length>0&&<div style={{fontSize:11,color:C.soft,marginTop:2,fontWeight:600}}>{subsDone}/{subs.length} sub-items done</div>}
       </div>
@@ -240,7 +240,7 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
         {/* Delete — visible on card */}
         {onDelete&&<button onClick={()=>onDelete(task.id)} style={{background:"rgba(192,57,43,0.09)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.18)",borderRadius:9,width:32,height:32,cursor:"pointer",fontSize:14,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>🗑</button>}
         {/* Save for later */}
-        <button onClick={()=>{onSaveForLater&&onSaveForLater(task.id);}} style={{background:task.savedForLater?"rgba(212,160,32,0.18)":C.ll,color:task.savedForLater?"#B8860B":C.mp,border:"none",borderRadius:9,width:32,height:32,cursor:"pointer",fontSize:15,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{task.savedForLater?"⭐":"💾"}</button>
+
       </div>
 
       {/* Sub-items */}
@@ -495,7 +495,6 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
     }
   };
   const colorTask=(id,color)=>onUpdate({...list,tasks:list.tasks.map(t=>t.id===id?{...t,color}:t)});
-  const saveForLaterTask=id=>onUpdate({...list,tasks:list.tasks.map(t=>t.id===id?{...t,savedForLater:!t.savedForLater}:t)});
   const [dragTaskId,setDragTaskId]=useState(null);
   const priTaskTouchRef=useRef(null);
   const priTaskDragOver=(toId)=>{
@@ -540,9 +539,8 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
     setComparing(false);setPrioritized(true);
   };
   if(comparing) return <PriCompare tasks={list.tasks} onDone={onPriDone}/>;
-  const active=list.tasks.filter(t=>!t.done&&!t.savedForLater);
+  const active=list.tasks.filter(t=>!t.done);
   const done=list.tasks.filter(t=>t.done);
-  const savedLater=list.tasks.filter(t=>!t.done&&t.savedForLater);
   return (
     <div style={{minHeight:"100vh",background:"transparent",fontFamily:"'Segoe UI',sans-serif",position:"relative",overflow:"hidden"}}>
       <style>{`
@@ -695,7 +693,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
             <div key={task.id}
                 data-pritaskid={task.id}
                 style={{opacity:dragTaskId===task.id?0.5:1,transform:dragTaskId===task.id?"scale(1.02)":"scale(1)",transition:"all 0.15s"}}>
-              <PriTaskRow task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onAddSub={addSubItems} lists={[]} onPrioritizeThis={()=>setComparing(true)} onSendTo={sendTaskTo} onSaveForLater={saveForLaterTask} onMoveUp={()=>moveTask(task.id,-1)} onMoveDown={()=>moveTask(task.id,1)} isFirst={i===0} isLast={i===active.length-1} setScreen={setScreen}
+              <PriTaskRow task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onAddSub={addSubItems} lists={[]} onPrioritizeThis={()=>setComparing(true)} onSendTo={sendTaskTo} onMoveUp={()=>moveTask(task.id,-1)} onMoveDown={()=>moveTask(task.id,1)} isFirst={i===0} isLast={i===active.length-1} setScreen={setScreen}
                 dragHandlers={{
                   draggable:true,
                   onDragStart:e=>{e.dataTransfer.effectAllowed="move";setDragTaskId(task.id);},
@@ -708,7 +706,6 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
             </div>)
           </div>
         ))}
-        {savedLater.length>0&&<><div style={{fontSize:11,fontWeight:700,color:"#B8860B",textTransform:"uppercase",letterSpacing:1.5,margin:"16px 0 8px",display:"flex",alignItems:"center",gap:6}}>⭐ Saved for later</div>{savedLater.map((task,i)=>(<PriTaskRow key={task.id} task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onSaveForLater={saveForLaterTask}/>))}</>}
         {done.length>0&&<><div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:1.5,margin:"16px 0 8px"}}>✓ Completed</div>{done.map((task,i)=>(<PriTaskRow key={task.id} task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask}/>))}</>}
         {active.length>1&&(
           <div style={{position:"sticky",bottom:90,left:0,right:0,padding:"12px 0 4px",background:"transparent",pointerEvents:"none"}}>
@@ -3017,7 +3014,20 @@ export default function App(){
 
   const [priData,setPriDataRaw]=useState(()=>{
     const saved=load('chores_pri',null);
-    if(saved&&Array.isArray(saved)&&saved.length>0) return saved;
+    if(saved&&Array.isArray(saved)&&saved.length>0){
+      // One-time cleanup: remove duplicate tasks (same name, case-insensitive) left over from before the fix
+      const cleaned=saved.map(list=>{
+        const seenNames=new Set();
+        const dedupedTasks=(list.tasks||[]).filter(t=>{
+          const key=(t.name||'').trim().toLowerCase()+'|'+(t.done?'1':'0');
+          if(seenNames.has(key)) return false;
+          seenNames.add(key);
+          return true;
+        }).map(t=>{const {savedForLater,...rest}=t;return rest;}); // un-hide any previously saved-for-later tasks
+        return {...list,tasks:dedupedTasks};
+      });
+      return cleaned;
+    }
     return [{id:'main',name:'To Do',tasks:[],created:Date.now()}];
   });
   const setPriData=d=>{
