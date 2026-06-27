@@ -538,7 +538,17 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
     onUpdate({...list,tasks:[...recoloured,...list.tasks.filter(t=>t.done)]});
     setComparing(false);setPrioritized(true);
   };
-  if(comparing) return <PriCompare tasks={list.tasks} onDone={onPriDone}/>;
+  if(comparing){
+    // Always de-dupe by name+done right before comparing, in case any duplicate snuck into storage
+    const seenN=new Set();
+    const dedupedForCompare=list.tasks.filter(t=>{
+      const k=(t.name||'').trim().toLowerCase()+'|'+(t.done?'1':'0');
+      if(seenN.has(k))return false;
+      seenN.add(k);
+      return true;
+    });
+    return <PriCompare tasks={dedupedForCompare} onDone={onPriDone}/>;
+  }
   const active=list.tasks.filter(t=>!t.done);
   const done=list.tasks.filter(t=>t.done);
   return (
@@ -3030,9 +3040,20 @@ export default function App(){
     }
     return [{id:'main',name:'To Do',tasks:[],created:Date.now()}];
   });
+  const dedupePriList=list=>{
+    const seen=new Set();
+    const dedupedTasks=(list.tasks||[]).filter(t=>{
+      const key=(t.name||'').trim().toLowerCase()+'|'+(t.done?'1':'0');
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return {...list,tasks:dedupedTasks};
+  };
   const setPriData=d=>{
     setPriDataRaw(prev=>{
-      const next=typeof d==='function'?d(prev):d;
+      const raw=typeof d==='function'?d(prev):d;
+      const next=raw.map(dedupePriList); // always de-duplicate before saving, permanently
       save('chores_pri',next);
       return next;
     });
