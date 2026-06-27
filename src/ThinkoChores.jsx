@@ -274,7 +274,6 @@ function PriCompare({tasks,onDone}) {
   const pendingRef=useRef(null);
   if(pendingRef.current===null){
     pendingRef.current=tasks.filter(t=>!t.done);
-    alert('STARTING SORT. Total tasks received: '+tasks.length+'. Not-done count: '+pendingRef.current.length+'. Names: '+pendingRef.current.map(t=>t.name).join(' | '));
   }
   const pending=pendingRef.current;
   const [sortedList,setSortedList]=useState(()=>{
@@ -299,11 +298,8 @@ function PriCompare({tasks,onDone}) {
   if(pendingQueue.length===0){
     // Sort finished — return final order
     if(sortedList.length===pending.length){
-      alert('SORT FINISHED. Started with: '+pending.length+' items. Returning: '+sortedList.length+' items.');
       onDone(sortedList);
       return null;
-    } else {
-      alert('MISMATCH! pendingQueue empty but sortedList.length('+sortedList.length+') !== pending.length('+pending.length+'). This means items were lost mid-sort.');
     }
   }
 
@@ -349,7 +345,13 @@ function PriCompare({tasks,onDone}) {
     setTimeout(()=>{lockRef.current=false;},250);
   };
 
-  if(!pivot){onDone(sortedList.length===pending.length?sortedList:pending);return null;}
+  if(!pivot){
+    // Safety net: should not normally happen, but never drop items if it does — merge safely
+    const placedIds2=new Set(sortedList.map(t=>t.id));
+    const stillPending2=pendingQueue.filter(t=>!placedIds2.has(t.id));
+    onDone([...sortedList,...stillPending2]);
+    return null;
+  }
   if(pivot.id===pendingItem.id){
     // Safety net: never show a task compared against itself — auto-resolve and move on
     const newSorted=[...sortedList];
@@ -383,7 +385,12 @@ function PriCompare({tasks,onDone}) {
 
       {/* Header */}
       <div style={{width:"100%",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",padding:"14px 18px",display:"flex",alignItems:"center",gap:12,flexShrink:0,borderBottom:"1px solid rgba(90,80,60,0.08)",position:"sticky",top:0,zIndex:50}}>
-        <button onClick={()=>onDone(sortedList.length===pending.length?sortedList:pending)}
+        <button onClick={()=>{
+            // Safely merge: sorted items first (in their current order), then anything still in the queue, never dropping any
+            const placedIds=new Set(sortedList.map(t=>t.id));
+            const stillPending=pendingQueue.filter(t=>!placedIds.has(t.id));
+            onDone([...sortedList,...stillPending]);
+          }}
           style={{background:"none",border:"none",cursor:"pointer",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
           <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="#1A1A10" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
