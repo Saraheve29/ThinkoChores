@@ -340,7 +340,7 @@ function PriCompare({tasks,onDone}) {
     const sw=swatchById(task.color);
     return(
       <button onClick={onPick}
-        style={{flex:1,padding:"22px 16px 20px",borderRadius:20,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:`3px solid ${sw.fill}`,color:C.txt,fontWeight:800,fontSize:16,cursor:"pointer",boxShadow:`0 6px 24px ${sw.fill}`,display:"flex",flexDirection:"column",alignItems:"center",gap:14,transition:"all 0.15s",minHeight:160,textAlign:"center",lineHeight:1.4}}
+        style={{flex:1,padding:"22px 16px 20px",borderRadius:20,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:`3px solid ${sw.fill}`,color:C.txt,fontWeight:800,fontSize:16,cursor:"pointer",boxShadow:`0 6px 24px ${sw.fill}`,display:"flex",flexDirection:"column",alignItems:"center",gap:14,transition:"all 0.15s",minHeight:160,textAlign:"center",lineHeight:1.4,userSelect:"none",WebkitUserSelect:"none"}}
         onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.04)";}}
         onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";}}>
         {/* Colour circle — explicitly forced round */}
@@ -2536,7 +2536,7 @@ function Housework({setScreen}){
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
             {[{label:'A',task:pendingItem},{label:'B',task:pivot}].map(({label,task})=>(
               <button key={task.id+label} onClick={()=>chooseAvB(task,label==='A'?pivot:pendingItem)}
-                style={{background:MULTI,border:'2px solid rgba(180,160,140,0.25)',borderRadius:20,padding:'20px',textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',gap:14,boxShadow:'0 2px 12px rgba(0,0,0,0.07)'}}>
+                style={{background:MULTI,border:'2px solid rgba(180,160,140,0.25)',borderRadius:20,padding:'20px',textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',gap:14,boxShadow:'0 2px 12px rgba(0,0,0,0.07)',userSelect:'none',WebkitUserSelect:'none'}}>
                 <div style={{width:38,height:38,borderRadius:'50%',background:'linear-gradient(135deg,#5A7848,#3A5828)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Georgia,serif',fontWeight:800,fontSize:18,flexShrink:0}}>{label}</div>
                 <div style={{flex:1}}>
                   <div style={{fontWeight:700,fontSize:16,color:'#1A1A10',marginBottom:3}}>{task.name}</div>
@@ -2548,7 +2548,7 @@ function Housework({setScreen}){
             ))}
           </div>
           <div style={{textAlign:'center',marginTop:16}}>
-            <button onClick={skipEqual} style={{background:'none',border:'1px solid rgba(90,80,60,0.20)',borderRadius:100,padding:'8px 20px',fontSize:12,color:'#8A8070',cursor:'pointer'}}>
+            <button onClick={skipEqual} style={{background:'rgba(255,255,255,0.75)',border:'1.5px solid rgba(90,80,60,0.30)',borderRadius:100,padding:'10px 24px',fontSize:13,fontWeight:700,color:'#5A4A30',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}}>
               Equal — skip
             </button>
           </div>
