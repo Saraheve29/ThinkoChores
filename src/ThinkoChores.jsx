@@ -458,12 +458,17 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
   const [comparing,setComparing]=useState(false);
   const [taskCelebration,setTaskCelebration]=useState(null);
   const [taskConfetti,setTaskConfetti]=useState([]);
+  const [addingNow,setAddingNow]=useState(false);
   const addTask=()=>{
-    if(!newTask.trim())return;
+    if(!newTask.trim()||addingNow)return;
+    setAddingNow(true);
+    const taskText=newTask.trim();
     const currentActive=list.tasks.filter(t=>!t.done);
     const isTop3=currentActive.length<3;
-    onUpdate({...list,tasks:[...list.tasks,{id:Date.now(),name:newTask.trim(),done:false,color:isTop3?"red":"lilac",url:""}]});
+    const newId=Date.now()+Math.random();
+    onUpdate({...list,tasks:[...list.tasks,{id:newId,name:taskText,done:false,color:isTop3?"red":"lilac",url:""}]});
     setNewTask("");setPrioritized(false);
+    setTimeout(()=>setAddingNow(false),400); // brief lock to prevent double-fire from double-tap
   };
   const deleteTask=id=>{onUpdate({...list,tasks:list.tasks.filter(t=>t.id!==id)});setPrioritized(false);};
 
@@ -3015,7 +3020,13 @@ export default function App(){
     if(saved&&Array.isArray(saved)&&saved.length>0) return saved;
     return [{id:'main',name:'To Do',tasks:[],created:Date.now()}];
   });
-  const setPriData=d=>{setPriDataRaw(d);save('chores_pri',d);};
+  const setPriData=d=>{
+    setPriDataRaw(prev=>{
+      const next=typeof d==='function'?d(prev):d;
+      save('chores_pri',next);
+      return next;
+    });
+  };
 
   const [shopData,setShopDataRaw]=useState(()=>load('chores_shop',[]));
   const setShopData=d=>{setShopDataRaw(prev=>{const next=typeof d==='function'?d(prev):d;save('chores_shop',next);return next;});};
@@ -3038,7 +3049,7 @@ export default function App(){
 
   // ── SCREENS ──
   if(screen==='todo') return(<><GardenBg/><div style={{position:'relative',zIndex:10,minHeight:'100vh',paddingBottom:80}}>
-    <PriList list={{...( priData.length>0?priData[0]:{id:'main',name:'To Do',tasks:[]}),tasks:(priData.length>0&&priData[0].tasks)?priData[0].tasks:[]}} onBack={()=>setScreen('home')} onUpdate={(l)=>setPriData([l])} matrixData={{}} setMatrixData={()=>{}} setScreen={setScreen} focusMins={focusMins} setFocusMins={setFocusMins} focusLeft={focusLeft} setFocusLeft={setFocusLeft} focusOn={focusOn} setFocusOn={setFocusOn} setFocusAlerted={setFocusAlerted} fmtTimer={fmtTimer}/>
+    <PriList list={{...( priData.length>0?priData[0]:{id:'main',name:'To Do',tasks:[]}),tasks:(priData.length>0&&priData[0].tasks)?priData[0].tasks:[]}} onBack={()=>setScreen('home')} onUpdate={(l)=>{const seen=new Set();const dedupedTasks=(l.tasks||[]).filter(t=>{if(seen.has(t.id))return false;seen.add(t.id);return true;});setPriData([{...l,tasks:dedupedTasks}]);}} matrixData={{}} setMatrixData={()=>{}} setScreen={setScreen} focusMins={focusMins} setFocusMins={setFocusMins} focusLeft={focusLeft} setFocusLeft={setFocusLeft} focusOn={focusOn} setFocusOn={setFocusOn} setFocusAlerted={setFocusAlerted} fmtTimer={fmtTimer}/>
     <NavBar current="todo" setScreen={setScreen}/>
   </div></>);
 
