@@ -302,8 +302,11 @@ function PriCompare({tasks,onDone}) {
   const pivot=sortedList[mid];
 
   const finishIfDone=(finalList)=>onDone(finalList);
+  const lockRef=useRef(false);
 
   const choose=winner=>{
+    if(lockRef.current)return; // ignore rapid double-taps using stale snapshot
+    lockRef.current=true;
     const pendingWon=winner.id===pendingItem.id;
     let newLo=insLo,newHi=insHi;
     if(pendingWon) newHi=mid; else newLo=mid+1;
@@ -319,9 +322,12 @@ function PriCompare({tasks,onDone}) {
     } else {
       setInsLo(newLo);setInsHi(newHi);
     }
+    setTimeout(()=>{lockRef.current=false;},250);
   };
 
   const skip=()=>{
+    if(lockRef.current)return;
+    lockRef.current=true;
     const newSorted=[...sortedList];
     newSorted.splice(mid,0,pendingItem);
     const newQueue=pendingQueue.slice(1);
@@ -330,9 +336,21 @@ function PriCompare({tasks,onDone}) {
     setPendingQueue(newQueue);
     if(newQueue.length===0){ finishIfDone(newSorted); }
     else { setInsLo(0);setInsHi(newSorted.length); }
+    setTimeout(()=>{lockRef.current=false;},250);
   };
 
   if(!pivot){onDone(sortedList.length===pending.length?sortedList:pending);return null;}
+  if(pivot.id===pendingItem.id){
+    // Safety net: never show a task compared against itself — auto-resolve and move on
+    const newSorted=[...sortedList];
+    newSorted.splice(mid,0,pendingItem);
+    const newQueue=pendingQueue.slice(1);
+    setSortedList(newSorted);
+    setPendingQueue(newQueue);
+    if(newQueue.length===0){ onDone(newSorted); }
+    else { setInsLo(0);setInsHi(newSorted.length); }
+    return null;
+  }
 
   const pct=totalComparisons>0?Math.min(100,Math.round((doneCount/totalComparisons)*100)):0;
 
@@ -2100,6 +2118,7 @@ function Housework({setScreen}){
   const [showTemplates,setShowTemplates]=useState(false);
   const [dragTask,setDragTask]=useState(null);
   const [showBorrow,setShowBorrow]=useState(false);
+  const avbLockRef=useRef(false);
   const [borrowZone,setBorrowZone]=useState(null); // which other zone's dropdown is open
   const [borrowedIds,setBorrowedIds]=useState([]); // [{taskId, fromZone}]
   const [dragZone,setDragZone]=useState(null);
@@ -2299,6 +2318,8 @@ function Housework({setScreen}){
 
   // winner is more urgent than loser in this comparison
   const chooseAvB=(winner,loser)=>{
+    if(avbLockRef.current)return;
+    avbLockRef.current=true;
     const pendingItem=pendingQueue[0];
     const mid=Math.floor((insLo+insHi)/2);
     const pivot=sortedList[mid];
@@ -2322,6 +2343,7 @@ function Housework({setScreen}){
     } else {
       setInsLo(newLo);setInsHi(newHi);
     }
+    setTimeout(()=>{avbLockRef.current=false;},250);
   };
 
   const finishSort=(finalList)=>{
@@ -2350,6 +2372,8 @@ function Housework({setScreen}){
   };
 
   const skipEqual=()=>{
+    if(avbLockRef.current)return;
+    avbLockRef.current=true;
     // Treat as a tie — insert pending item right where it currently sits (mid), no further narrowing
     const pendingItem=pendingQueue[0];
     const mid=Math.floor((insLo+insHi)/2);
@@ -2364,6 +2388,7 @@ function Housework({setScreen}){
     } else {
       setInsLo(0);setInsHi(newSorted.length);
     }
+    setTimeout(()=>{avbLockRef.current=false;},250);
   };
 
 
@@ -2537,6 +2562,17 @@ function Housework({setScreen}){
     const mid=Math.floor((insLo+insHi)/2);
     const pivot=sortedList[mid];
     if(!pivot){setView('zone');return null;}
+    if(pivot.id===pendingItem.id){
+      // Safety net: never show a chore compared against itself — auto-resolve and move on
+      const newSorted=[...sortedList];
+      newSorted.splice(mid,0,pendingItem);
+      const newQueue=pendingQueue.slice(1);
+      setSortedList(newSorted);
+      setPendingQueue(newQueue);
+      if(newQueue.length===0){ finishSort(newSorted); }
+      else { setInsLo(0);setInsHi(newSorted.length); }
+      return null;
+    }
     const comparisonsNeededFor=size=>size<=1?0:Math.ceil(Math.log2(size+1));
     let remainingWork=0;
     for(let i=sortedList.length;i<sortedList.length+pendingQueue.length;i++) remainingWork+=comparisonsNeededFor(i+1);
