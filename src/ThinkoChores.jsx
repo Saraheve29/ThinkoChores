@@ -213,15 +213,20 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
   return (
     <div style={{background:task.done?"rgba(248,245,236,0.55)":"rgba(248,245,236,0.92)",border:`1.5px solid ${task.done?"rgba(90,80,60,0.12)":sw.border+"55"}`,borderLeft:`4px solid ${task.done?"rgba(90,80,60,0.18)":sw.fill}`,borderRadius:18,padding:"12px 12px 10px 12px",marginBottom:10,opacity:task.done?0.65:1,transition:"all 0.2s",boxShadow:"0 2px 10px rgba(60,70,40,0.07)",position:"relative"}}>
 
-      {/* Main row */}
-      <div style={{display:"flex",alignItems:"flex-start",gap:9,marginBottom:8}}>
+      {/* Task name — full width on its own line */}
+      <div style={{marginBottom:8}}>
+        <div style={{fontWeight:700,fontSize:16,lineHeight:1.4,color:task.done?C.soft:"#1A1A10",textDecoration:task.done?"line-through":"none",overflowWrap:"break-word"}}>{task.savedForLater&&<span style={{marginRight:5}}>⭐</span>}{task.name}</div>
+        {task.url&&<UrlBadge url={task.url}/>}
+        {subs.length>0&&<div style={{fontSize:11,color:C.soft,marginTop:2,fontWeight:600}}>{subsDone}/{subs.length} sub-items done</div>}
+      </div>
+
+      {/* Controls row — index, drag, colour, actions */}
+      <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:8}}>
         {/* Index */}
-        <div style={{minWidth:28,height:28,borderRadius:"50%",background:task.done?C.done:sw.num,color:"#1A1A10",fontWeight:800,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>{index+1}</div>
-        <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
-          <div {...(dragHandlers||{})} style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"grab",color:"rgba(90,120,72,0.35)",fontSize:20,lineHeight:1,padding:"4px 8px",letterSpacing:1,touchAction:"none"}}>⠿</div>
-        </div>
-        {/* Colour picker dot — prominent */}
-        <div style={{position:"relative",flexShrink:0,marginTop:5}}>
+        <div style={{minWidth:28,height:28,borderRadius:"50%",background:task.done?C.done:sw.num,color:"#1A1A10",fontWeight:800,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{index+1}</div>
+        <div {...(dragHandlers||{})} style={{display:"flex",alignItems:"center",justifyContent:"center",cursor:"grab",color:"rgba(90,120,72,0.35)",fontSize:20,lineHeight:1,padding:"4px 8px",letterSpacing:1,touchAction:"none",flexShrink:0}}>⠿</div>
+        {/* Colour picker dot */}
+        <div style={{position:"relative",flexShrink:0}}>
           <button onClick={()=>setPickerOpen(p=>!p)}
             title="Change colour"
             style={{width:24,height:24,borderRadius:"50%",cursor:"pointer",padding:0,
@@ -231,18 +236,13 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
               transition:"all 0.15s",display:"flex",alignItems:"center",justifyContent:"center"}}/>
           {pickerOpen&&<ColourPicker current={task.color} onChange={id=>onColorChange(task.id,id)} onClose={()=>setPickerOpen(false)}/>}
         </div>
-        {/* Task name */}
-        <div style={{flex:1}}>
-          <div style={{fontWeight:700,fontSize:16,lineHeight:1.4,color:task.done?C.soft:"#1A1A10",textDecoration:task.done?"line-through":"none",wordBreak:"break-word"}}>{task.savedForLater&&<span style={{marginRight:5}}>⭐</span>}{task.name}</div>
-          {task.url&&<UrlBadge url={task.url}/>}
-          {subs.length>0&&<div style={{fontSize:11,color:C.soft,marginTop:2,fontWeight:600}}>{subsDone}/{subs.length} sub-items done</div>}
-        </div>
+        <div style={{flex:1}}/>
         {/* Complete */}
-        <button onClick={()=>onComplete(task.id)} style={{background:task.done?C.ll:sw.num,color:task.done?C.mid:"#fff",border:"none",borderRadius:9,width:34,height:34,cursor:"pointer",fontSize:15,flexShrink:0}}>{task.done?"↩":"✓"}</button>
+        <button onClick={()=>onComplete(task.id)} style={{background:task.done?C.ll:sw.num,color:task.done?C.mid:"#fff",border:"none",borderRadius:9,width:32,height:32,cursor:"pointer",fontSize:15,flexShrink:0}}>{task.done?"↩":"✓"}</button>
         {/* Delete — visible on card */}
-        {onDelete&&<button onClick={()=>onDelete(task.id)} style={{background:"rgba(192,57,43,0.09)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.18)",borderRadius:9,width:34,height:34,cursor:"pointer",fontSize:14,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>🗑</button>}
-        {/* 3-dot menu */}
-        <button onClick={()=>{onSaveForLater&&onSaveForLater(task.id);}} style={{background:task.savedForLater?"rgba(212,160,32,0.18)":C.ll,color:task.savedForLater?"#B8860B":C.mp,border:"none",borderRadius:9,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{task.savedForLater?"⭐":"💾"}</button>
+        {onDelete&&<button onClick={()=>onDelete(task.id)} style={{background:"rgba(192,57,43,0.09)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.18)",borderRadius:9,width:32,height:32,cursor:"pointer",fontSize:14,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>🗑</button>}
+        {/* Save for later */}
+        <button onClick={()=>{onSaveForLater&&onSaveForLater(task.id);}} style={{background:task.savedForLater?"rgba(212,160,32,0.18)":C.ll,color:task.savedForLater?"#B8860B":C.mp,border:"none",borderRadius:9,width:32,height:32,cursor:"pointer",fontSize:15,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{task.savedForLater?"⭐":"💾"}</button>
       </div>
 
       {/* Sub-items */}
@@ -356,25 +356,27 @@ function PriCompare({tasks,onDone}) {
     <div style={{minHeight:"100vh",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",fontFamily:"'Segoe UI',sans-serif",paddingBottom:40}}>
 
       {/* Header */}
-      <div style={{width:"100%",background:"rgba(90,80,60,0.05)",padding:"14px 16px",display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
+      <div style={{width:"100%",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",padding:"14px 18px",display:"flex",alignItems:"center",gap:12,flexShrink:0,borderBottom:"1px solid rgba(90,80,60,0.08)",position:"sticky",top:0,zIndex:50}}>
         <button onClick={()=>onDone(sortedList.length===pending.length?sortedList:pending)}
-          style={{background:"rgba(255,255,255,0.15)",color:"#1A1A10",border:"none",borderRadius:10,width:36,height:36,fontSize:18,cursor:"pointer",flexShrink:0}}>←</button>
-        <div style={{flex:1,color:"#1A1A10",fontWeight:800,fontSize:16}}>To Do List</div>
-        <div style={{color:"rgba(255,255,255,0.55)",fontSize:13,fontWeight:600}}>~{doneCount+1} / {totalComparisons}</div>
+          style={{background:"none",border:"none",cursor:"pointer",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="#1A1A10" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
+        <div style={{flex:1,fontFamily:"Georgia,serif",fontWeight:700,fontSize:18,color:"#1A1A10"}}>To Do List</div>
+        <div style={{color:"#5A4A30",fontSize:12,fontWeight:700}}>~{doneCount+1} / {totalComparisons}</div>
       </div>
 
       {/* Progress bar */}
-      <div style={{width:"100%",height:4,background:"rgba(255,255,255,0.1)"}}>
-        <div style={{height:"100%",width:`${pct}%`,background:C.lp,transition:"width 0.3s"}}/>
+      <div style={{width:"100%",height:4,background:"rgba(90,80,60,0.10)"}}>
+        <div style={{height:"100%",width:`${pct}%`,background:"#5A7848",transition:"width 0.3s"}}/>
       </div>
 
       <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"32px 20px",width:"100%",maxWidth:480,gap:0}}>
 
         {/* Question */}
-        <div style={{fontSize:22,fontWeight:900,color:"#1A1A10",marginBottom:8,textAlign:"center",lineHeight:1.3}}>
-          Which one is most important?
+        <div style={{fontFamily:"Georgia,serif",fontSize:20,fontWeight:700,color:"#1A1A10",marginBottom:8,textAlign:"center",lineHeight:1.3,background:"rgba(255,255,255,0.55)",borderRadius:14,padding:"8px 16px"}}>
+          Which one is more urgent?
         </div>
-        <div style={{fontSize:12,color:"rgba(0,0,0,0.4)",marginBottom:24,textAlign:"center"}}>
+        <div style={{fontSize:12,color:"#3A2A18",fontWeight:600,marginBottom:24,textAlign:"center"}}>
           {sortedList.length} placed · {pendingQueue.length} left to place
         </div>
 
@@ -383,20 +385,20 @@ function PriCompare({tasks,onDone}) {
           <TaskCard task={pendingItem} onPick={()=>choose(pendingItem)}/>
 
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-            <div style={{fontWeight:900,fontSize:22,color:"rgba(255,255,255,0.7)",letterSpacing:2}}>OR</div>
+            <div style={{fontWeight:900,fontSize:20,color:"#3A5828",letterSpacing:2}}>OR</div>
           </div>
 
           <TaskCard task={pivot} onPick={()=>choose(pivot)}/>
         </div>
 
         {/* Skip */}
-        <button onClick={skip} style={{marginTop:28,background:"transparent",color:"rgba(255,255,255,0.4)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:20,padding:"8px 22px",fontSize:13,fontWeight:600,cursor:"pointer"}}>
-          Skip this pair
+        <button onClick={skip} style={{marginTop:28,background:"rgba(255,255,255,0.65)",color:"#5A4A30",border:"1.5px solid rgba(90,80,60,0.25)",borderRadius:100,padding:"9px 24px",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+          Equal — skip this pair
         </button>
 
         {/* Tap hint */}
-        <div style={{marginTop:14,color:"rgba(255,255,255,0.3)",fontSize:12,textAlign:"center"}}>
-          Tap the task that matters more right now
+        <div style={{marginTop:14,color:"#5A4A30",fontWeight:600,fontSize:12,textAlign:"center"}}>
+          Tap the one that matters more right now
         </div>
       </div>
     </div>
