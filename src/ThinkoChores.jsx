@@ -2547,9 +2547,9 @@ function Housework({setScreen}){
               </button>
             ))}
           </div>
-          <div style={{textAlign:'center',marginTop:16}}>
-            <button onClick={skipEqual} style={{background:'rgba(255,255,255,0.75)',border:'1.5px solid rgba(90,80,60,0.30)',borderRadius:100,padding:'10px 24px',fontSize:13,fontWeight:700,color:'#5A4A30',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}}>
-              Equal — skip
+          <div style={{textAlign:'center',marginTop:20}}>
+            <button onClick={skipEqual} style={{backgroundColor:'#FFFFFF',background:'#FFFFFF',border:'2px solid #5A7848',borderRadius:100,padding:'12px 28px',fontSize:14,fontWeight:800,color:'#1A2810',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',boxShadow:'0 4px 14px rgba(0,0,0,0.20)',opacity:1}}>
+              ⏭ Equal — skip
             </button>
           </div>
         </div>
