@@ -639,6 +639,17 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
           <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="#2C3820" strokeWidth="2.2" strokeLinecap="round"/></svg>
         </button>
         <button onClick={()=>setScreen&&setScreen("home")} style={{position:"absolute",top:16,right:16,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:"none",borderRadius:100,padding:"8px 14px",fontSize:12,fontWeight:700,color:"#2C3820",cursor:"pointer",backdropFilter:"blur(8px)"}}>🏠</button>
+        <button onClick={()=>{
+            const counts={};
+            list.tasks.forEach(t=>{
+              const k=(t.name||'').trim().toLowerCase();
+              if(!counts[k]) counts[k]=[];
+              counts[k].push(t.id);
+            });
+            const dupes=Object.entries(counts).filter(([k,ids])=>ids.length>1);
+            if(dupes.length===0){alert('No duplicates found. Total tasks: '+list.tasks.length);}
+            else{alert('DUPLICATES FOUND:\n\n'+dupes.map(([name,ids])=>name+' — IDs: '+ids.join(', ')).join('\n\n'));}
+          }} style={{position:"absolute",top:60,right:16,background:"rgba(72,120,168,0.85)",border:"none",borderRadius:100,padding:"6px 12px",fontSize:11,fontWeight:700,color:"#fff",cursor:"pointer"}}>🐛 Check</button>
         <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:18,color:"#1A2810",marginBottom:2}}>{list.name} 🌿</div>
         <div style={{fontSize:12,color:"#3A5828",fontStyle:"italic",fontWeight:600}}>
           {active.length===0&&done.length>0?" All done! Well done you!":
