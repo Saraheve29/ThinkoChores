@@ -2858,12 +2858,12 @@ function Housework({setScreen}){
 
           {done.length>0&&(
             <div style={{marginTop:14}}>
-              <div style={{fontSize:11,fontWeight:700,color:'#8A8070',marginBottom:7,textTransform:'uppercase',letterSpacing:1}}>✓ Done ({done.length})</div>
+              <div style={{fontSize:11,fontWeight:700,color:'#5A4A30',marginBottom:7,textTransform:'uppercase',letterSpacing:1,background:'rgba(255,255,255,0.6)',borderRadius:8,padding:'4px 8px',display:'inline-block'}}>✓ Done ({done.length})</div>
               {done.map(t=>(
-                <div key={t.id} style={{background:'rgba(90,120,72,0.06)',borderRadius:11,padding:'8px 12px',marginBottom:5,display:'flex',alignItems:'center',gap:8,opacity:0.6}}>
-                  <div style={{flex:1,textDecoration:'line-through',color:'#8A8070',fontSize:13}}>{t.name}</div>
-                  <button onClick={()=>tickDone(activeZone,t.id)} style={{background:'none',border:'1px solid rgba(90,80,60,0.15)',borderRadius:6,padding:'3px 7px',fontSize:10,color:'#8A8070',cursor:'pointer'}}>Undo</button>
-                  <button onClick={()=>delTask(activeZone,t.id)} style={{background:'none',border:'none',fontSize:13,cursor:'pointer',color:'#C04030'}}>✕</button>
+                <div key={t.id} style={{background:MULTI,borderRadius:11,padding:'10px 12px',marginTop:6,marginBottom:5,display:'flex',alignItems:'center',gap:8,border:'1px solid rgba(90,120,72,0.15)'}}>
+                  <div style={{flex:1,textDecoration:'line-through',color:'#3A2A18',fontSize:13,fontWeight:600}}>{t.name}</div>
+                  <button onClick={()=>tickDone(activeZone,t.id)} style={{background:'rgba(255,255,255,0.7)',border:'1px solid rgba(90,80,60,0.25)',borderRadius:6,padding:'4px 9px',fontSize:11,fontWeight:600,color:'#3A5828',cursor:'pointer'}}>Undo</button>
+                  <button onClick={()=>delTask(activeZone,t.id)} style={{background:'rgba(192,57,43,0.10)',border:'1px solid rgba(192,57,43,0.20)',borderRadius:6,padding:'4px 8px',fontSize:13,cursor:'pointer',color:'#C04030'}}>✕</button>
                 </div>
               ))}
             </div>
