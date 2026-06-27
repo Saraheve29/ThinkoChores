@@ -269,111 +269,110 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
 
 
 function PriCompare({tasks,onDone}) {
-  // Snapshot the task list ONCE on mount — completely immune to any parent re-render
-  // (e.g. a running Focus Timer ticking every second) changing the tasks prop mid-sort.
-  const pendingRef=useRef(null);
-  if(pendingRef.current===null){
-    pendingRef.current=tasks.filter(t=>!t.done);
-  }
-  const pending=pendingRef.current;
-  const [sortedList,setSortedList]=useState(()=>{
-    const shuffled=[...pending].sort(()=>Math.random()-0.5);
-    return shuffled.length>0?[shuffled[0]]:[];
-  });
-  const [pendingQueue,setPendingQueue]=useState(()=>{
-    const shuffled=[...pending];
-    return shuffled.length>0?shuffled.slice(1):[];
-  });
-  const [insLo,setInsLo]=useState(0);
-  const [insHi,setInsHi]=useState(1);
-  const n=pending.length;
-  const [doneCount,setDoneCount]=useState(0);
-  // Accurate total = comparisons already done + comparisons still needed for remaining queue
-  const comparisonsNeededFor=size=>size<=1?0:Math.ceil(Math.log2(size+1));
-  let remainingWork=0;
-  for(let i=sortedList.length;i<pending.length;i++) remainingWork+=comparisonsNeededFor(i+1);
-  const totalComparisons=Math.max(1,doneCount+remainingWork);
+  // DEAD SIMPLE rebuild: the original `tasks` array is NEVER filtered, sliced, or rebuilt.
+  // We only ever attach a `wins` counter to each task by reference. At the end we sort
+  // a COPY of the original array — nothing can ever be dropped because nothing is ever removed.
 
-  if(pending.length===0){onDone(pending);return null;}
-  if(pendingQueue.length===0){
-    // Sort finished — return final order
-    if(sortedList.length===pending.length){
-      onDone(sortedList);
-      return null;
+  // Freeze the working set once, on mount, immune to any parent re-render.
+  const workingRef=useRef(null);
+  if(workingRef.current===null){
+    workingRef.current=tasks.map(t=>({...t,_wins:0,_seen:0}));
+  }
+  const working=workingRef.current; // array of ALL tasks (done + not done), each tagged with _wins/_seen
+
+  const notDone=working.filter(t=>!t.done);
+  const doneOnes=working.filter(t=>t.done);
+
+  // Build the full list of pairs to compare ONCE, up front. Simple round-robin: everyone vs everyone once.
+  // For n items this is n*(n-1)/2 comparisons — more than binary insertion, but utterly simple and safe.
+  const pairsRef=useRef(null);
+  if(pairsRef.current===null){
+    const p=[];
+    for(let i=0;i<notDone.length;i++){
+      for(let j=i+1;j<notDone.length;j++){
+        p.push([notDone[i].id,notDone[j].id]);
+      }
     }
+    pairsRef.current=p;
   }
+  const pairs=pairsRef.current;
 
-  const pendingItem=pendingQueue[0];
-  const mid=Math.floor((insLo+insHi)/2);
-  const pivot=sortedList[mid];
-
-  const finishIfDone=(finalList)=>onDone(finalList);
+  const [pairIdx,setPairIdx]=useState(0);
+  const [winsMap,setWinsMap]=useState(()=>{
+    const m={};
+    notDone.forEach(t=>{m[t.id]=0;});
+    return m;
+  });
   const lockRef=useRef(false);
 
-  const choose=winner=>{
-    if(lockRef.current)return; // ignore rapid double-taps using stale snapshot
+  // If there are fewer than 2 tasks, nothing to compare — just hand back everything untouched.
+  if(notDone.length<2){
+    onDone(working.map(t=>{const {_wins,_seen,...clean}=t;return clean;}));
+    return null;
+  }
+
+  const finish=(finalWinsMap)=>{
+    // Sort a COPY of notDone by wins (descending). Original `working` array is untouched.
+    const ranked=[...notDone].sort((a,b)=>(finalWinsMap[b.id]||0)-(finalWinsMap[a.id]||0));
+    const finalList=[...ranked,...doneOnes].map(t=>{const {_wins,_seen,...clean}=t;return clean;});
+    onDone(finalList);
+  };
+
+  if(pairIdx>=pairs.length){
+    finish(winsMap);
+    return null;
+  }
+
+  const [idA,idB]=pairs[pairIdx];
+  const taskA=notDone.find(t=>t.id===idA);
+  const taskB=notDone.find(t=>t.id===idB);
+
+  // Safety: if for any reason a task referenced by a pair can't be found, skip this pair entirely — never crash, never drop data.
+  if(!taskA||!taskB){
+    setPairIdx(i=>i+1);
+    return null;
+  }
+
+  const choose=winnerId=>{
+    if(lockRef.current)return;
     lockRef.current=true;
-    const pendingWon=winner.id===pendingItem.id;
-    let newLo=insLo,newHi=insHi;
-    if(pendingWon) newHi=mid; else newLo=mid+1;
-    setDoneCount(d=>d+1);
-    if(newLo>=newHi){
-      const newSorted=[...sortedList];
-      newSorted.splice(newLo,0,pendingItem);
-      const newQueue=pendingQueue.slice(1);
-      setSortedList(newSorted);
-      setPendingQueue(newQueue);
-      if(newQueue.length===0){ finishIfDone(newSorted); }
-      else { setInsLo(0);setInsHi(newSorted.length); }
-    } else {
-      setInsLo(newLo);setInsHi(newHi);
-    }
-    setTimeout(()=>{lockRef.current=false;},250);
+    setWinsMap(prev=>{
+      const next={...prev,[winnerId]:(prev[winnerId]||0)+1};
+      const nextIdx=pairIdx+1;
+      if(nextIdx>=pairs.length){
+        setTimeout(()=>finish(next),0);
+      } else {
+        setPairIdx(nextIdx);
+      }
+      return next;
+    });
+    setTimeout(()=>{lockRef.current=false;},200);
   };
 
   const skip=()=>{
     if(lockRef.current)return;
     lockRef.current=true;
-    const newSorted=[...sortedList];
-    newSorted.splice(mid,0,pendingItem);
-    const newQueue=pendingQueue.slice(1);
-    setDoneCount(d=>d+1);
-    setSortedList(newSorted);
-    setPendingQueue(newQueue);
-    if(newQueue.length===0){ finishIfDone(newSorted); }
-    else { setInsLo(0);setInsHi(newSorted.length); }
-    setTimeout(()=>{lockRef.current=false;},250);
+    const nextIdx=pairIdx+1;
+    if(nextIdx>=pairs.length){
+      setTimeout(()=>finish(winsMap),0);
+    } else {
+      setPairIdx(nextIdx);
+    }
+    setTimeout(()=>{lockRef.current=false;},200);
   };
 
-  if(!pivot){
-    // Safety net: should not normally happen, but never drop items if it does — merge safely
-    const placedIds2=new Set(sortedList.map(t=>t.id));
-    const stillPending2=pendingQueue.filter(t=>!placedIds2.has(t.id));
-    onDone([...sortedList,...stillPending2]);
-    return null;
-  }
-  if(pivot.id===pendingItem.id){
-    // Safety net: never show a task compared against itself — auto-resolve and move on
-    const newSorted=[...sortedList];
-    newSorted.splice(mid,0,pendingItem);
-    const newQueue=pendingQueue.slice(1);
-    setSortedList(newSorted);
-    setPendingQueue(newQueue);
-    if(newQueue.length===0){ onDone(newSorted); }
-    else { setInsLo(0);setInsHi(newSorted.length); }
-    return null;
-  }
+  const goBack=()=>{
+    // Return everything exactly as it was received — original task objects untouched.
+    onDone(working.map(t=>{const {_wins,_seen,...clean}=t;return clean;}));
+  };
 
-  const pct=totalComparisons>0?Math.min(100,Math.round((doneCount/totalComparisons)*100)):0;
+  const pct=pairs.length>0?Math.round((pairIdx/pairs.length)*100):0;
 
   const TaskCard=({task,onPick})=>{
     const sw=swatchById(task.color);
     return(
       <button onClick={onPick}
-        style={{flex:1,padding:"22px 16px 20px",borderRadius:20,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:`3px solid ${sw.fill}`,color:C.txt,fontWeight:800,fontSize:16,cursor:"pointer",boxShadow:`0 6px 24px ${sw.fill}`,display:"flex",flexDirection:"column",alignItems:"center",gap:14,transition:"all 0.15s",minHeight:160,textAlign:"center",lineHeight:1.4,userSelect:"none",WebkitUserSelect:"none"}}
-        onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.04)";}}
-        onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";}}>
-        {/* Colour circle — explicitly forced round */}
+        style={{flex:1,padding:"22px 16px 20px",borderRadius:20,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:`3px solid ${sw.fill}`,color:C.txt,fontWeight:800,fontSize:16,cursor:"pointer",boxShadow:`0 6px 24px ${sw.fill}`,display:"flex",flexDirection:"column",alignItems:"center",gap:14,transition:"all 0.15s",minHeight:160,textAlign:"center",lineHeight:1.4,userSelect:"none",WebkitUserSelect:"none"}}>
         <div style={{width:32,height:32,borderRadius:"50%",background:sw.fill,border:"3px solid rgba(255,255,255,0.9)",boxShadow:`0 2px 10px ${sw.fill}`,flexShrink:0,display:"block"}}/>
         <span style={{color:C.dp,fontWeight:800,fontSize:15,lineHeight:1.4,wordBreak:"break-word"}}>{task.name}</span>
       </button>
@@ -383,53 +382,38 @@ function PriCompare({tasks,onDone}) {
   return(
     <div style={{minHeight:"100vh",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",fontFamily:"'Segoe UI',sans-serif",paddingBottom:40}}>
 
-      {/* Header */}
       <div style={{width:"100%",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",padding:"14px 18px",display:"flex",alignItems:"center",gap:12,flexShrink:0,borderBottom:"1px solid rgba(90,80,60,0.08)",position:"sticky",top:0,zIndex:50}}>
-        <button onClick={()=>{
-            // Safely merge: sorted items first (in their current order), then anything still in the queue, never dropping any
-            const placedIds=new Set(sortedList.map(t=>t.id));
-            const stillPending=pendingQueue.filter(t=>!placedIds.has(t.id));
-            onDone([...sortedList,...stillPending]);
-          }}
+        <button onClick={goBack}
           style={{background:"none",border:"none",cursor:"pointer",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
           <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="#1A1A10" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <div style={{flex:1,fontFamily:"Georgia,serif",fontWeight:700,fontSize:18,color:"#1A1A10"}}>To Do List</div>
-        <div style={{color:"#5A4A30",fontSize:12,fontWeight:700}}>~{doneCount+1} / {totalComparisons}</div>
+        <div style={{color:"#5A4A30",fontSize:12,fontWeight:700}}>{pairIdx+1} / {pairs.length}</div>
       </div>
 
-      {/* Progress bar */}
       <div style={{width:"100%",height:4,background:"rgba(90,80,60,0.10)"}}>
         <div style={{height:"100%",width:`${pct}%`,background:"#5A7848",transition:"width 0.3s"}}/>
       </div>
 
       <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"32px 20px",width:"100%",maxWidth:480,gap:0}}>
 
-        {/* Question */}
         <div style={{fontFamily:"Georgia,serif",fontSize:20,fontWeight:700,color:"#1A1A10",marginBottom:8,textAlign:"center",lineHeight:1.3,background:"rgba(255,255,255,0.55)",borderRadius:14,padding:"8px 16px"}}>
           Which one is more urgent?
         </div>
         <div style={{fontSize:12,color:"#3A2A18",fontWeight:600,marginBottom:24,textAlign:"center"}}>
-          {sortedList.length} placed · {pendingQueue.length} left to place
+          Comparing {notDone.length} task{notDone.length!==1?"s":""} total · {pairs.length-pairIdx} comparison{pairs.length-pairIdx!==1?"s":""} left
         </div>
 
-        {/* Side by side cards */}
         <div style={{display:"flex",gap:16,width:"100%",alignItems:"stretch"}}>
-          <TaskCard task={pendingItem} onPick={()=>choose(pendingItem)}/>
+          <TaskCard task={taskA} onPick={()=>choose(taskA.id)}/>
 
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             <div style={{fontWeight:900,fontSize:20,color:"#3A5828",letterSpacing:2}}>OR</div>
           </div>
 
-          <TaskCard task={pivot} onPick={()=>choose(pivot)}/>
+          <TaskCard task={taskB} onPick={()=>choose(taskB.id)}/>
         </div>
 
-        {/* Skip */}
-        <button onClick={skip} style={{marginTop:28,background:"rgba(255,255,255,0.65)",color:"#5A4A30",border:"1.5px solid rgba(90,80,60,0.25)",borderRadius:100,padding:"9px 24px",fontSize:13,fontWeight:700,cursor:"pointer"}}>
-          Equal — skip this pair
-        </button>
-
-        {/* Tap hint */}
         <div style={{marginTop:14,color:"#5A4A30",fontWeight:600,fontSize:12,textAlign:"center"}}>
           Tap the one that matters more right now
         </div>
@@ -437,6 +421,7 @@ function PriCompare({tasks,onDone}) {
     </div>
   );
 }
+
 
 /* ── HomeBar — sticky top bar with 🏠 home for all modules ── */
 
@@ -501,11 +486,11 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
     const currentActive=list.tasks.filter(t=>!t.done);
     const isTop3=currentActive.length<3;
     const newId=Date.now()+Math.random();
-    onUpdate({...list,tasks:[...list.tasks,{id:newId,name:taskText,done:false,color:isTop3?"red":"lilac",url:""}]});
+    onUpdate(curr=>({...curr,tasks:[...curr.tasks,{id:newId,name:taskText,done:false,color:isTop3?"red":"lilac",url:""}]}));
     setNewTask("");setPrioritized(false);
     setTimeout(()=>setAddingNow(false),400); // brief lock to prevent double-fire from double-tap
   };
-  const deleteTask=id=>{onUpdate({...list,tasks:list.tasks.filter(t=>t.id!==id)});setPrioritized(false);};
+  const deleteTask=id=>{onUpdate(curr=>({...curr,tasks:curr.tasks.filter(t=>t.id!==id)}));setPrioritized(false);};
 
   const launchTaskConfetti=allDone=>{
     const emojis=allDone?["🏆","⭐","🌟","💫","✨","🎊","🎉","💥"]:["🎉","✨","⭐","💫","🌿","🎊"];
@@ -520,7 +505,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
 
   const completeTask=id=>{
     const updated=list.tasks.map(t=>t.id===id?{...t,done:!t.done}:t);
-    onUpdate({...list,tasks:updated});
+    onUpdate(curr=>({...curr,tasks:curr.tasks.map(t=>t.id===id?{...t,done:!t.done}:t)}));
     const task=list.tasks.find(t=>t.id===id);
     if(!task.done){ // marking as done (not undoing)
       const allDone=updated.filter(t=>!t.done).length===0;
@@ -529,7 +514,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
       setTimeout(()=>setTaskCelebration(null),allDone?6000:2800);
     }
   };
-  const colorTask=(id,color)=>onUpdate({...list,tasks:list.tasks.map(t=>t.id===id?{...t,color}:t)});
+  const colorTask=(id,color)=>onUpdate(curr=>({...curr,tasks:curr.tasks.map(t=>t.id===id?{...t,color}:t)}));
   const [dragTaskId,setDragTaskId]=useState(null);
   const priTaskTouchRef=useRef(null);
   const priTaskDragOver=(toId)=>{
@@ -538,7 +523,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
     const fi=arr.findIndex(t=>t.id===dragTaskId),ti=arr.findIndex(t=>t.id===toId);
     if(fi<0||ti<0||fi===ti)return;
     const[m]=arr.splice(fi,1);arr.splice(ti,0,m);
-    onUpdate({...list,tasks:arr});
+    onUpdate(curr=>({...curr,tasks:arr}));
   };
   const priTaskTouchStart=(e,id)=>{priTaskTouchRef.current=setTimeout(()=>setDragTaskId(id),200);};
   const priTaskTouchMove=(e)=>{
@@ -551,9 +536,9 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
   const moveTask=(id,dir)=>{
     const a=[...list.tasks];const i=a.findIndex(t=>t.id===id);const j=i+dir;
     if(j<0||j>=a.length)return;
-    [a[i],a[j]]=[a[j],a[i]];onUpdate({...list,tasks:a});
+    [a[i],a[j]]=[a[j],a[i]];onUpdate(curr=>({...curr,tasks:a}));
   };
-  const addSubItems=(id,subs)=>onUpdate({...list,tasks:list.tasks.map(t=>t.id===id?{...t,subItems:subs}:t)});
+  const addSubItems=(id,subs)=>onUpdate(curr=>({...curr,tasks:curr.tasks.map(t=>t.id===id?{...t,subItems:subs}:t)}));
   const [sendToast,setSendToast]=useState("");
   const showSendToast=msg=>{setSendToast(msg);setTimeout(()=>setSendToast(""),2200);};
   const sendTaskTo=(task,dest,extra)=>{
@@ -565,12 +550,18 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
       showSendToast("⚡ The Wipe Out will pick this up from your To Do List!");
     }
   };
-  const onPriDone=sorted=>{
-    const recoloured=sorted.map((t,i)=>({
-      ...t,
-      color: i<3 ? (t.color==="lilac"||t.color==="red" ? "red" : t.color) : (t.color==="red" ? "lilac" : t.color)
-    }));
-    onUpdate({...list,tasks:[...recoloured,...list.tasks.filter(t=>t.done)]});
+  const onPriDone=fullList=>{
+    // fullList now contains EVERY task (done + not-done) in final order — nothing to re-merge.
+    let activeIndex=0;
+    const recoloured=fullList.map(t=>{
+      if(t.done) return t; // leave completed tasks untouched
+      const i=activeIndex++;
+      return {
+        ...t,
+        color: i<3 ? (t.color==="lilac"||t.color==="red" ? "red" : t.color) : (t.color==="red" ? "lilac" : t.color)
+      };
+    });
+    onUpdate(curr=>({...curr,tasks:recoloured}));
     setComparing(false);setPrioritized(true);
   };
   if(comparing){
@@ -667,15 +658,19 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
         </button>
         <button onClick={()=>setScreen&&setScreen("home")} style={{position:"absolute",top:16,right:16,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:"none",borderRadius:100,padding:"8px 14px",fontSize:12,fontWeight:700,color:"#2C3820",cursor:"pointer",backdropFilter:"blur(8px)"}}>🏠</button>
         <button onClick={()=>{
-            const counts={};
+            const idCounts={};
             list.tasks.forEach(t=>{
-              const k=(t.name||'').trim().toLowerCase();
-              if(!counts[k]) counts[k]=[];
-              counts[k].push(t.id);
+              const k=t.id;
+              if(!idCounts[k]) idCounts[k]=[];
+              idCounts[k].push(t.name);
             });
-            const dupes=Object.entries(counts).filter(([k,ids])=>ids.length>1);
-            if(dupes.length===0){alert('No duplicates found. Total tasks: '+list.tasks.length);}
-            else{alert('DUPLICATES FOUND:\n\n'+dupes.map(([name,ids])=>name+' — IDs: '+ids.join(', ')).join('\n\n'));}
+            const idDupes=Object.entries(idCounts).filter(([k,names])=>names.length>1);
+            const allIds=list.tasks.map(t=>'ID:'+t.id+' = "'+t.name+'"').join('\n');
+            if(idDupes.length>0){
+              alert('SAME ID USED TWICE:\n\n'+idDupes.map(([id,names])=>'ID '+id+' shared by: '+names.join(' AND ')).join('\n\n'));
+            } else {
+              alert('All IDs unique. Total: '+list.tasks.length+'\n\n'+allIds);
+            }
           }} style={{position:"absolute",top:60,right:16,background:"rgba(72,120,168,0.85)",border:"none",borderRadius:100,padding:"6px 12px",fontSize:11,fontWeight:700,color:"#fff",cursor:"pointer"}}>🐛 Check</button>
         <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:18,color:"#1A2810",marginBottom:2}}>{list.name} 🌿</div>
         <div style={{fontSize:12,color:"#3A5828",fontStyle:"italic",fontWeight:600}}>
@@ -3136,7 +3131,15 @@ export default function App(){
 
   // ── SCREENS ──
   if(screen==='todo') return(<><GardenBg/><div style={{position:'relative',zIndex:10,minHeight:'100vh',paddingBottom:80}}>
-    <PriList list={{...( priData.length>0?priData[0]:{id:'main',name:'To Do',tasks:[]}),tasks:(priData.length>0&&priData[0].tasks)?priData[0].tasks:[]}} onBack={()=>setScreen('home')} onUpdate={(l)=>{const seen=new Set();const dedupedTasks=(l.tasks||[]).filter(t=>{if(seen.has(t.id))return false;seen.add(t.id);return true;});setPriData([{...l,tasks:dedupedTasks}]);}} matrixData={{}} setMatrixData={()=>{}} setScreen={setScreen} focusMins={focusMins} setFocusMins={setFocusMins} focusLeft={focusLeft} setFocusLeft={setFocusLeft} focusOn={focusOn} setFocusOn={setFocusOn} setFocusAlerted={setFocusAlerted} fmtTimer={fmtTimer}/>
+    <PriList list={{...( priData.length>0?priData[0]:{id:'main',name:'To Do',tasks:[]}),tasks:(priData.length>0&&priData[0].tasks)?priData[0].tasks:[]}} onBack={()=>setScreen('home')} onUpdate={(updater)=>{
+            setPriData(prevData=>{
+              const currentList=prevData.length>0?prevData[0]:{id:'main',name:'To Do',tasks:[]};
+              const newList=typeof updater==='function'?updater(currentList):updater;
+              const seen=new Set();
+              const dedupedTasks=(newList.tasks||[]).filter(t=>{if(seen.has(t.id))return false;seen.add(t.id);return true;});
+              return [{...newList,tasks:dedupedTasks}];
+            });
+          }} matrixData={{}} setMatrixData={()=>{}} setScreen={setScreen} focusMins={focusMins} setFocusMins={setFocusMins} focusLeft={focusLeft} setFocusLeft={setFocusLeft} focusOn={focusOn} setFocusOn={setFocusOn} setFocusAlerted={setFocusAlerted} fmtTimer={fmtTimer}/>
     <NavBar current="todo" setScreen={setScreen}/>
   </div></>);
 
