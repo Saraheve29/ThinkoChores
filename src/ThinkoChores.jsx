@@ -170,8 +170,10 @@ function ColourPicker({current,onChange,onClose}) {
   );
 }
 
-function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMoveToList,lists,onPrioritizeThis,onSendTo,onMoveUp,onMoveDown,isFirst,isLast,setScreen,dragHandlers}) {
+function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMoveToList,lists,onPrioritizeThis,onSendTo,onEdit,onMoveUp,onMoveDown,isFirst,isLast,setScreen,dragHandlers}) {
   const sw=swatchById(task.color);
+  const [editingName,setEditingName]=useState(false);
+  const [editText,setEditText]=useState(task.name);
   const [pickerOpen,setPickerOpen]=useState(false);
   const [menuOpen,setMenuOpen]=useState(false);
   const [subOpen,setSubOpen]=useState(false);
@@ -211,9 +213,23 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
   return (
     <div style={{background:task.done?"rgba(248,245,236,0.55)":"rgba(248,245,236,0.92)",border:`1.5px solid ${task.done?"rgba(90,80,60,0.12)":sw.border+"55"}`,borderLeft:`4px solid ${task.done?"rgba(90,80,60,0.18)":sw.fill}`,borderRadius:18,padding:"12px 12px 10px 12px",marginBottom:10,opacity:task.done?0.65:1,transition:"all 0.2s",boxShadow:"0 2px 10px rgba(60,70,40,0.07)",position:"relative"}}>
 
-      {/* Task name — full width on its own line */}
+      {/* Task name — full width on its own line, editable */}
       <div style={{marginBottom:8}}>
-        <div style={{fontWeight:700,fontSize:16,lineHeight:1.4,color:task.done?C.soft:"#1A1A10",textDecoration:task.done?"line-through":"none",overflowWrap:"break-word"}}>{task.name}</div>
+        {editingName?(
+          <div style={{display:"flex",gap:6}}>
+            <input value={editText} onChange={e=>setEditText(e.target.value)}
+              onKeyDown={e=>{
+                if(e.key==="Enter"){if(editText.trim()&&onEdit)onEdit(task.id,editText.trim());setEditingName(false);}
+                if(e.key==="Escape"){setEditText(task.name);setEditingName(false);}
+              }}
+              autoFocus
+              style={{flex:1,fontWeight:700,fontSize:16,padding:"6px 10px",borderRadius:10,border:`1.5px solid ${C.lp}`,color:"#1A1A10",outline:"none"}}/>
+            <button onClick={()=>{if(editText.trim()&&onEdit)onEdit(task.id,editText.trim());setEditingName(false);}}
+              style={{background:"#5A7848",color:"#fff",border:"none",borderRadius:10,padding:"6px 14px",fontSize:13,fontWeight:700,cursor:"pointer"}}>Save</button>
+          </div>
+        ):(
+          <div onClick={()=>{setEditText(task.name);setEditingName(true);}} style={{fontWeight:700,fontSize:16,lineHeight:1.4,color:task.done?C.soft:"#1A1A10",textDecoration:task.done?"line-through":"none",overflowWrap:"break-word",cursor:"pointer"}}>{task.name}</div>
+        )}
         {task.url&&<UrlBadge url={task.url}/>}
         {subs.length>0&&<div style={{fontSize:11,color:C.soft,marginTop:2,fontWeight:600}}>{subsDone}/{subs.length} sub-items done</div>}
       </div>
@@ -515,6 +531,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
     }
   };
   const colorTask=(id,color)=>onUpdate(curr=>({...curr,tasks:curr.tasks.map(t=>t.id===id?{...t,color}:t)}));
+  const editTask=(id,newName)=>onUpdate(curr=>({...curr,tasks:curr.tasks.map(t=>t.id===id?{...t,name:newName}:t)}));
   const [dragTaskId,setDragTaskId]=useState(null);
   const priTaskTouchRef=useRef(null);
   const priTaskDragOver=(toId)=>{
@@ -672,10 +689,12 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
               alert('All IDs unique. Total: '+list.tasks.length+'\n\n'+allIds);
             }
           }} style={{position:"absolute",top:60,right:16,background:"rgba(72,120,168,0.85)",border:"none",borderRadius:100,padding:"6px 12px",fontSize:11,fontWeight:700,color:"#fff",cursor:"pointer"}}>🐛 Check</button>
-        <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:18,color:"#1A2810",marginBottom:2}}>{list.name} 🌿</div>
-        <div style={{fontSize:12,color:"#3A5828",fontStyle:"italic",fontWeight:600}}>
-          {active.length===0&&done.length>0?" All done! Well done you!":
-           active.length>0?`${done.length} done · ${active.length} to go`:"Add your first task below"}
+        <div style={{display:"inline-block",background:"rgba(255,255,255,0.65)",borderRadius:14,padding:"6px 16px 8px",marginBottom:6}}>
+          <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:18,color:"#1A2810",marginBottom:2,textAlign:"center"}}>{list.name} 🌿</div>
+          <div style={{fontSize:12,color:"#3A5828",fontStyle:"italic",fontWeight:700,textAlign:"center"}}>
+            {active.length===0&&done.length>0?" All done! Well done you!":
+             active.length>0?`${done.length} done · ${active.length} to go`:"Add your first task below"}
+          </div>
         </div>
         {/* Progress bar */}
         {list.tasks.length>0&&(
@@ -736,7 +755,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
             <div key={task.id}
                 data-pritaskid={task.id}
                 style={{opacity:dragTaskId===task.id?0.5:1,transform:dragTaskId===task.id?"scale(1.02)":"scale(1)",transition:"all 0.15s"}}>
-              <PriTaskRow task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onAddSub={addSubItems} lists={[]} onPrioritizeThis={()=>setComparing(true)} onSendTo={sendTaskTo} onMoveUp={()=>moveTask(task.id,-1)} onMoveDown={()=>moveTask(task.id,1)} isFirst={i===0} isLast={i===active.length-1} setScreen={setScreen}
+              <PriTaskRow task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onEdit={editTask} onAddSub={addSubItems} lists={[]} onPrioritizeThis={()=>setComparing(true)} onSendTo={sendTaskTo} onMoveUp={()=>moveTask(task.id,-1)} onMoveDown={()=>moveTask(task.id,1)} isFirst={i===0} isLast={i===active.length-1} setScreen={setScreen}
                 dragHandlers={{
                   draggable:true,
                   onDragStart:e=>{e.dataTransfer.effectAllowed="move";setDragTaskId(task.id);},
@@ -749,7 +768,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
             </div>)
           </div>
         ))}
-        {done.length>0&&<><div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:1.5,margin:"16px 0 8px"}}>✓ Completed</div>{done.map((task,i)=>(<PriTaskRow key={task.id} task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask}/>))}</>}
+        {done.length>0&&<><div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:1.5,margin:"16px 0 8px"}}>✓ Completed</div>{done.map((task,i)=>(<PriTaskRow key={task.id} task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onEdit={editTask}/>))}</>}
         {active.length>1&&(
           <div style={{position:"sticky",bottom:90,left:0,right:0,padding:"12px 0 4px",background:"transparent",pointerEvents:"none"}}>
             <button onClick={()=>setComparing(true)}
@@ -1459,6 +1478,10 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
     const days=plan.days.map((d,i)=>i===dayIdx?d.filter(m=>m.id!==mealId):d);
     save({...plan,days});
   };
+  const toggleMealHad=(dayIdx,mealId)=>{
+    const days=plan.days.map((d,di)=>di!==dayIdx?d:d.map(m=>m.id!==mealId?m:{...m,had:!m.had}));
+    save({...plan,days});
+  };
 
   
   const addIngredient=(dayIdx,mealId,ing)=>{
@@ -1794,6 +1817,13 @@ const sendMealToShop=(meal,label)=>{
       {/* Week tab — matching reference exactly */}
       {mealTab==="week"&&(
         <div style={{padding:"8px 16px"}}>
+          <button onClick={()=>{
+              const days=plan.days.map(d=>d.map(m=>({...m,had:false})));
+              save({...plan,days});
+            }}
+            style={{width:"100%",marginBottom:12,padding:"10px",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:"1.5px solid rgba(90,80,60,0.18)",borderRadius:100,fontSize:13,fontWeight:700,color:"#1A1A10",cursor:"pointer"}}>
+            🔁 Reset for next week — un-mark all as had
+          </button>
           {plan.labels.map((label,dayIdx)=>{
             const meals=plan.days[dayIdx]||[];
             const bg=DAY_GRADS[dayIdx];
@@ -1852,9 +1882,10 @@ const sendMealToShop=(meal,label)=>{
                   <div style={{padding:"0 18px 14px"}}>
                     {meals.map((meal,mi)=>(
                       <>
-                      <div key={meal.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderTop:"1px solid "+border}}>
+                      <div key={meal.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderTop:"1px solid "+border,opacity:meal.had?0.6:1}}>
                         <div style={{width:6,height:6,borderRadius:"50%",background:textCol,flexShrink:0,opacity:0.6}}/>
-                        <div style={{flex:1}}><div style={{fontSize:14,fontWeight:600,color:textCol,lineHeight:1.4}}>{meal.text}</div>{meal.url&&<UrlBadge url={meal.url}/>}</div>
+                        <div style={{flex:1}}><div style={{fontSize:14,fontWeight:600,color:textCol,lineHeight:1.4,textDecoration:meal.had?"line-through":"none"}}>{meal.text}</div>{meal.url&&<UrlBadge url={meal.url}/>}</div>
+                        <button onClick={()=>toggleMealHad(dayIdx,meal.id)} title={meal.had?"Mark as not had":"Mark as had — keeps it for next week"} style={{background:meal.had?"#5A7848":"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:meal.had?"#fff":textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>✓</button>
                         <button onClick={()=>scheduleMeal(meal,label)} title="Calendar" style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>📅</button>
                         <button onClick={()=>{const key=dayIdx+"-"+meal.id;setExpandedMeal(expandedMeal===key?null:key);}} title="Ingredients" style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🥦</button>
                         <button onClick={()=>openEditMeal(dayIdx,meal)} style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>✏️</button>
@@ -2121,6 +2152,8 @@ function Housework({setScreen}){
   const [newChoreName,setNewChoreName]=useState('');
   const [showTemplates,setShowTemplates]=useState(false);
   const [dragTask,setDragTask]=useState(null);
+  const [editingChoreId,setEditingChoreId]=useState(null);
+  const [editChoreText,setEditChoreText]=useState('');
   const [showBorrow,setShowBorrow]=useState(false);
   const avbLockRef=useRef(false);
   const [borrowZone,setBorrowZone]=useState(null); // which other zone's dropdown is open
@@ -2293,6 +2326,7 @@ function Housework({setScreen}){
   };
 
   const delTask=(zoneId,taskId)=>saveTasks(prev=>({...prev,[zoneId]:(prev[zoneId]||[]).filter(t=>t.id!==taskId)}));
+  const editChore=(zoneId,taskId,newName)=>saveTasks(prev=>({...prev,[zoneId]:(prev[zoneId]||[]).map(t=>t.id===taskId?{...t,name:newName}:t)}));
 
   // ── A vs B ──
   // Build pairs that compare EVERY task against several others (not just neighbours)
@@ -2845,7 +2879,21 @@ function Housework({setScreen}){
                 <div style={{width:30,height:30,borderRadius:8,background:SCORE_C[t.score],display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:800}}>{t.score}</div>
               </div>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontWeight:700,fontSize:14,color:'#1A1A10'}}>{t.name}</div>
+                {editingChoreId===t.id?(
+                  <div style={{display:'flex',gap:6,marginBottom:4}}>
+                    <input value={editChoreText} onChange={e=>setEditChoreText(e.target.value)}
+                      onKeyDown={e=>{
+                        if(e.key==='Enter'){if(editChoreText.trim())editChore(activeZone,t.id,editChoreText.trim());setEditingChoreId(null);}
+                        if(e.key==='Escape')setEditingChoreId(null);
+                      }}
+                      autoFocus
+                      style={{flex:1,fontWeight:700,fontSize:14,padding:'4px 8px',borderRadius:8,border:'1.5px solid rgba(90,120,72,0.30)',color:'#1A1A10',outline:'none'}}/>
+                    <button onClick={()=>{if(editChoreText.trim())editChore(activeZone,t.id,editChoreText.trim());setEditingChoreId(null);}}
+                      style={{background:'#5A7848',color:'#fff',border:'none',borderRadius:8,padding:'4px 10px',fontSize:11,fontWeight:700,cursor:'pointer'}}>Save</button>
+                  </div>
+                ):(
+                  <div onClick={()=>{setEditChoreText(t.name);setEditingChoreId(t.id);}} style={{fontWeight:700,fontSize:14,color:'#1A1A10',cursor:'pointer'}}>{t.name}</div>
+                )}
                 <div style={{fontSize:10,color:SCORE_C[t.score],fontWeight:600}}>{SCORE_L[t.score]}</div>
                 {t.reason&&<div style={{fontSize:10,color:'#8A8070'}}>{t.reason}</div>}
               </div>
