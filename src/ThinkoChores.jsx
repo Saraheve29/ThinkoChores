@@ -416,7 +416,7 @@ function PriCompare({tasks,onDone}) {
         <div style={{fontFamily:"Georgia,serif",fontSize:20,fontWeight:700,color:"#1A1A10",marginBottom:8,textAlign:"center",lineHeight:1.3,background:"rgba(255,255,255,0.55)",borderRadius:14,padding:"8px 16px"}}>
           Which one is more urgent?
         </div>
-        <div style={{fontSize:12,color:"#3A2A18",fontWeight:600,marginBottom:24,textAlign:"center"}}>
+        <div style={{fontSize:12,color:"#3A2A18",fontWeight:700,marginBottom:24,textAlign:"center",background:"rgba(255,255,255,0.55)",borderRadius:10,padding:"5px 14px",display:"inline-block"}}>
           Comparing {notDone.length} task{notDone.length!==1?"s":""} total · {pairs.length-pairIdx} comparison{pairs.length-pairIdx!==1?"s":""} left
         </div>
 
@@ -430,7 +430,7 @@ function PriCompare({tasks,onDone}) {
           <TaskCard task={taskB} onPick={()=>choose(taskB.id)}/>
         </div>
 
-        <div style={{marginTop:14,color:"#5A4A30",fontWeight:600,fontSize:12,textAlign:"center"}}>
+        <div style={{marginTop:14,color:"#5A4A30",fontWeight:700,fontSize:12,textAlign:"center",background:"rgba(255,255,255,0.55)",borderRadius:10,padding:"5px 14px",display:"inline-block"}}>
           Tap the one that matters more right now
         </div>
       </div>
@@ -2153,6 +2153,7 @@ function Housework({setScreen}){
   const [showTemplates,setShowTemplates]=useState(false);
   const [dragTask,setDragTask]=useState(null);
   const [editingChoreId,setEditingChoreId]=useState(null);
+  const [chorePickerOpenId,setChorePickerOpenId]=useState(null);
   const [editChoreText,setEditChoreText]=useState('');
   const [showBorrow,setShowBorrow]=useState(false);
   const avbLockRef=useRef(false);
@@ -2327,6 +2328,7 @@ function Housework({setScreen}){
 
   const delTask=(zoneId,taskId)=>saveTasks(prev=>({...prev,[zoneId]:(prev[zoneId]||[]).filter(t=>t.id!==taskId)}));
   const editChore=(zoneId,taskId,newName)=>saveTasks(prev=>({...prev,[zoneId]:(prev[zoneId]||[]).map(t=>t.id===taskId?{...t,name:newName}:t)}));
+  const colorChore=(zoneId,taskId,color)=>saveTasks(prev=>({...prev,[zoneId]:(prev[zoneId]||[]).map(t=>t.id===taskId?{...t,color}:t)}));
 
   // ── A vs B ──
   // Build pairs that compare EVERY task against several others (not just neighbours)
@@ -2629,7 +2631,7 @@ function Housework({setScreen}){
           <div style={{height:4,borderRadius:2,background:'rgba(90,80,60,0.10)',marginBottom:20,overflow:'hidden'}}>
             <div style={{height:'100%',width:`${progressPct}%`,background:'#5A7848',borderRadius:2,transition:'width 0.3s'}}/>
           </div>
-          <div style={{fontSize:11,color:'#8A8070',textAlign:'center',marginBottom:10}}>{sortedList.length} placed · {pendingQueue.length} left to place</div>
+          <div style={{fontSize:11,color:'#5A4A30',fontWeight:700,textAlign:'center',marginBottom:10,background:'rgba(255,255,255,0.55)',borderRadius:8,padding:'4px 10px',display:'inline-block'}}>{sortedList.length} placed · {pendingQueue.length} left to place</div>
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
             {[{label:'A',task:pendingItem},{label:'B',task:pivot}].map(({label,task})=>(
               <button key={task.id+label} onClick={()=>chooseAvB(task,label==='A'?pivot:pendingItem)}
@@ -2670,7 +2672,7 @@ function Housework({setScreen}){
             <div style={{fontSize:12,color:'#5A4A30',marginBottom:4,fontWeight:600}}>Start with</div>
             <div style={{fontFamily:'Georgia,serif',fontWeight:700,fontSize:18,color:'#1A2810'}}>{todo[0]?.name||'Your first chore'}</div>
           </div>
-          <div style={{fontSize:10,color:'#8A8070',textAlign:'center',marginBottom:8,fontWeight:600}}>⠿ Hold to drag and reorder if you'd like it different</div>
+          <div style={{fontSize:10,color:'#5A4A30',textAlign:'center',marginBottom:8,fontWeight:700,background:'rgba(255,255,255,0.55)',borderRadius:8,padding:'4px 10px',display:'inline-block'}}>⠿ Hold to drag and reorder if you'd like it different</div>
           {todo.map((t,i)=>(
             <div key={t.id}
               draggable
@@ -2751,7 +2753,7 @@ function Housework({setScreen}){
             {showBorrow&&(
               <div style={{marginBottom:8}}>
                 {(zones||[]).filter(z=>z.id!==activeZone).length===0&&(
-                  <div style={{fontSize:12,color:'#8A8070',textAlign:'center',padding:'8px'}}>No other zones set up yet</div>
+                  <div style={{fontSize:12,color:'#5A4A30',fontWeight:600,textAlign:'center',padding:'8px',background:'rgba(255,255,255,0.55)',borderRadius:10}}>No other zones set up yet</div>
                 )}
                 {(zones||[]).filter(z=>z.id!==activeZone).map(z=>{
                   // Combine real tasks already added AND saved chores not yet added, for that zone
@@ -2851,13 +2853,13 @@ function Housework({setScreen}){
 
           {/* Task list */}
           {todo.length===0&&done.length===0&&(
-            <div style={{textAlign:'center',padding:'30px 20px',color:'#8A8070'}}>
+            <div style={{textAlign:'center',padding:'30px 20px',color:'#5A4A30',background:'rgba(255,255,255,0.55)',borderRadius:20}}>
               <div style={{fontSize:40,marginBottom:8}}>{z?.icon}</div>
-              <div style={{fontFamily:'Georgia,serif',fontSize:15,marginBottom:12}}>No chores yet — add one above or use Saved Chores!</div>
+              <div style={{fontFamily:'Georgia,serif',fontSize:15,marginBottom:12,fontWeight:600}}>No chores yet — add one above or use Saved Chores!</div>
             </div>
           )}
 
-          {todo.length>0&&<div style={{fontSize:11,color:'#8A8070',marginBottom:8,fontWeight:600}}>⠿ Drag to reorder</div>}
+          {todo.length>0&&<div style={{fontSize:11,color:'#5A4A30',marginBottom:8,fontWeight:700,background:'rgba(255,255,255,0.55)',borderRadius:8,padding:'4px 10px',display:'inline-block'}}>⠿ Drag to reorder</div>}
 
           {todo.map(t=>(
             <div key={t.id}
@@ -2875,8 +2877,17 @@ function Housework({setScreen}){
               }}
               onDragEnd={()=>{setDragTask(null);setDragOver(null);}}
               style={{background:dragOver===t.id?'rgba(90,120,72,0.10)':MULTI,borderRadius:14,padding:'11px 13px',marginBottom:8,boxShadow:'0 2px 8px rgba(0,0,0,0.05)',display:'flex',alignItems:'flex-start',gap:9,border:(dragOver===t.id?'1.5px solid rgba(90,120,72,0.30)':'1.5px solid transparent'),cursor:'grab'}}>
-              <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2,flexShrink:0}}>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:5,flexShrink:0}}>
                 <div style={{width:30,height:30,borderRadius:8,background:SCORE_C[t.score],display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:800}}>{t.score}</div>
+                <div style={{position:'relative'}}>
+                  <button onClick={()=>setChorePickerOpenId(chorePickerOpenId===t.id?null:t.id)}
+                    title="Change colour"
+                    style={{width:20,height:20,borderRadius:'50%',cursor:'pointer',padding:0,
+                      background:swatchById(t.color).fill,
+                      border:`2.5px solid ${swatchById(t.color).border}`,
+                      boxShadow:'0 1px 4px rgba(0,0,0,0.12)'}}/>
+                  {chorePickerOpenId===t.id&&<ColourPicker current={t.color} onChange={c=>colorChore(activeZone,t.id,c)} onClose={()=>setChorePickerOpenId(null)}/>}
+                </div>
               </div>
               <div style={{flex:1,minWidth:0}}>
                 {editingChoreId===t.id?(
@@ -3034,7 +3045,7 @@ function Housework({setScreen}){
           </div>
         ):(
           <>
-          <div style={{fontSize:10,color:'#8A8070',textAlign:'center',marginBottom:4,fontWeight:600}}>⠿ Hold to drag and reorder</div>
+          <div style={{fontSize:10,color:'#5A4A30',textAlign:'center',marginBottom:4,fontWeight:700,background:'rgba(255,255,255,0.55)',borderRadius:8,padding:'4px 10px',display:'inline-block'}}>⠿ Hold to drag and reorder</div>
           <div style={{display:'flex',flexDirection:'column',gap:12}}>
             {zoneList.map(z=>{
               const zt=getZT(z.id);
