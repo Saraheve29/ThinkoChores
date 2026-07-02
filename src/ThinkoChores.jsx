@@ -1020,14 +1020,24 @@ const CAT_EMOJI={
 };
 
 function ShoppingList({data,setData,setScreen}){
-  const [activeId,setActiveId]=useState(null);
-  const [showTemplates,setShowTemplates]=useState(true);
+  const [activeId,setActiveIdRaw]=useState(null);
+  const [showTemplates,setShowTemplates]=useState(false);
   const [customising,setCustomising]=useState(null);
   const [customItems,setCustomItems]=useState([]);
   const [custNewItem,setCustNewItem]=useState("");
   const [custListName,setCustListName]=useState("");
   const [custDrag,setCustDrag]=useState(null);
   const [dragShop,setDragShop]=useState(null);
+  const [lastUsedId,setLastUsedId]=useState(()=>{
+    try{return localStorage.getItem('thinko_shop_last')||null;}catch{return null;}
+  });
+  const setActiveId=id=>{
+    setActiveIdRaw(id);
+    if(id){
+      try{localStorage.setItem('thinko_shop_last',String(id));}catch{}
+      setLastUsedId(String(id));
+    }
+  };
   const shopTouchRef=useRef(null);
   const [templateOrder,setTemplateOrder]=useState(()=>{
     try{
@@ -1210,45 +1220,54 @@ function ShoppingList({data,setData,setScreen}){
           </button>
         </div>
 
-        {/* Hero */}
-        <div style={{textAlign:"center",padding:"24px 24px 20px",position:"relative",zIndex:1}}>
-          <div style={{fontSize:56,marginBottom:12,filter:"drop-shadow(0 4px 16px rgba(42,80,28,0.20))"}}>🛒</div>
-          <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:26,color:"#1A2810",marginBottom:6,letterSpacing:-0.5}}>
-            New shopping list
-          </div>
-          <div style={{fontSize:13,color:"rgba(42,60,28,0.60)",lineHeight:1.6,marginBottom:hasLists?18:0}}>
-            Pick a type — customise it before saving
-          </div>
-          {/* My lists button — centred, prominent */}
+        {/* Main content */}
+        <div style={{padding:"16px 16px 100px",position:"relative",zIndex:1}}>
+
+          {/* MOST RECENT LIST — always at very top of first screen */}
+          {lastUsedId&&data.find(l=>l.id===lastUsedId)&&(()=>{
+            const last=data.find(l=>l.id===lastUsedId);
+            const remaining=(last.items||[]).filter(i=>!i.done).length;
+            const total=(last.items||[]).length;
+            return(
+              <button onClick={()=>setActiveId(lastUsedId)}
+                style={{width:"100%",marginBottom:14,padding:"22px 20px",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:"2px solid rgba(90,120,72,0.30)",borderRadius:24,cursor:"pointer",display:"flex",alignItems:"center",gap:16,boxShadow:"0 6px 28px rgba(42,80,28,0.18)"}}>
+                <div style={{fontSize:44,flexShrink:0}}>{last.icon||"🛒"}</div>
+                <div style={{flex:1,textAlign:"left"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#5A7040",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>📍 Continue shopping</div>
+                  <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:22,color:"#1A1A10",marginBottom:4}}>{last.name}</div>
+                  <div style={{fontSize:13,color:"#5A4A30",fontWeight:600}}>{remaining>0?`${remaining} of ${total} items still needed`:"All items ticked ✓"}</div>
+                </div>
+                <div style={{fontSize:24,color:"#5A7040",flexShrink:0}}>→</div>
+              </button>
+            );
+          })()}
+
+          {/* MY LISTS — second row */}
           {hasLists&&(
             <button onClick={()=>setShowTemplates(false)}
-              style={{
-                display:"inline-flex",alignItems:"center",gap:8,
-                background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",
-                border:"none",borderRadius:100,
-                padding:"13px 28px",
-                color:"#2A1A08",fontFamily:"Georgia,serif",fontWeight:700,fontSize:16,
-                cursor:"pointer",
-                boxShadow:"0 4px 18px rgba(58,80,38,0.35)",
-              }}>
-              <span>📋</span> My lists
+              style={{width:"100%",marginBottom:14,padding:"16px 18px",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:"1.5px solid rgba(90,120,72,0.20)",borderRadius:20,cursor:"pointer",display:"flex",alignItems:"center",gap:14,boxShadow:"0 2px 12px rgba(42,80,28,0.08)"}}>
+              <div style={{fontSize:28,flexShrink:0}}>📋</div>
+              <div style={{flex:1,textAlign:"left"}}>
+                <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:16,color:"#1A2810"}}>My lists</div>
+                <div style={{fontSize:12,color:"rgba(42,60,28,0.55)",marginTop:2}}>{data.length} saved list{data.length!==1?"s":""}</div>
+              </div>
+              <svg width="8" height="14" viewBox="0 0 8 14" fill="none" style={{flexShrink:0}}><path d="M1 1l6 6-6 6" stroke="rgba(42,60,28,0.40)" strokeWidth="1.8" strokeLinecap="round"/></svg>
             </button>
           )}
-        </div>
 
-        {/* Template grid */}
-        <div style={{padding:"0 16px 100px",position:"relative",zIndex:1}}>
-
-          {/* Create your own — first, above templates */}
+          {/* CREATE YOUR OWN — smaller */}
           <button onClick={()=>pickTemplate({id:"blank",icon:"✏️",name:"",color:"#5A7848",items:[]})}
-            style={{width:"100%",marginBottom:14,padding:"16px 18px",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",backdropFilter:"blur(12px)",border:"1.5px dashed rgba(90,120,72,0.38)",borderRadius:22,cursor:"pointer",display:"flex",alignItems:"center",gap:14,boxShadow:"0 2px 12px rgba(42,80,28,0.08)"}}>
-            <div style={{width:46,height:46,borderRadius:16,background:"rgba(90,120,72,0.10)",border:"1.5px dashed rgba(90,120,72,0.28)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>✏️</div>
-            <div style={{textAlign:"left",flex:1}}>
-              <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:15,color:"#1A2810"}}>Create your own list</div>
-              <div style={{fontSize:12,color:"rgba(42,60,28,0.50)",marginTop:2}}>Name it and add items from scratch</div>
+            style={{width:"100%",marginBottom:14,padding:"13px 16px",background:"rgba(255,255,255,0.45)",backdropFilter:"blur(12px)",border:"1.5px dashed rgba(90,120,72,0.35)",borderRadius:16,cursor:"pointer",display:"flex",alignItems:"center",gap:12,boxShadow:"0 2px 8px rgba(42,80,28,0.06)"}}>
+            <div style={{fontSize:20,flexShrink:0}}>✏️</div>
+            <div style={{flex:1,textAlign:"left"}}>
+              <div style={{fontWeight:700,fontSize:13,color:"#1A2810"}}>Create your own list</div>
+              <div style={{fontSize:11,color:"rgba(42,60,28,0.50)",marginTop:1}}>Name it and add items from scratch</div>
             </div>
             <svg width="8" height="14" viewBox="0 0 8 14" fill="none" style={{flexShrink:0}}><path d="M1 1l6 6-6 6" stroke="rgba(42,60,28,0.30)" strokeWidth="1.8" strokeLinecap="round"/></svg>
           </button>
+
+          {/* TEMPLATE GRID — below */}
+          <div style={{fontSize:11,fontWeight:700,color:"rgba(42,60,28,0.50)",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Or start from a template</div>
 
           {/* Templates */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
@@ -1321,6 +1340,25 @@ function ShoppingList({data,setData,setScreen}){
             </button>
           </div>
         )}
+        {/* MOST RECENT LIST */}
+        {lastUsedId&&data.find(l=>l.id===lastUsedId)&&(()=>{
+          const last=data.find(l=>l.id===lastUsedId);
+          const remaining=(last.items||[]).filter(i=>!i.done).length;
+          const col=last.color||"#5A7848";
+          return(
+            <button onClick={()=>setActiveId(lastUsedId)}
+              style={{width:"100%",marginBottom:20,padding:"22px 20px",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:"3px solid "+col,borderRadius:26,cursor:"pointer",boxShadow:"0 8px 32px "+col+"50",textAlign:"left",display:"flex",alignItems:"center",gap:16}}>
+              <div style={{fontSize:44,flexShrink:0}}>{last.icon||"🛒"}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:12,fontWeight:700,color:col,marginBottom:4}}>⭐ Most recent list</div>
+                <div style={{fontFamily:"Georgia,serif",fontWeight:800,fontSize:24,color:"#1A1A10",marginBottom:4}}>{last.name}</div>
+                <div style={{fontSize:13,color:"#5A4A30",fontWeight:600}}>{remaining>0?`${remaining} items needed`:"All done ✓"}</div>
+              </div>
+              <div style={{fontSize:30,color:col}}>→</div>
+            </button>
+          );
+        })()}
+
         {/* List cards — big, beautiful, prominent */}
         {orderedLists.map((list,i)=>{
           const remaining=list.items.filter(it=>!it.done).length;
@@ -1337,27 +1375,23 @@ function ShoppingList({data,setData,setScreen}){
               onClick={()=>setActiveId(list.id)}
               style={{
                 background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",
-                backdropFilter:"blur(16px)",
-                borderRadius:26,
-                marginBottom:14,
+                borderRadius:18,
+                marginBottom:10,
                 overflow:"hidden",
                 cursor:"pointer",
-                border:"1.5px solid "+col+"30",
-                boxShadow:"0 6px 28px "+col+"20, 0 1px 0 rgba(255,255,255,0.9) inset",
+                border:"1.5px solid "+col+"40",
+                boxShadow:"0 3px 14px "+col+"18",
                 opacity:dragShop===list.id?0.5:1,
-                transition:"transform 0.12s, box-shadow 0.12s",
               }}>
               {/* Colour top bar */}
-              <div style={{height:6,background:"linear-gradient(90deg,"+col+","+col+"aa)"}}/>
-              <div style={{padding:"18px 20px",display:"flex",alignItems:"center",gap:16}}>
-                {/* Big icon circle */}
+              <div style={{height:4,background:col}}/>
+              <div style={{padding:"12px 14px",display:"flex",alignItems:"center",gap:12}}>
+                {/* Icon */}
                 <div style={{
-                  width:64,height:64,borderRadius:22,
-                  background:"linear-gradient(135deg,"+col+"30,"+col+"12)",
-                  border:"2.5px solid "+col+"40",
+                  width:40,height:40,borderRadius:12,
+                  background:col+"20",
                   display:"flex",alignItems:"center",justifyContent:"center",
-                  fontSize:30,flexShrink:0,
-                  boxShadow:"0 3px 14px "+col+"25",
+                  fontSize:22,flexShrink:0,
                 }}>{list.icon||"🛒"}</div>
                 {/* Text */}
                 <div style={{flex:1,minWidth:0}}>
@@ -1395,6 +1429,31 @@ function ShoppingList({data,setData,setScreen}){
           );
         })}
         {data.length>1&&<div style={{textAlign:"center",fontSize:11,color:"rgba(60,50,30,0.35)",marginTop:4}}>⠿ Hold and drag to reorder</div>}
+
+        {/* Templates section below lists */}
+        <div style={{marginTop:20,paddingTop:16,borderTop:"1px solid rgba(90,80,60,0.10)"}}>
+          <div style={{fontSize:12,fontWeight:700,color:"rgba(42,60,28,0.55)",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Start from a template</div>
+          <button onClick={()=>pickTemplate({id:"blank",icon:"✏️",name:"",color:"#5A7848",items:[]})}
+            style={{width:"100%",marginBottom:10,padding:"11px 14px",background:"rgba(255,255,255,0.5)",border:"1.5px dashed rgba(90,120,72,0.35)",borderRadius:14,cursor:"pointer",display:"flex",alignItems:"center",gap:10,boxShadow:"0 2px 8px rgba(42,80,28,0.06)"}}>
+            <span style={{fontSize:18}}>✏️</span>
+            <div style={{flex:1,textAlign:"left"}}>
+              <div style={{fontWeight:700,fontSize:13,color:"#1A2810"}}>Create your own list</div>
+              <div style={{fontSize:11,color:"rgba(42,60,28,0.45)"}}>Name it and add items from scratch</div>
+            </div>
+            <svg width="7" height="12" viewBox="0 0 8 14" fill="none"><path d="M1 1l6 6-6 6" stroke="rgba(42,60,28,0.30)" strokeWidth="1.8" strokeLinecap="round"/></svg>
+          </button>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            {ALL_TEMPLATES.map((t,i)=>(
+              <button key={t.id} onClick={()=>pickTemplate({...t,items:t.items||[]})}
+                style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:"1.5px solid rgba(255,255,255,0.90)",borderRadius:18,padding:"14px 10px 12px",cursor:"pointer",textAlign:"center",position:"relative",overflow:"hidden",boxShadow:"0 3px 14px rgba(42,80,28,0.10)"}}>
+                <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:t.color,borderRadius:"18px 18px 0 0"}}/>
+                <div style={{fontSize:28,marginBottom:6,marginTop:2}}>{t.icon}</div>
+                <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:13,color:"#1A2810",marginBottom:2}}>{t.name}</div>
+                <div style={{fontSize:9,color:"rgba(42,60,28,0.45)",lineHeight:1.4}}>{t.subtitle||t.items.slice(0,3).join(", ")+(t.items.length>3?"…":"")}</div>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1728,7 +1787,7 @@ const sendMealToShop=(meal,label)=>{
 
           {/* Ideas grid */}
           {recipes.length===0&&!addingRecipe&&(
-            <div style={{textAlign:"center",padding:"24px 20px",color:"#1A1A10",background:"rgba(255,255,255,0.85)",borderRadius:16,padding:"16px"}}>
+            <div style={{textAlign:"center",padding:"20px 16px",color:"#1A1A10",background:"rgba(255,255,255,0.85)",borderRadius:16}}>
               <div style={{fontSize:40,marginBottom:8}}>🍽️</div>
               <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:16,color:"#1A1A10",marginBottom:4}}>No ideas yet</div>
               <div style={{fontSize:13,color:"#1A1A10",fontWeight:600}}>Save recipes, Pinterest pins and photos here for inspiration.</div>
@@ -2148,7 +2207,11 @@ function Housework({setScreen}){
   const [dismissed,setDismissed]=useState(()=>load('hw_dismissed',[]));
   const saveDismissed=d=>{setDismissed(d);save('hw_dismissed',d);};
   const [customChores,setCustomChores]=useState(()=>load('hw_custom_chores',{})); // {zoneId:[names]}
-  const saveCustomChores=c=>{setCustomChores(c);save('hw_custom_chores',c);};
+  const saveCustomChores=c=>{
+    // dedup each zone's list on every save
+    const deduped=Object.fromEntries(Object.entries(c).map(([k,v])=>[k,[...new Set(v)]]));
+    setCustomChores(deduped);save('hw_custom_chores',deduped);
+  };
   const [newChoreName,setNewChoreName]=useState('');
   const [showTemplates,setShowTemplates]=useState(false);
   const [dragTask,setDragTask]=useState(null);
@@ -2690,227 +2753,35 @@ function Housework({setScreen}){
                 setDragTask(null);setDragOver(null);
               }}
               onDragEnd={()=>{setDragTask(null);setDragOver(null);}}
-              style={{background:dragOver===t.id?'rgba(90,120,72,0.10)':MULTI,borderRadius:14,padding:'12px 14px',marginBottom:8,display:'flex',alignItems:'center',gap:10,boxShadow:'0 2px 8px rgba(0,0,0,0.06)',border:(dragOver===t.id?'1.5px solid rgba(90,120,72,0.30)':'1.5px solid transparent'),cursor:'grab'}}>
-              <div style={{width:28,height:28,borderRadius:8,background:SCORE_C[t.score]||'#5A7848',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:13,flexShrink:0}}>{i+1}</div>
-              <div style={{fontWeight:700,fontSize:14,color:'#1A1A10',flex:1}}>{t.name}</div>
-              <div style={{fontSize:14,color:'#A09080',flexShrink:0}}>⠿</div>
-            </div>
-          ))}
-          <button onClick={()=>{setView('zone');setShowTemplates(false);}} style={{width:'100%',marginTop:8,padding:'14px',background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:100,fontFamily:'Georgia,serif',fontWeight:700,fontSize:16,cursor:'pointer',boxShadow:'0 4px 18px rgba(90,120,72,0.20)'}}>
-            ✨ Let's get started!
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── ZONE DETAIL ──
-  if(view==='zone'&&activeZone){
-    const z=zones?.find(z=>z.id===activeZone);
-    const zt=getZT(activeZone);
-    const todo=zt.filter(t=>!t.done).sort((a,b)=>a.score-b.score);
-    const done=zt.filter(t=>t.done);
-    const allPresetsForZone=[...(PRESETS[activeZone]||[]),...(customChores[activeZone]||[])];
-    const availPresets=allPresetsForZone.filter(p=>!zt.some(t=>t.name.toLowerCase()===p.toLowerCase())&&!dismissed.includes(p));
-    return(
-      <div style={{minHeight:'100vh',background:'transparent',fontFamily:"'Segoe UI',sans-serif",paddingBottom:90}}>
-        {/* Header */}
-        <div style={{background:MULTI,padding:'14px 18px',display:'flex',alignItems:'center',gap:10,borderBottom:'1px solid rgba(90,80,60,0.08)',position:'sticky',top:0,zIndex:50}}>
-          <button onClick={()=>{setView('hub');}} style={{background:'none',border:'none',cursor:'pointer',width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-            <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="#1A1A10" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </button>
-          <div style={{flex:1,fontFamily:'Georgia,serif',fontWeight:700,fontSize:19,color:'#1A1A10'}}>{z?.icon} {z?.name}</div>
-        </div>
-        <div style={{padding:'14px 16px'}}>
-
-          {/* A vs B button + Borrow task */}
-          <div style={{display:'flex',gap:8,marginBottom:8}}>
-            <button onClick={startAvB}
-              style={{flex:1,background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:100,padding:'10px',fontSize:13,fontFamily:'Georgia,serif',fontWeight:700,cursor:'pointer',boxShadow:'0 4px 18px rgba(90,120,72,0.20)'}}>
-              🎯 A vs B — rank chores
-            </button>
-          </div>
-          {borrowedIds.length>0&&(
-            <div style={{fontSize:11,color:'#5A7040',marginBottom:8,fontWeight:600,textAlign:'center'}}>
-              🔄 {borrowedIds.length} chore{borrowedIds.length>1?'s':''} borrowed for this round — will go back after ranking
-            </div>
-          )}
-
-          {/* Add task */}
-          <div style={{background:MULTI,borderRadius:16,padding:'12px',marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
-            <div style={{display:'flex',gap:8,marginBottom:8}}>
-              <input value={newTask} onChange={e=>setNewTask(e.target.value)}
-                onKeyDown={e=>{if(e.key==='Enter'&&newTask.trim()){addTask(activeZone,newTask.trim(),3,'');setNewTask('');}}}
-                placeholder="Add a chore…"
-                style={{flex:1,padding:'9px 13px',borderRadius:11,border:'1.5px solid rgba(90,120,72,0.25)',fontSize:14,color:'#1A1A10',background:'rgba(255,255,255,0.9)',outline:'none'}}/>
-              <button onClick={()=>{if(newTask.trim()){addTask(activeZone,newTask.trim(),3,'');setNewTask('');}}}
-                style={{background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:11,padding:'9px 14px',fontSize:13,fontWeight:700,cursor:'pointer'}}>Add</button>
-            </div>
-            <button onClick={()=>setShowBorrow(!showBorrow)}
-              style={{width:'100%',padding:'8px',marginBottom:8,background:'rgba(255,255,255,0.6)',border:'1px solid rgba(90,120,72,0.20)',borderRadius:10,fontSize:12,fontWeight:700,color:'#3A5828',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <span>🔄 Borrow a chore from another zone</span><span>{showBorrow?'▲':'▼'}</span>
-            </button>
-            {showBorrow&&(
-              <div style={{marginBottom:8}}>
-                {(zones||[]).filter(z=>z.id!==activeZone).length===0&&(
-                  <div style={{fontSize:12,color:'#5A4A30',fontWeight:600,textAlign:'center',padding:'8px',background:'rgba(255,255,255,0.55)',borderRadius:10}}>No other zones set up yet</div>
-                )}
-                {(zones||[]).filter(z=>z.id!==activeZone).map(z=>{
-                  // Combine real tasks already added AND saved chores not yet added, for that zone
-                  const realTasks=getZT(z.id).filter(t=>!t.done);
-                  const realNames=realTasks.map(t=>t.name.toLowerCase());
-                  const savedForZone=[...(PRESETS[z.id]||[]),...(customChores[z.id]||[])]
-                    .filter(name=>!realNames.includes(name.toLowerCase()));
-                  const isOpen=borrowZone===z.id;
-                  const totalCount=realTasks.length+savedForZone.length;
-                  return(
-                    <div key={z.id} style={{marginBottom:6,borderRadius:12,overflow:'hidden',border:'1px solid rgba(90,120,72,0.15)'}}>
-                      <button onClick={()=>setBorrowZone(isOpen?null:z.id)}
-                        style={{width:'100%',padding:'9px 12px',background:'rgba(255,255,255,0.55)',border:'none',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer'}}>
-                        <span style={{fontSize:13,fontWeight:700,color:'#3A5828'}}>{z.icon} {z.name}</span>
-                        <span style={{fontSize:11,color:'#8A8070'}}>{totalCount} chore{totalCount!==1?'s':''} {isOpen?'▲':'▼'}</span>
-                      </button>
-                      {isOpen&&(
-                        <div style={{padding:'6px 10px',background:'rgba(255,255,255,0.35)',maxHeight:220,overflowY:'auto'}}>
-                          {totalCount===0&&<div style={{fontSize:12,color:'#8A8070',textAlign:'center',padding:'8px'}}>Nothing to borrow from {z.name} yet</div>}
-                          {realTasks.filter(t=>!borrowedIds.some(b=>b.taskId===t.id)).map(t=>(
-                            <div key={t.id} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 0',borderBottom:'1px solid rgba(90,80,60,0.06)'}}>
-                              <div style={{flex:1,fontSize:13,color:'#1A1A10'}}>{t.name}</div>
-                              <button onClick={()=>setBorrowedIds(b=>[...b,{taskId:t.id,fromZone:z.id}])}
-                                style={{background:'rgba(90,120,72,0.10)',border:'1px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'4px 9px',fontSize:10,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>+ Borrow</button>
-                            </div>
-                          ))}
-                          {savedForZone.length>0&&(
-                            <div style={{fontSize:10,fontWeight:700,color:'#8A8070',padding:'6px 0 2px',textTransform:'uppercase',letterSpacing:0.5}}>📋 Saved chores (not added yet)</div>
-                          )}
-                          {savedForZone.map(name=>(
-                            <div key={name} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 0',borderBottom:'1px solid rgba(90,80,60,0.06)'}}>
-                              <div style={{flex:1,fontSize:13,color:'#1A1A10'}}>{name}</div>
-                              <button onClick={()=>{
-                                  // Add the chore into its real zone first, then borrow it
-                                  const newTaskObj={id:Date.now()+Math.random(),name,score:3,reason:'',done:false};
-                                  saveTasks(prevTasks=>({...prevTasks,[z.id]:[...(prevTasks[z.id]||[]),newTaskObj]}));
-                                  setBorrowedIds(b=>[...b,{taskId:newTaskObj.id,fromZone:z.id}]);
-                                }}
-                                style={{background:'rgba(90,120,72,0.10)',border:'1px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'4px 9px',fontSize:10,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>+ Borrow</button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            <button onClick={()=>setShowTemplates(!showTemplates)}
-              style={{width:'100%',padding:'8px',background:'rgba(255,255,255,0.6)',border:'1px solid rgba(90,120,72,0.20)',borderRadius:10,fontSize:12,fontWeight:700,color:'#3A5828',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <span>📋 Saved Chores</span><span>{showTemplates?'▲':'▼'}</span>
-            </button>
-            {showTemplates&&(
-              <div style={{marginTop:8,maxHeight:280,overflowY:'auto'}}>
-                {/* Add a new saved chore */}
+              style={{background:dragOver===t.id?'rgba(90,120,72,0.10)':MULTI,borderRadius:14,padding:'11px 13px',marginBottom:8,boxShadow:'0 2px 8px rgba(0,0,0,0.05)',border:(dragOver===t.id?'1.5px solid rgba(90,120,72,0.30)':'1.5px solid transparent')}}>
+              {/* Chore name — full width on top, tap to edit */}
+              {editingChoreId===t.id?(
                 <div style={{display:'flex',gap:6,marginBottom:8}}>
-                  <input value={newChoreName} onChange={e=>setNewChoreName(e.target.value)}
+                  <input value={editChoreText} onChange={e=>setEditChoreText(e.target.value)}
                     onKeyDown={e=>{
-                      if(e.key==='Enter'&&newChoreName.trim()){
-                        const nc={...customChores,[activeZone]:[...(customChores[activeZone]||[]),newChoreName.trim()]};
-                        saveCustomChores(nc);setNewChoreName('');
-                      }
+                      if(e.key==='Enter'){if(editChoreText.trim())editChore(activeZone,t.id,editChoreText.trim());setEditingChoreId(null);}
+                      if(e.key==='Escape')setEditingChoreId(null);
                     }}
-                    placeholder="Save a new chore for next time…"
-                    style={{flex:1,padding:'7px 11px',borderRadius:9,border:'1.5px solid rgba(90,120,72,0.20)',fontSize:12,color:'#1A1A10',background:'rgba(255,255,255,0.85)',outline:'none'}}/>
-                  <button onClick={()=>{
-                      if(newChoreName.trim()){
-                        const nc={...customChores,[activeZone]:[...(customChores[activeZone]||[]),newChoreName.trim()]};
-                        saveCustomChores(nc);setNewChoreName('');
-                      }
-                    }} style={{background:MULTI,border:'1px solid rgba(90,120,72,0.25)',borderRadius:9,padding:'7px 12px',fontSize:12,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>Save</button>
+                    autoFocus
+                    style={{flex:1,fontWeight:700,fontSize:15,padding:'6px 10px',borderRadius:10,border:'1.5px solid rgba(90,120,72,0.30)',color:'#1A1A10',outline:'none'}}/>
+                  <button onClick={()=>{if(editChoreText.trim())editChore(activeZone,t.id,editChoreText.trim());setEditingChoreId(null);}}
+                    style={{background:'#5A7848',color:'#fff',border:'none',borderRadius:10,padding:'6px 14px',fontSize:13,fontWeight:700,cursor:'pointer'}}>Save</button>
                 </div>
-                {availPresets.length===0
-                  ?<div style={{fontSize:12,color:'#8A8070',textAlign:'center',padding:'8px'}}>All saved chores added ✓</div>
-                  :availPresets.map(p=>{
-                    const isCustom=(customChores[activeZone]||[]).includes(p);
-                    return(
-                    <div key={p} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 0',borderBottom:'1px solid rgba(90,80,60,0.06)'}}>
-                      <div style={{flex:1,fontSize:13,color:'#1A1A10'}}>{p}{isCustom&&<span style={{fontSize:9,color:'#5A7040',marginLeft:5}}>★</span>}</div>
-                      <button onClick={()=>addTask(activeZone,p,1,'Urgent')} style={{background:'rgba(224,48,32,0.10)',border:'1px solid rgba(224,48,32,0.25)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#C03020',cursor:'pointer'}}>🔴</button>
-                      <button onClick={()=>addTask(activeZone,p,3,'Normal')} style={{background:MULTI,border:'1px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>Normal</button>
-                      <button onClick={()=>addTask(activeZone,p,5,'Later')} style={{background:'rgba(72,120,168,0.10)',border:'1px solid rgba(72,120,168,0.25)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#2A5880',cursor:'pointer'}}>Later</button>
-                      {isCustom?(
-                        <button onClick={()=>{
-                            const nc={...customChores,[activeZone]:(customChores[activeZone]||[]).filter(x=>x!==p)};
-                            saveCustomChores(nc);
-                          }} title="Delete this saved chore" style={{background:'rgba(192,57,43,0.08)',border:'1px solid rgba(192,57,43,0.18)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#c0392b',cursor:'pointer'}}>🗑</button>
-                      ):(
-                        <button onClick={()=>saveDismissed([...dismissed,p])} title="Hide this one" style={{background:'rgba(90,80,60,0.08)',border:'1px solid rgba(90,80,60,0.15)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#8A8070',cursor:'pointer'}}>✕</button>
-                      )}
-                    </div>
-                  );})
-                }
-              </div>
-            )}
-          </div>
-
-          {/* Task list */}
-          {todo.length===0&&done.length===0&&(
-            <div style={{textAlign:'center',padding:'30px 20px',color:'#5A4A30',background:'rgba(255,255,255,0.55)',borderRadius:20}}>
-              <div style={{fontSize:40,marginBottom:8}}>{z?.icon}</div>
-              <div style={{fontFamily:'Georgia,serif',fontSize:15,marginBottom:12,fontWeight:600}}>No chores yet — add one above or use Saved Chores!</div>
-            </div>
-          )}
-
-          {todo.length>0&&<div style={{fontSize:11,color:'#5A4A30',marginBottom:8,fontWeight:700,background:'rgba(255,255,255,0.55)',borderRadius:8,padding:'4px 10px',display:'inline-block'}}>⠿ Drag to reorder</div>}
-
-          {todo.map(t=>(
-            <div key={t.id}
-              draggable
-              onDragStart={()=>setDragTask(t.id)}
-              onDragOver={e=>{e.preventDefault();setDragOver(t.id);}}
-              onDrop={e=>{
-                e.preventDefault();
-                if(!dragTask||dragTask===t.id){setDragTask(null);setDragOver(null);return;}
-                const list=[...getZT(activeZone)];
-                const from=list.findIndex(x=>x.id===dragTask),to=list.findIndex(x=>x.id===t.id);
-                list.splice(to,0,...list.splice(from,1));
-                saveTasks(prev=>({...prev,[activeZone]:list}));
-                setDragTask(null);setDragOver(null);
-              }}
-              onDragEnd={()=>{setDragTask(null);setDragOver(null);}}
-              style={{background:dragOver===t.id?'rgba(90,120,72,0.10)':MULTI,borderRadius:14,padding:'11px 13px',marginBottom:8,boxShadow:'0 2px 8px rgba(0,0,0,0.05)',display:'flex',alignItems:'flex-start',gap:9,border:(dragOver===t.id?'1.5px solid rgba(90,120,72,0.30)':'1.5px solid transparent'),cursor:'grab'}}>
-              <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:5,flexShrink:0}}>
-                <div style={{width:30,height:30,borderRadius:8,background:SCORE_C[t.score],display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:800}}>{t.score}</div>
-                <div style={{position:'relative'}}>
+              ):(
+                <div onClick={()=>{setEditChoreText(t.name);setEditingChoreId(t.id);}} style={{fontWeight:700,fontSize:16,lineHeight:1.4,color:'#1A1A10',cursor:'pointer',marginBottom:8,overflowWrap:'break-word'}}>{t.name}</div>
+              )}
+              {/* Controls row — number, drag, colour, actions */}
+              <div style={{display:'flex',alignItems:'center',gap:9}}>
+                <div style={{width:28,height:28,borderRadius:8,background:SCORE_C[t.score],display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:800,flexShrink:0}}>{i+1}</div>
+                <div style={{cursor:'grab',color:'rgba(90,120,72,0.35)',fontSize:18,lineHeight:1,padding:'2px 6px',letterSpacing:1,touchAction:'none',flexShrink:0}}>⠿</div>
+                <div style={{position:'relative',flexShrink:0}}>
                   <button onClick={()=>setChorePickerOpenId(chorePickerOpenId===t.id?null:t.id)}
-                    title="Change colour"
-                    style={{width:20,height:20,borderRadius:'50%',cursor:'pointer',padding:0,
-                      background:swatchById(t.color).fill,
-                      border:`2.5px solid ${swatchById(t.color).border}`,
-                      boxShadow:'0 1px 4px rgba(0,0,0,0.12)'}}/>
+                    style={{width:22,height:22,borderRadius:'50%',cursor:'pointer',padding:0,background:swatchById(t.color).fill,border:`2.5px solid ${swatchById(t.color).border}`,boxShadow:'0 1px 4px rgba(0,0,0,0.12)'}}/>
                   {chorePickerOpenId===t.id&&<ColourPicker current={t.color} onChange={c=>colorChore(activeZone,t.id,c)} onClose={()=>setChorePickerOpenId(null)}/>}
                 </div>
-              </div>
-              <div style={{flex:1,minWidth:0}}>
-                {editingChoreId===t.id?(
-                  <div style={{display:'flex',gap:6,marginBottom:4}}>
-                    <input value={editChoreText} onChange={e=>setEditChoreText(e.target.value)}
-                      onKeyDown={e=>{
-                        if(e.key==='Enter'){if(editChoreText.trim())editChore(activeZone,t.id,editChoreText.trim());setEditingChoreId(null);}
-                        if(e.key==='Escape')setEditingChoreId(null);
-                      }}
-                      autoFocus
-                      style={{flex:1,fontWeight:700,fontSize:14,padding:'4px 8px',borderRadius:8,border:'1.5px solid rgba(90,120,72,0.30)',color:'#1A1A10',outline:'none'}}/>
-                    <button onClick={()=>{if(editChoreText.trim())editChore(activeZone,t.id,editChoreText.trim());setEditingChoreId(null);}}
-                      style={{background:'#5A7848',color:'#fff',border:'none',borderRadius:8,padding:'4px 10px',fontSize:11,fontWeight:700,cursor:'pointer'}}>Save</button>
-                  </div>
-                ):(
-                  <div onClick={()=>{setEditChoreText(t.name);setEditingChoreId(t.id);}} style={{fontWeight:700,fontSize:14,color:'#1A1A10',cursor:'pointer'}}>{t.name}</div>
-                )}
-                <div style={{fontSize:10,color:SCORE_C[t.score],fontWeight:600}}>{SCORE_L[t.score]}</div>
-                {t.reason&&<div style={{fontSize:10,color:'#8A8070'}}>{t.reason}</div>}
-              </div>
-              <div style={{display:'flex',gap:4,flexShrink:0}}>
-                <button onClick={()=>tickDone(activeZone,t.id)} style={{background:MULTI,border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'5px 8px',fontSize:11,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>✓</button>
-                <button onClick={()=>delTask(activeZone,t.id)} style={{background:'rgba(200,80,60,0.08)',border:'1.5px solid rgba(200,80,60,0.15)',borderRadius:7,padding:'5px 8px',fontSize:11,fontWeight:700,color:'#C04030',cursor:'pointer'}}>✕</button>
+                <div style={{flex:1}}/>
+                <button onClick={()=>tickDone(activeZone,t.id)} style={{background:MULTI,border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:9,width:32,height:32,fontSize:15,fontWeight:700,color:'#3A5828',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✓</button>
+                <button onClick={()=>delTask(activeZone,t.id)} style={{background:'rgba(200,80,60,0.08)',border:'1.5px solid rgba(200,80,60,0.15)',borderRadius:9,width:32,height:32,fontSize:13,fontWeight:700,color:'#C04030',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
               </div>
             </div>
           ))}
