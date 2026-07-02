@@ -2925,9 +2925,6 @@ function Housework({setScreen}){
               const doneC=zt.filter(t=>t.done).length;
               return(
                 <div key={z.id}
-                  draggable
-                  onDragStart={e=>{e.dataTransfer.effectAllowed='move';setDragZone(z.id);}}
-                  onDragEnd={()=>{setDragZone(null);setDragOverZone(null);}}
                   onDragOver={e=>{e.preventDefault();setDragOverZone(z.id);}}
                   onDrop={e=>{
                     e.preventDefault();
@@ -2940,7 +2937,12 @@ function Housework({setScreen}){
                     setDragZone(null);setDragOverZone(null);
                   }}
                   onClick={()=>{setActiveZone(z.id);setView('zone');setShowTemplates(false);}}
-                  style={{background:dragOverZone===z.id?'rgba(90,120,72,0.12)':MULTI,borderRadius:20,padding:'16px 18px',border:dragOverZone===z.id?'1.5px solid rgba(90,120,72,0.40)':'1.5px solid rgba(255,255,255,0.6)',boxShadow:'0 2px 12px rgba(0,0,0,0.07)',cursor:'grab',textAlign:'left',display:'flex',alignItems:'center',gap:14}}>
+                  style={{background:dragOverZone===z.id?'rgba(90,120,72,0.12)':MULTI,borderRadius:20,padding:'16px 18px',border:dragOverZone===z.id?'1.5px solid rgba(90,120,72,0.40)':'1.5px solid rgba(255,255,255,0.6)',boxShadow:'0 2px 12px rgba(0,0,0,0.07)',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:14}}>
+                  <div draggable
+                    onDragStart={e=>{e.stopPropagation();e.dataTransfer.effectAllowed='move';setDragZone(z.id);}}
+                    onDragEnd={()=>{setDragZone(null);setDragOverZone(null);}}
+                    style={{fontSize:14,color:'rgba(90,80,60,0.30)',flexShrink:0,touchAction:'none',cursor:'grab',padding:'4px'}}
+                    onClick={e=>e.stopPropagation()}>⠿</div>
                   <div style={{fontSize:36,flexShrink:0}}>{z.icon}</div>
                   <div style={{flex:1}}>
                     <div style={{fontFamily:'Georgia,serif',fontWeight:700,fontSize:17,color:'#1A1A10',marginBottom:3}}>{z.name}</div>
