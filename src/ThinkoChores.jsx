@@ -2342,6 +2342,7 @@ function Housework({setScreen}){
     garden:["Tidy garden","Mow lawn","Weed","Water plants","Water greenhouse","Sweep path","Trim edges","Clear leaves","Tidy patio","Tidy shed","Organise shed","Plant/sow","Tidy flower beds","Clean pond","Tidy log cabin","Prune","Deadhead flowers"],
     garage:["Sweep floor","Tidy tools","Organise shelves","Take rubbish out","Clear clutter"],
   };
+  const allPresetsForZone=activeZone?[...(PRESETS[activeZone]||[]),...(customChores[activeZone]||[])]:[]; // must be after PRESETS
 
   // Split "X and Y" tasks into separate tasks
   const splitTask=(name)=>{
@@ -2738,22 +2739,7 @@ function Housework({setScreen}){
           <div style={{fontSize:10,color:'#5A4A30',textAlign:'center',marginBottom:8,fontWeight:700,background:'rgba(255,255,255,0.55)',borderRadius:8,padding:'4px 10px',display:'inline-block'}}>⠿ Hold to drag and reorder if you'd like it different</div>
           {todo.map((t,i)=>(
             <div key={t.id}
-              draggable
-              onDragStart={()=>setDragTask(t.id)}
-              onDragOver={e=>{e.preventDefault();setDragOver(t.id);}}
-              onDrop={e=>{
-                e.preventDefault();
-                if(!dragTask||dragTask===t.id){setDragTask(null);setDragOver(null);return;}
-                const newRanked=[...ranked];
-                const from=newRanked.findIndex(x=>x.id===dragTask);
-                const to=newRanked.findIndex(x=>x.id===t.id);
-                newRanked.splice(to,0,...newRanked.splice(from,1));
-                setRanked(newRanked);
-                saveTasks(prev=>({...prev,[activeZone]:newRanked}));
-                setDragTask(null);setDragOver(null);
-              }}
-              onDragEnd={()=>{setDragTask(null);setDragOver(null);}}
-              style={{background:dragOver===t.id?'rgba(90,120,72,0.10)':MULTI,borderRadius:14,padding:'11px 13px',marginBottom:8,boxShadow:'0 2px 8px rgba(0,0,0,0.05)',border:(dragOver===t.id?'1.5px solid rgba(90,120,72,0.30)':'1.5px solid transparent')}}>
+              style={{background:MULTI,borderRadius:14,padding:'11px 13px',marginBottom:8,boxShadow:'0 2px 8px rgba(0,0,0,0.05)',border:'1.5px solid transparent'}}>
               {/* Chore name — full width on top, tap to edit */}
               {editingChoreId===t.id?(
                 <div style={{display:'flex',gap:6,marginBottom:8}}>
@@ -2773,7 +2759,7 @@ function Housework({setScreen}){
               {/* Controls row — number, drag, colour, actions */}
               <div style={{display:'flex',alignItems:'center',gap:9}}>
                 <div style={{width:28,height:28,borderRadius:8,background:SCORE_C[t.score],display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:800,flexShrink:0}}>{i+1}</div>
-                <div style={{cursor:'grab',color:'rgba(90,120,72,0.35)',fontSize:18,lineHeight:1,padding:'2px 6px',letterSpacing:1,touchAction:'none',flexShrink:0}}>⠿</div>
+
                 <div style={{position:'relative',flexShrink:0}}>
                   <button onClick={()=>setChorePickerOpenId(chorePickerOpenId===t.id?null:t.id)}
                     style={{width:22,height:22,borderRadius:'50%',cursor:'pointer',padding:0,background:swatchById(t.color).fill,border:`2.5px solid ${swatchById(t.color).border}`,boxShadow:'0 1px 4px rgba(0,0,0,0.12)'}}/>
@@ -2876,6 +2862,252 @@ function Housework({setScreen}){
     );
   }
 
+  // ── ZONE DETAIL ──
+  if(view==='zone'&&activeZone){
+    const z=zones?.find(zn=>zn.id===activeZone);
+    const zt=getZT(activeZone);
+    const todo=zt.filter(t=>!t.done).sort((a,b)=>a.score-b.score);
+    const done=zt.filter(t=>t.done);
+    const availPresets=(allPresetsForZone||[]).filter(p=>!zt.some(t=>t.name.toLowerCase()===p.toLowerCase())&&!dismissed.includes(p));
+    return(
+      <div style={{minHeight:'100vh',background:'transparent',fontFamily:"'Segoe UI',sans-serif",paddingBottom:90}}>
+        {/* Header */}
+        <div style={{background:MULTI,padding:'14px 18px',display:'flex',alignItems:'center',gap:10,borderBottom:'1px solid rgba(90,80,60,0.08)',position:'sticky',top:0,zIndex:50}}>
+          <button onClick={()=>setView('hub')} style={{background:'none',border:'none',cursor:'pointer',width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="#1A1A10" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <div style={{flex:1,fontFamily:'Georgia,serif',fontWeight:700,fontSize:19,color:'#1A1A10'}}>{z?.icon} {z?.name}</div>
+        </div>
+        <div style={{padding:'14px 16px'}}>
+
+          {/* A vs B button */}
+          <button onClick={startAvB}
+            style={{width:'100%',marginBottom:12,background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:100,padding:'10px',fontSize:13,fontFamily:'Georgia,serif',fontWeight:700,cursor:'pointer',boxShadow:'0 4px 18px rgba(90,120,72,0.20)'}}>
+            🎯 A vs B — rank chores
+          </button>
+
+          {/* Add chore */}
+          <div style={{background:MULTI,borderRadius:16,padding:'12px',marginBottom:12,boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+            <div style={{display:'flex',gap:8,marginBottom:8}}>
+              <input value={newTask} onChange={e=>setNewTask(e.target.value)}
+                onKeyDown={e=>{if(e.key==='Enter'&&newTask.trim()){addTask(activeZone,newTask.trim(),3,'');setNewTask('');}}}
+                placeholder="Add a chore…"
+                style={{flex:1,padding:'9px 13px',borderRadius:11,border:'1.5px solid rgba(90,120,72,0.25)',fontSize:14,color:'#1A1A10',background:'rgba(255,255,255,0.9)',outline:'none'}}/>
+              <button onClick={()=>{if(newTask.trim()){addTask(activeZone,newTask.trim(),3,'');setNewTask('');}}}
+                style={{background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:11,padding:'9px 14px',fontSize:13,fontWeight:700,cursor:'pointer'}}>Add</button>
+            </div>
+
+            {/* Borrow from another zone */}
+            <button onClick={()=>setShowBorrow(!showBorrow)}
+              style={{width:'100%',padding:'8px',marginBottom:8,background:'rgba(255,255,255,0.6)',border:'1px solid rgba(90,120,72,0.20)',borderRadius:10,fontSize:12,fontWeight:700,color:'#3A5828',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span>🔄 Borrow a chore from another zone</span><span>{showBorrow?'▲':'▼'}</span>
+            </button>
+            {showBorrow&&(
+              <div style={{marginBottom:8}}>
+                {(zones||[]).filter(zn=>zn.id!==activeZone).length===0&&(
+                  <div style={{fontSize:12,color:'#5A4A30',fontWeight:600,textAlign:'center',padding:'8px',background:'rgba(255,255,255,0.55)',borderRadius:10}}>No other zones set up yet</div>
+                )}
+                {(zones||[]).filter(zn=>zn.id!==activeZone).map(zn=>{
+                  const zTasks=getZT(zn.id).filter(t=>!t.done);
+                  const zSaved=[...(PRESETS[zn.id]||[]),...(customChores[zn.id]||[])].filter(name=>!zTasks.some(t=>t.name.toLowerCase()===name.toLowerCase()));
+                  const isOpen=borrowZone===zn.id;
+                  const totalCount=zTasks.length+zSaved.length;
+                  return(
+                    <div key={zn.id} style={{marginBottom:6,borderRadius:12,overflow:'hidden',border:'1px solid rgba(90,120,72,0.15)'}}>
+                      <button onClick={()=>setBorrowZone(isOpen?null:zn.id)}
+                        style={{width:'100%',padding:'9px 12px',background:'rgba(255,255,255,0.55)',border:'none',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer'}}>
+                        <span style={{fontSize:13,fontWeight:700,color:'#3A5828'}}>{zn.icon} {zn.name}</span>
+                        <span style={{fontSize:11,color:'#8A8070'}}>{totalCount} chore{totalCount!==1?'s':''} {isOpen?'▲':'▼'}</span>
+                      </button>
+                      {isOpen&&(
+                        <div style={{padding:'6px 10px',background:'rgba(255,255,255,0.35)',maxHeight:200,overflowY:'auto'}}>
+                          {zTasks.filter(t=>!borrowedIds.some(b=>b.taskId===t.id)).map(t=>(
+                            <div key={t.id} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 0',borderBottom:'1px solid rgba(90,80,60,0.06)'}}>
+                              <div style={{flex:1,fontSize:13,color:'#1A1A10'}}>{t.name}</div>
+                              <button onClick={()=>setBorrowedIds(b=>[...b,{taskId:t.id,fromZone:zn.id}])}
+                                style={{background:'rgba(90,120,72,0.10)',border:'1px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'4px 9px',fontSize:10,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>+ Borrow</button>
+                            </div>
+                          ))}
+                          {zSaved.length>0&&<div style={{fontSize:10,fontWeight:700,color:'#8A8070',padding:'6px 0 2px',textTransform:'uppercase'}}>📋 Saved chores</div>}
+                          {zSaved.map(name=>(
+                            <div key={name} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 0',borderBottom:'1px solid rgba(90,80,60,0.06)'}}>
+                              <div style={{flex:1,fontSize:13,color:'#1A1A10'}}>{name}</div>
+                              <button onClick={()=>{
+                                  const newTaskObj={id:Date.now()+Math.random(),name,score:3,reason:'',done:false};
+                                  saveTasks(prev=>({...prev,[zn.id]:[...(prev[zn.id]||[]),newTaskObj]}));
+                                  setBorrowedIds(b=>[...b,{taskId:newTaskObj.id,fromZone:zn.id}]);
+                                }}
+                                style={{background:'rgba(90,120,72,0.10)',border:'1px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'4px 9px',fontSize:10,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>+ Borrow</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Saved Chores */}
+            <button onClick={()=>setShowTemplates(!showTemplates)}
+              style={{width:'100%',padding:'8px',background:'rgba(255,255,255,0.6)',border:'1px solid rgba(90,120,72,0.20)',borderRadius:10,fontSize:12,fontWeight:700,color:'#3A5828',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span>📋 Saved Chores</span><span>{showTemplates?'▲':'▼'}</span>
+            </button>
+            {showTemplates&&(
+              <div style={{marginTop:8,maxHeight:280,overflowY:'auto'}}>
+                <div style={{display:'flex',gap:6,marginBottom:8}}>
+                  <input value={newChoreName} onChange={e=>setNewChoreName(e.target.value)}
+                    onKeyDown={e=>{const name=newChoreName.trim();if(e.key==='Enter'&&name){setCustomChores(prev=>{const existing=prev[activeZone]||[];if(existing.includes(name))return prev;const nc={...prev,[activeZone]:[...existing,name]};save('hw_custom_chores',nc);return nc;});setNewChoreName('');}}}
+                    placeholder="Save a new chore for next time…"
+                    style={{flex:1,padding:'7px 11px',borderRadius:9,border:'1.5px solid rgba(90,120,72,0.20)',fontSize:12,color:'#1A1A10',background:'rgba(255,255,255,0.85)',outline:'none'}}/>
+                  <button onClick={()=>{const name=newChoreName.trim();if(name){setCustomChores(prev=>{const existing=prev[activeZone]||[];if(existing.includes(name))return prev;const nc={...prev,[activeZone]:[...existing,name]};save('hw_custom_chores',nc);return nc;});setNewChoreName('');}}}
+                    style={{background:MULTI,border:'1px solid rgba(90,120,72,0.25)',borderRadius:9,padding:'7px 12px',fontSize:12,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>Save</button>
+                </div>
+                {availPresets.length===0
+                  ?<div style={{fontSize:12,color:'#8A8070',textAlign:'center',padding:'8px'}}>All saved chores added ✓</div>
+                  :availPresets.map(p=>{
+                    const isCustom=(customChores[activeZone]||[]).includes(p);
+                    return(
+                      <div key={p} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 0',borderBottom:'1px solid rgba(90,80,60,0.06)'}}>
+                        <div style={{flex:1,fontSize:13,color:'#1A1A10'}}>{p}{isCustom&&<span style={{fontSize:9,color:'#5A7040',marginLeft:5}}>★</span>}</div>
+                        <button onClick={()=>addTask(activeZone,p,1,'Urgent')} style={{background:'rgba(224,48,32,0.10)',border:'1px solid rgba(224,48,32,0.25)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#C03020',cursor:'pointer'}}>🔴</button>
+                        <button onClick={()=>addTask(activeZone,p,3,'Normal')} style={{background:MULTI,border:'1px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>Normal</button>
+                        <button onClick={()=>addTask(activeZone,p,5,'Later')} style={{background:'rgba(72,120,168,0.10)',border:'1px solid rgba(72,120,168,0.25)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#2A5880',cursor:'pointer'}}>Later</button>
+                        {isCustom?(
+                          <button onClick={()=>{setCustomChores(prev=>{const nc={...prev,[activeZone]:(prev[activeZone]||[]).filter(x=>x!==p)};save('hw_custom_chores',nc);return nc;})}} style={{background:'rgba(192,57,43,0.08)',border:'1px solid rgba(192,57,43,0.18)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#c0392b',cursor:'pointer'}}>🗑</button>
+                        ):(
+                          <button onClick={()=>saveDismissed([...dismissed,p])} style={{background:'rgba(90,80,60,0.08)',border:'1px solid rgba(90,80,60,0.15)',borderRadius:7,padding:'4px 7px',fontSize:10,fontWeight:700,color:'#8A8070',cursor:'pointer'}}>✕</button>
+                        )}
+                      </div>
+                    );
+                  })
+                }
+              </div>
+            )}
+          </div>
+
+          {/* Empty state */}
+          {todo.length===0&&done.length===0&&(
+            <div style={{textAlign:'center',padding:'30px 20px',color:'#5A4A30',background:'rgba(255,255,255,0.55)',borderRadius:20}}>
+              <div style={{fontSize:40,marginBottom:8}}>{z?.icon}</div>
+              <div style={{fontFamily:'Georgia,serif',fontSize:15,marginBottom:12,fontWeight:600}}>No chores yet — add one above or use Saved Chores!</div>
+            </div>
+          )}
+
+          {/* Chore list */}
+          {todo.map((t,i)=>(
+            <div key={t.id}
+              onDragOver={e=>{e.preventDefault();setDragOver(t.id);}}
+              onDrop={e=>{
+                e.preventDefault();
+                if(!dragTask||dragTask===t.id){setDragTask(null);setDragOver(null);return;}
+                const list=[...getZT(activeZone)];
+                const from=list.findIndex(x=>x.id===dragTask),to=list.findIndex(x=>x.id===t.id);
+                list.splice(to,0,...list.splice(from,1));
+                saveTasks(prev=>({...prev,[activeZone]:list}));
+                setDragTask(null);setDragOver(null);
+              }}
+              style={{background:dragOver===t.id?'rgba(90,120,72,0.08)':MULTI,borderRadius:14,padding:'11px 13px',marginBottom:8,boxShadow:'0 2px 8px rgba(0,0,0,0.05)',border:dragOver===t.id?'1.5px solid rgba(90,120,72,0.30)':'1.5px solid transparent'}}>
+              {/* Chore name on top */}
+              {editingChoreId===t.id?(
+                <div style={{display:'flex',gap:6,marginBottom:8}}>
+                  <input value={editChoreText} onChange={e=>setEditChoreText(e.target.value)}
+                    onKeyDown={e=>{if(e.key==='Enter'){if(editChoreText.trim())editChore(activeZone,t.id,editChoreText.trim());setEditingChoreId(null);}if(e.key==='Escape')setEditingChoreId(null);}}
+                    autoFocus
+                    style={{flex:1,fontWeight:700,fontSize:15,padding:'6px 10px',borderRadius:10,border:'1.5px solid rgba(90,120,72,0.30)',color:'#1A1A10',outline:'none'}}/>
+                  <button onClick={()=>{if(editChoreText.trim())editChore(activeZone,t.id,editChoreText.trim());setEditingChoreId(null);}}
+                    style={{background:'#5A7848',color:'#fff',border:'none',borderRadius:10,padding:'6px 14px',fontSize:13,fontWeight:700,cursor:'pointer'}}>Save</button>
+                </div>
+              ):(
+                <div onClick={()=>{setEditChoreText(t.name);setEditingChoreId(t.id);}}
+                  style={{fontWeight:700,fontSize:16,lineHeight:1.4,color:'#1A1A10',cursor:'pointer',marginBottom:8,overflowWrap:'break-word'}}>{t.name}</div>
+              )}
+              {/* Controls row */}
+              <div style={{display:'flex',alignItems:'center',gap:9}}>
+                <div style={{width:28,height:28,borderRadius:8,background:SCORE_C[t.score],display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:800,flexShrink:0}}>{i+1}</div>
+                <div draggable
+                  onDragStart={e=>{e.stopPropagation();setDragTask(t.id);}}
+                  onDragEnd={()=>{setDragTask(null);setDragOver(null);}}
+                  style={{cursor:'grab',color:'rgba(90,120,72,0.35)',fontSize:18,padding:'2px 6px',touchAction:'none',flexShrink:0,userSelect:'none'}}>⠿</div>
+                <div style={{position:'relative',flexShrink:0}}>
+                  <button onClick={()=>setChorePickerOpenId(chorePickerOpenId===t.id?null:t.id)}
+                    style={{width:22,height:22,borderRadius:'50%',cursor:'pointer',padding:0,background:swatchById(t.color).fill,border:`2.5px solid ${swatchById(t.color).border}`,boxShadow:'0 1px 4px rgba(0,0,0,0.12)'}}/>
+                  {chorePickerOpenId===t.id&&<ColourPicker current={t.color} onChange={c=>colorChore(activeZone,t.id,c)} onClose={()=>setChorePickerOpenId(null)}/>}
+                </div>
+                <div style={{flex:1}}/>
+                <button onClick={()=>tickDone(activeZone,t.id)}
+                  style={{background:MULTI,border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:9,width:32,height:32,fontSize:15,fontWeight:700,color:'#3A5828',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✓</button>
+                <button onClick={()=>delTask(activeZone,t.id)}
+                  style={{background:'rgba(200,80,60,0.08)',border:'1.5px solid rgba(200,80,60,0.15)',borderRadius:9,width:32,height:32,fontSize:13,fontWeight:700,color:'#C04030',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+              </div>
+            </div>
+          ))}
+
+          {/* Done section */}
+          {done.length>0&&(
+            <div style={{marginTop:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:'#5A4A30',marginBottom:7,textTransform:'uppercase',letterSpacing:1,background:'rgba(255,255,255,0.6)',borderRadius:8,padding:'4px 8px',display:'inline-block'}}>✓ Done ({done.length})</div>
+              {done.map(t=>(
+                <div key={t.id} style={{background:MULTI,borderRadius:11,padding:'10px 12px',marginTop:6,marginBottom:5,display:'flex',alignItems:'center',gap:8,border:'1px solid rgba(90,120,72,0.15)'}}>
+                  <div style={{flex:1,textDecoration:'line-through',color:'#3A2A18',fontSize:13,fontWeight:600}}>{t.name}</div>
+                  <button onClick={()=>tickDone(activeZone,t.id)} style={{background:'rgba(255,255,255,0.7)',border:'1px solid rgba(90,80,60,0.25)',borderRadius:6,padding:'4px 9px',fontSize:11,fontWeight:600,color:'#3A5828',cursor:'pointer'}}>Undo</button>
+                  <button onClick={()=>delTask(activeZone,t.id)} style={{background:'rgba(192,57,43,0.10)',border:'1px solid rgba(192,57,43,0.20)',borderRadius:6,padding:'4px 8px',fontSize:13,cursor:'pointer',color:'#C04030'}}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Focus Timer */}
+          <div style={{background:MULTI,borderRadius:18,padding:'11px 16px',marginTop:16,border:'1.5px solid rgba(180,160,140,0.35)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <span style={{fontSize:15}}>⏱</span>
+              <div style={{fontFamily:'Georgia,serif',fontWeight:700,fontSize:13,color:'#1A1A10',flex:1}}>Focus Timer</div>
+              <div style={{fontFamily:'monospace',fontSize:20,fontWeight:700,color:timerLeft<=59?'#E03020':'#1A2810'}}>{fmtT(timerLeft)}</div>
+            </div>
+            <div style={{display:'flex',gap:6,marginTop:9}}>
+              {[10,20,30,60].map(m=>(
+                <button key={m} onClick={()=>{setTimerMins(m);setTimerLeft(m*60);setTimerOn(false);}}
+                  style={{flex:1,padding:'5px 0',background:timerMins===m?'rgba(90,120,72,0.20)':'rgba(255,255,255,0.6)',border:(timerMins===m?'1.5px solid rgba(90,120,72,0.40)':'1.5px solid rgba(180,160,140,0.25)'),borderRadius:9,fontSize:11,fontWeight:700,color:timerMins===m?'#3A5828':'#5A4A30',cursor:'pointer'}}>{m===60?'1hr':m+'m'}</button>
+              ))}
+              <button onClick={()=>timerLeft===0?resetTimer():setTimerOn(!timerOn)}
+                style={{flex:1,padding:'5px 0',background:MULTI,border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:9,fontSize:15,cursor:'pointer'}}>
+                {timerLeft===0?'↺':timerOn?'⏸':'▶'}
+              </button>
+              <button onClick={resetTimer} style={{flex:1,padding:'5px 0',background:'rgba(180,160,140,0.15)',border:'1.5px solid rgba(180,160,140,0.25)',borderRadius:9,fontSize:10,fontWeight:600,color:'#5A4A30',cursor:'pointer'}}>Reset</button>
+            </div>
+          </div>
+
+          {/* Celebration */}
+          {taskCelebration&&(
+            <div style={{position:'fixed',inset:0,zIndex:900,display:'flex',alignItems:'center',justifyContent:'center',padding:24,pointerEvents:'none'}}>
+              {confetti.map(p=>(
+                <div key={p.id} style={{position:'fixed',left:p.x+'%',top:'-20px',width:p.size+'px',height:p.size+'px',background:p.color,borderRadius:p.size>7?'50%':'2px',animation:`confettiFall 3s ${p.delay}s ease-in forwards`,transform:`rotate(${p.rotation}deg)`,zIndex:901}}/>
+              ))}
+              <div style={{background:'rgba(250,248,240,0.98)',borderRadius:32,padding:'32px 28px',maxWidth:320,width:'100%',textAlign:'center',boxShadow:'0 20px 60px rgba(0,0,0,0.25)',border:'2px solid rgba(90,120,72,0.20)',pointerEvents:'auto',animation:'popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275)'}}>
+                <div style={{fontSize:56,marginBottom:8}}>🎉</div>
+                <div style={{fontFamily:'Georgia,serif',fontWeight:900,fontSize:24,color:'#3A5828',marginBottom:6}}>{taskCelebration.title}</div>
+                <div style={{fontSize:13,color:'#5A4A30',fontWeight:600,marginBottom:12,background:'rgba(90,120,72,0.08)',borderRadius:12,padding:'8px 12px'}}>"{taskCelebration.task}"</div>
+                <div style={{fontSize:14,color:'#2A3820',fontWeight:600,lineHeight:1.5}}>{taskCelebration.msg}</div>
+              </div>
+            </div>
+          )}
+
+          {motivMsg&&<div style={{position:'fixed',bottom:100,left:'50%',transform:'translateX(-50%)',background:MULTI,color:'#1A2810',borderRadius:100,padding:'11px 22px',fontFamily:'Georgia,serif',fontWeight:700,fontSize:14,boxShadow:'0 4px 20px rgba(90,120,72,0.25)',zIndex:200,whiteSpace:'nowrap',border:'1.5px solid rgba(90,120,72,0.25)'}}>{motivMsg}</div>}
+
+          {celebration&&celebration.zoneId===activeZone&&(
+            <div style={{position:'fixed',inset:0,zIndex:800,background:'rgba(20,30,10,0.75)',backdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',padding:24}} onClick={()=>setCelebration(null)}>
+              <div style={{background:'rgba(250,248,240,0.99)',borderRadius:32,padding:'36px 28px',maxWidth:320,width:'100%',textAlign:'center'}} onClick={e=>e.stopPropagation()}>
+                <div style={{fontSize:64,marginBottom:8}}>🎉</div>
+                <div style={{fontFamily:'Georgia,serif',fontWeight:900,fontSize:22,color:'#3A5828',marginBottom:12}}>All {celebration.name} tasks done! 🏡</div>
+                <button onClick={()=>setCelebration(null)} style={{width:'100%',padding:'14px',background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:100,fontFamily:'Georgia,serif',fontWeight:700,fontSize:16,cursor:'pointer',boxShadow:'0 4px 18px rgba(90,120,72,0.20)'}}>✨ Keep going!</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // ── HUB ──
   const zoneList=zones||[];
   return(
@@ -2924,7 +3156,7 @@ function Housework({setScreen}){
               const urgent=zt.filter(t=>!t.done&&t.score<=2).length;
               const doneC=zt.filter(t=>t.done).length;
               return(
-                <div key={z.id}
+                <button key={z.id}
                   onDragOver={e=>{e.preventDefault();setDragOverZone(z.id);}}
                   onDrop={e=>{
                     e.preventDefault();
@@ -2937,7 +3169,7 @@ function Housework({setScreen}){
                     setDragZone(null);setDragOverZone(null);
                   }}
                   onClick={()=>{setActiveZone(z.id);setView('zone');setShowTemplates(false);}}
-                  style={{background:dragOverZone===z.id?'rgba(90,120,72,0.12)':MULTI,borderRadius:20,padding:'16px 18px',border:dragOverZone===z.id?'1.5px solid rgba(90,120,72,0.40)':'1.5px solid rgba(255,255,255,0.6)',boxShadow:'0 2px 12px rgba(0,0,0,0.07)',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:14}}>
+                  style={{background:dragOverZone===z.id?'rgba(90,120,72,0.12)':MULTI,borderRadius:20,padding:'16px 18px',border:dragOverZone===z.id?'1.5px solid rgba(90,120,72,0.40)':'1.5px solid rgba(255,255,255,0.6)',boxShadow:'0 2px 12px rgba(0,0,0,0.07)',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:14,width:'100%'}}>
                   <div draggable
                     onDragStart={e=>{e.stopPropagation();e.dataTransfer.effectAllowed='move';setDragZone(z.id);}}
                     onDragEnd={()=>{setDragZone(null);setDragOverZone(null);}}
@@ -2954,7 +3186,7 @@ function Housework({setScreen}){
                     </div>}
                   </div>
                   {urgent>0&&<div style={{background:'#E03020',color:'#fff',borderRadius:100,padding:'2px 8px',fontSize:11,fontWeight:700,flexShrink:0}}>{urgent} urgent</div>}
-                </div>
+                </button>
               );
             })}
           </div>
