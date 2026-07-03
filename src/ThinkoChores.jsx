@@ -2470,11 +2470,12 @@ function Housework({setScreen}){
       Object.keys(byZone).forEach(fz=>{updated[fz]=byZone[fz];});
       return updated;
     });
-    // Batch all state updates together
+    // Go straight back to zone - tasks already saved in priority order
     setBorrowedIds([]);
     setRanked(withScores);
-    // Small delay ensures ranked state has committed before rendering avbdone
-    setTimeout(()=>setView('avbdone'), 0);
+    setMotivMsg('🏆 Chores ranked! Swipe down to see your priority order.');
+    setTimeout(()=>setMotivMsg(null), 3000);
+    setView('zone');
   };
 
   const skipEqual=()=>{
