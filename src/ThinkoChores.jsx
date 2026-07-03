@@ -2766,7 +2766,7 @@ function Housework({setScreen}){
 
                 <div style={{position:'relative',flexShrink:0}}>
                   <button onClick={()=>setChorePickerOpenId(chorePickerOpenId===t.id?null:t.id)}
-                    style={{width:22,height:22,borderRadius:'50%',cursor:'pointer',padding:0,background:swatchById(t.color).fill,border:`2.5px solid ${swatchById(t.color).border}`,boxShadow:'0 1px 4px rgba(0,0,0,0.12)'}}/>
+                    style={{width:22,height:22,borderRadius:'50%',cursor:'pointer',padding:0,background:swatchById(t.color||'lilac').fill,border:`2.5px solid ${swatchById(t.color||'lilac').border}`,boxShadow:'0 1px 4px rgba(0,0,0,0.12)'}}/>
                   {chorePickerOpenId===t.id&&<ColourPicker current={t.color} onChange={c=>colorChore(activeZone,t.id,c)} onClose={()=>setChorePickerOpenId(null)}/>}
                 </div>
                 <div style={{flex:1}}/>
@@ -3028,19 +3028,19 @@ function Housework({setScreen}){
               )}
               {/* Controls row */}
               <div style={{display:'flex',alignItems:'center',gap:9}}>
-                <div style={{width:28,height:28,borderRadius:8,background:swatchById(t.color).num,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:800,flexShrink:0}}>{i+1}</div>
+                <div style={{width:28,height:28,borderRadius:8,background:swatchById(t.color||'lilac').num,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:800,flexShrink:0}}>{i+1}</div>
                 <div draggable
                   onDragStart={e=>{e.stopPropagation();setDragTask(t.id);}}
                   onDragEnd={()=>{setDragTask(null);setDragOver(null);}}
                   style={{cursor:'grab',color:'rgba(90,120,72,0.35)',fontSize:18,padding:'2px 6px',touchAction:'none',flexShrink:0,userSelect:'none'}}>⠿</div>
                 <div style={{position:'relative',flexShrink:0}}>
                   <button onClick={()=>setChorePickerOpenId(chorePickerOpenId===t.id?null:t.id)}
-                    style={{width:22,height:22,borderRadius:'50%',cursor:'pointer',padding:0,background:swatchById(t.color).fill,border:`2.5px solid ${swatchById(t.color).border}`,boxShadow:'0 1px 4px rgba(0,0,0,0.12)'}}/>
+                    style={{width:22,height:22,borderRadius:'50%',cursor:'pointer',padding:0,background:swatchById(t.color||'lilac').fill,border:`2.5px solid ${swatchById(t.color||'lilac').border}`,boxShadow:'0 1px 4px rgba(0,0,0,0.12)'}}/>
                   {chorePickerOpenId===t.id&&<ColourPicker current={t.color} onChange={c=>colorChore(activeZone,t.id,c)} onClose={()=>setChorePickerOpenId(null)}/>}
                 </div>
                 <div style={{flex:1}}/>
                 <button onClick={()=>tickDone(activeZone,t.id)}
-                  style={{background:swatchById(t.color).num,border:'none',borderRadius:9,width:32,height:32,fontSize:15,fontWeight:700,color:'#fff',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✓</button>
+                  style={{background:swatchById(t.color||'lilac').num,border:'none',borderRadius:9,width:32,height:32,fontSize:15,fontWeight:700,color:'#fff',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✓</button>
                 <button onClick={()=>delTask(activeZone,t.id)}
                   style={{background:'rgba(200,80,60,0.08)',border:'1.5px solid rgba(200,80,60,0.15)',borderRadius:9,width:32,height:32,fontSize:13,fontWeight:700,color:'#C04030',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
               </div>
