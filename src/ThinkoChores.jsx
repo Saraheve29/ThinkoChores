@@ -2358,7 +2358,7 @@ function Housework({setScreen}){
     const existing=getZT(zoneId);
     const newTasks=names
       .filter(n=>!existing.some(t=>t.name.toLowerCase()===n.toLowerCase()))
-      .map(n=>({id:Date.now()+Math.random(),name:n,score:score||3,reason:reason||'',done:false}));
+      .map(n=>({id:Date.now()+Math.random(),name:n,score:score||3,reason:reason||'',done:false,color:(score||3)<=2?'red':'lilac'}));
     if(newTasks.length===0) return;
     const updated={...tasks,[zoneId]:[...existing,...newTasks].sort((a,b)=>a.score-b.score)};
     saveTasks(updated);
@@ -2470,9 +2470,11 @@ function Housework({setScreen}){
       Object.keys(byZone).forEach(fz=>{updated[fz]=byZone[fz];});
       return updated;
     });
-    setRanked(withScores);
+    // Batch all state updates together
     setBorrowedIds([]);
-    setView('avbdone');
+    setRanked(withScores);
+    // Small delay ensures ranked state has committed before rendering avbdone
+    setTimeout(()=>setView('avbdone'), 0);
   };
 
   const skipEqual=()=>{
@@ -2722,6 +2724,8 @@ function Housework({setScreen}){
 
   // ── A vs B DONE ──
   if(view==='avbdone'){
+    // If ranked not ready yet (React batching), just wait - don't redirect
+    if(!ranked||ranked.length===0) return null;
     const todo=ranked.filter(t=>!t.done);
     return(
       <div style={{minHeight:'100vh',background:'transparent',fontFamily:"'Segoe UI',sans-serif",paddingBottom:90}}>
@@ -2866,7 +2870,7 @@ function Housework({setScreen}){
   if(view==='zone'&&activeZone){
     const z=zones?.find(zn=>zn.id===activeZone);
     const zt=getZT(activeZone);
-    const todo=zt.filter(t=>!t.done).sort((a,b)=>a.score-b.score);
+    const todo=zt.filter(t=>!t.done); // order preserved from storage (drag reorders storage directly)
     const done=zt.filter(t=>t.done);
     const availPresets=(allPresetsForZone||[]).filter(p=>!zt.some(t=>t.name.toLowerCase()===p.toLowerCase())&&!dismissed.includes(p));
     return(
@@ -3024,7 +3028,7 @@ function Housework({setScreen}){
               )}
               {/* Controls row */}
               <div style={{display:'flex',alignItems:'center',gap:9}}>
-                <div style={{width:28,height:28,borderRadius:8,background:SCORE_C[t.score],display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:800,flexShrink:0}}>{i+1}</div>
+                <div style={{width:28,height:28,borderRadius:8,background:swatchById(t.color).num,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:800,flexShrink:0}}>{i+1}</div>
                 <div draggable
                   onDragStart={e=>{e.stopPropagation();setDragTask(t.id);}}
                   onDragEnd={()=>{setDragTask(null);setDragOver(null);}}
@@ -3036,7 +3040,7 @@ function Housework({setScreen}){
                 </div>
                 <div style={{flex:1}}/>
                 <button onClick={()=>tickDone(activeZone,t.id)}
-                  style={{background:MULTI,border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:9,width:32,height:32,fontSize:15,fontWeight:700,color:'#3A5828',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✓</button>
+                  style={{background:swatchById(t.color).num,border:'none',borderRadius:9,width:32,height:32,fontSize:15,fontWeight:700,color:'#fff',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✓</button>
                 <button onClick={()=>delTask(activeZone,t.id)}
                   style={{background:'rgba(200,80,60,0.08)',border:'1.5px solid rgba(200,80,60,0.15)',borderRadius:9,width:32,height:32,fontSize:13,fontWeight:700,color:'#C04030',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
               </div>
