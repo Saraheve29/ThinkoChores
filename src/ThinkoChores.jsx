@@ -2425,6 +2425,32 @@ function Housework({setScreen}){
     setView('avb');
   };
 
+  const finishSort=(sortedList)=>{
+    // Save tasks in sorted order to storage, assign scores
+    const n=sortedList.length;
+    const withScores=sortedList.map((t,i)=>{
+      const pct=n>1?i/(n-1):0;
+      const score=Math.max(1,Math.min(5,Math.round(1+pct*4)));
+      return {...t,score};
+    });
+    const byZone={};
+    withScores.forEach(t=>{
+      const fz=t._fromZone||activeZone;
+      if(!byZone[fz]) byZone[fz]=[...getZT(fz)];
+      const idx=byZone[fz].findIndex(x=>x.id===t.id);
+      if(idx>-1) byZone[fz][idx]={...byZone[fz][idx],score:t.score};
+    });
+    saveTasks(prev=>{
+      const updated={...prev};
+      Object.keys(byZone).forEach(fz=>{updated[fz]=byZone[fz];});
+      return updated;
+    });
+    setBorrowedIds([]);
+    setMotivMsg('🏆 Chores ranked! Your priority order is ready.');
+    setTimeout(()=>setMotivMsg(null), 3000);
+    setView('zone');
+  };
+
   const chooseAvB=(winner)=>{
     if(avbLockRef.current)return;
     avbLockRef.current=true;
