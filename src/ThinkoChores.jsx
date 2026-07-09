@@ -816,6 +816,7 @@ const SHOP_TEMPLATES=[
   {id:"gifts",     icon:"🎁",name:"Gifts & Presents",   color:"#C0392B",items:["Birthday card","Wrapping paper","Ribbon","Gift bags","Sellotape","Tissue paper","Birthday candles"]},
   {id:"party",     icon:"🎉",name:"Party",              color:"#E67E22",items:["Crisps","Dips","Sausage rolls","Sandwiches","Cake","Juice","Pop","Plates","Cups","Napkins"]},
   {id:"health",    icon:"💊",name:"Health",             color:"#E74C3C",items:["Vitamins","Paracetamol","Ibuprofen","Plasters","Hand sanitiser","Tissues"]},
+  {id:"wishlist",  icon:"⭐",name:"Wish list",           color:"#9B59B6",items:["Write things you'd love to buy here..."]},
 ];
 
 const SHOP_LIST_ICONS=["🛒","🎁","🍎","👗","🏠","🐾","💊","📚","🎉","✈️"];
@@ -1340,6 +1341,24 @@ function ShoppingList({data,setData,setScreen}){
             </button>
           </div>
         )}
+        {/* WISH LIST QUICK ACCESS */}
+        {(()=>{
+          const wishList=data.find(l=>l.name==="Wish list"||l.id==="wishlist");
+          if(!wishList) return null;
+          const remaining=(wishList.items||[]).filter(i=>!i.done).length;
+          return(
+            <button onClick={()=>setActiveId(wishList.id)}
+              style={{width:"100%",marginBottom:12,padding:"14px 18px",background:"linear-gradient(135deg,rgba(155,89,182,0.15),rgba(155,89,182,0.08))",border:"2px solid rgba(155,89,182,0.35)",borderRadius:18,cursor:"pointer",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
+              <span style={{fontSize:28}}>⭐</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#9B59B6",textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>Wish List</div>
+                <div style={{fontSize:13,color:"#5A4A30",fontWeight:600}}>{remaining>0?`${remaining} item${remaining!==1?"s":""} on your wish list`:"Empty — add things you'd love!"}</div>
+              </div>
+              <span style={{fontSize:20,color:"#9B59B6"}}>→</span>
+            </button>
+          );
+        })()}
+
         {/* MOST RECENT LIST */}
         {lastUsedId&&data.find(l=>l.id===lastUsedId)&&(()=>{
           const last=data.find(l=>l.id===lastUsedId);
@@ -2426,25 +2445,36 @@ function Housework({setScreen}){
   };
 
   const finishSort=(sortedList)=>{
-    // Save tasks in sorted order to storage, assign scores
+    // Assign scores based on position
     const n=sortedList.length;
     const withScores=sortedList.map((t,i)=>{
       const pct=n>1?i/(n-1):0;
       const score=Math.max(1,Math.min(5,Math.round(1+pct*4)));
       return {...t,score};
     });
+
+    // Group by zone — ranked tasks in their sorted order, done tasks appended after
     const byZone={};
     withScores.forEach(t=>{
       const fz=t._fromZone||activeZone;
-      if(!byZone[fz]) byZone[fz]=[...getZT(fz)];
-      const idx=byZone[fz].findIndex(x=>x.id===t.id);
-      if(idx>-1) byZone[fz][idx]={...byZone[fz][idx],score:t.score};
+      if(!byZone[fz]) byZone[fz]={ranked:[],doneIds:new Set()};
+      byZone[fz].ranked.push(t);
     });
+
     saveTasks(prev=>{
       const updated={...prev};
-      Object.keys(byZone).forEach(fz=>{updated[fz]=byZone[fz];});
+      Object.keys(byZone).forEach(fz=>{
+        const existingDone=(prev[fz]||[]).filter(t=>t.done);
+        // Save: ranked (not-done) in priority order, then done tasks at the end
+        const cleanRanked=byZone[fz].ranked.map(t=>{
+          const {_fromZone,_borrowed,...clean}=t;
+          return clean;
+        });
+        updated[fz]=[...cleanRanked,...existingDone];
+      });
       return updated;
     });
+
     setBorrowedIds([]);
     setMotivMsg('🏆 Chores ranked! Your priority order is ready.');
     setTimeout(()=>setMotivMsg(null), 3000);
