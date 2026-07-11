@@ -254,7 +254,7 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
         {/* Complete */}
         <button onClick={()=>onComplete(task.id)} style={{background:task.done?C.ll:sw.num,color:task.done?C.mid:"#fff",border:"none",borderRadius:9,width:32,height:32,cursor:"pointer",fontSize:15,flexShrink:0}}>{task.done?"↩":"✓"}</button>
         {/* Delete — visible on card */}
-        {onLater&&<button onClick={()=>onLater(task.id)} title="Save for later" style={{background:task.later?"rgba(212,160,32,0.18)":"rgba(90,120,72,0.08)",color:task.later?"#B8860B":"#5A7848",border:`1px solid ${task.later?"rgba(212,160,32,0.35)":"rgba(90,120,72,0.20)"}`,borderRadius:9,width:32,height:32,cursor:"pointer",fontSize:14,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}} title={task.later?"Move back to list":"Save for later"}>🕐</button>}
+        {onLater&&<button onClick={()=>onLater(task.id)} title="Save for later" style={{background:task.later?"rgba(212,160,32,0.18)":"rgba(90,120,72,0.08)",color:task.later?"#B8860B":"#5A7848",border:`1px solid ${task.later?"rgba(212,160,32,0.35)":"rgba(90,120,72,0.20)"}`,borderRadius:9,width:32,height:32,cursor:"pointer",fontSize:14,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}} title={task.later?"Move back to list":"Save for later"}>💾</button>}
         {onDelete&&<button onClick={()=>onDelete(task.id)} style={{background:"rgba(192,57,43,0.09)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.18)",borderRadius:9,width:32,height:32,cursor:"pointer",fontSize:14,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>🗑</button>}
         {/* Save for later */}
 
@@ -584,7 +584,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
     setComparing(false);setPrioritized(true);
   };
   if(comparing){
-    return <PriCompare tasks={list.tasks} onDone={onPriDone}/>;
+    return <PriCompare tasks={list.tasks.filter(t=>!t.later)} onDone={onPriDone}/>;
   }
   const active=list.tasks.filter(t=>!t.done&&!t.later);
   const done=list.tasks.filter(t=>t.done);
@@ -774,7 +774,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
         {done.length>0&&<><div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:1.5,margin:"16px 0 8px"}}>✓ Completed</div>{done.map((task,i)=>(<PriTaskRow key={task.id} task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onEdit={editTask}/>))}</>}
         {later.length>0&&(
           <div style={{marginTop:8}}>
-            <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.7)",textTransform:"uppercase",letterSpacing:1.5,margin:"16px 0 8px",display:"flex",alignItems:"center",gap:6}}>🕐 Save for later ({later.length})</div>
+            <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.7)",textTransform:"uppercase",letterSpacing:1.5,margin:"16px 0 8px",display:"flex",alignItems:"center",gap:6}}>💾 Save for later ({later.length})</div>
             {later.map((task,i)=>(
               <PriTaskRow key={task.id} task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onEdit={editTask} onLater={laterTask}/>
             ))}
@@ -2432,7 +2432,7 @@ function Housework({setScreen}){
   // ── Exact binary-insertion sort ──
   // Guarantees mathematically correct order with minimum comparisons (~n*log2(n))
   const startAvB=()=>{
-    const ownTasks=getZT(activeZone).filter(t=>!t.done).map(t=>({...t,_fromZone:activeZone}));
+    const ownTasks=getZT(activeZone).filter(t=>!t.done&&!t.later).map(t=>({...t,_fromZone:activeZone}));
     const borrowed=borrowedIds.map(b=>{
       const zt=getZT(b.fromZone);
       const t=zt.find(x=>x.id===b.taskId);
@@ -2874,7 +2874,7 @@ function Housework({setScreen}){
                   style={{background:swatchById(t.color||'lilac').num,border:'none',borderRadius:9,width:32,height:32,fontSize:15,fontWeight:700,color:'#fff',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✓</button>
                 <button onClick={()=>laterChore(activeZone,t.id)}
                   title={t.later?"Move back to list":"Save for later"}
-                  style={{background:t.later?'rgba(212,160,32,0.18)':'rgba(90,120,72,0.08)',color:t.later?'#B8860B':'#5A7848',border:`1.5px solid ${t.later?'rgba(212,160,32,0.35)':'rgba(90,120,72,0.20)'}`,borderRadius:9,width:32,height:32,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>🕐</button>
+                  style={{background:t.later?'rgba(212,160,32,0.18)':'rgba(90,120,72,0.08)',color:t.later?'#B8860B':'#5A7848',border:`1.5px solid ${t.later?'rgba(212,160,32,0.35)':'rgba(90,120,72,0.20)'}`,borderRadius:9,width:32,height:32,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>💾</button>
                 <button onClick={()=>delTask(activeZone,t.id)}
                   style={{background:'rgba(200,80,60,0.08)',border:'1.5px solid rgba(200,80,60,0.15)',borderRadius:9,width:32,height:32,fontSize:13,fontWeight:700,color:'#C04030',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
               </div>
@@ -2884,7 +2884,7 @@ function Housework({setScreen}){
           {/* Save for later section */}
           {laterChores.length>0&&(
             <div style={{marginTop:14}}>
-              <div style={{fontSize:11,fontWeight:700,color:'#5A4A30',marginBottom:7,textTransform:'uppercase',letterSpacing:1,background:'rgba(255,255,255,0.6)',borderRadius:8,padding:'4px 8px',display:'inline-block'}}>🕐 Save for later ({laterChores.length})</div>
+              <div style={{fontSize:11,fontWeight:700,color:'#5A4A30',marginBottom:7,textTransform:'uppercase',letterSpacing:1,background:'rgba(255,255,255,0.6)',borderRadius:8,padding:'4px 8px',display:'inline-block'}}>💾 Save for later ({laterChores.length})</div>
               {laterChores.map(t=>(
                 <div key={t.id} style={{background:MULTI,borderRadius:11,padding:'10px 12px',marginTop:6,display:'flex',alignItems:'center',gap:8,border:'1px solid rgba(212,160,32,0.20)'}}>
                   <div style={{flex:1,color:'#5A4A30',fontSize:13,fontWeight:600}}>{t.name}</div>
