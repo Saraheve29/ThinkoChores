@@ -1528,9 +1528,18 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
 
   /* label editing */
   const [mealTab,setMealTab]=useState('week');
+  const [importText,setImportText]=useState('');
+  const [importImg,setImportImg]=useState(null); // base64
+  const [importLoading,setImportLoading]=useState(false);
+  const [importResult,setImportResult]=useState(null); // [{day,meal}]
+  const importFileRef=useRef(null);
   const [recipes,setRecipes]=useState([]);
   const [addingRecipe,setAddingRecipe]=useState(false);
   const [recipeDetail,setRecipeDetail]=useState(null);
+  const [recipeAiLoading,setRecipeAiLoading]=useState(false);
+  const [recipeAiText,setRecipeAiText]=useState('');
+  const [showRecipeAi,setShowRecipeAi]=useState(false);
+  const [showAddToDay,setShowAddToDay]=useState(false);
   const [recipeDraft,setRecipeDraft]=useState({name:'',description:'',ingredients:'',method:'',url:'',pinUrl:'',photo:''});
   const [editLabelIdx,setEditLabelIdx]=useState(null);
   const [labelDraft,setLabelDraft]=useState('');
@@ -1694,6 +1703,56 @@ const sendMealToShop=(meal,label)=>{
             <div style={{fontWeight:700,color:"#2A4020",fontSize:14,marginBottom:8}}>📝 Notes</div>
             <div style={{fontSize:14,color:"#3A3020",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{r.description}</div>
           </div>}
+
+          {/* Action buttons */}
+          <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:16}}>
+
+            {/* Add to meal plan */}
+            <button onClick={()=>setShowAddToDay(d=>!d)}
+              style={{width:"100%",padding:"14px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:15,cursor:"pointer",boxShadow:"0 3px 12px rgba(58,80,38,0.28)"}}>
+              📅 Add to meal plan
+            </button>
+            {showAddToDay&&(
+              <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:18,padding:"12px",border:"1px solid rgba(90,120,72,0.15)"}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#2A4020",marginBottom:8}}>Which day?</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {plan.labels.map((label,dayIdx)=>(
+                    <button key={dayIdx} onClick={()=>{
+                      const newDays=[...plan.days.map(d=>[...d])];
+                      newDays[dayIdx]=[...newDays[dayIdx],{id:Date.now()+Math.random(),text:r.name,url:r.url||"",had:false}];
+                      save({...plan,days:newDays});
+                      setShowAddToDay(false);
+                      alert(`Added "${r.name}" to ${label}!`);
+                    }}
+                      style={{padding:"10px 8px",background:"rgba(255,255,255,0.7)",border:"1.5px solid rgba(90,120,72,0.20)",borderRadius:12,fontWeight:600,fontSize:13,color:"#1A1A10",cursor:"pointer"}}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Add ingredients to shopping */}
+            {r.ingredients&&(
+              <button onClick={()=>{
+                const lines=r.ingredients.split("\n").map(l=>l.trim()).filter(Boolean);
+                if(lines.length===0){alert("No ingredients found in this recipe.");return;}
+                const newList={
+                  id:Date.now()+Math.random(),
+                  name:`${r.name} — Ingredients`,
+                  icon:"🛒",
+                  color:"#5A7848",
+                  items:lines.map(text=>({id:Date.now()+Math.random(),text,done:false})),
+                  created:Date.now()
+                };
+                setShopData&&setShopData(prev=>[...prev,newList]);
+                alert(`Created shopping list "${newList.name}" with ${lines.length} ingredients!`);
+              }}
+                style={{width:"100%",padding:"14px",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:"#2A4020",border:"1.5px solid rgba(90,120,72,0.25)",borderRadius:100,fontWeight:700,fontSize:15,cursor:"pointer"}}>
+                🛒 Send ingredients to shopping list
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -1740,6 +1799,15 @@ const sendMealToShop=(meal,label)=>{
           boxShadow:mealTab==="recipes"?"0 2px 10px rgba(0,0,0,0.2)":"none",
           transition:"all 0.15s",
         }}>Recipes</button>
+        <button onClick={()=>setMealTab("import")} style={{
+          background:mealTab==="import"?"#5A7848":"rgba(248,245,236,0.88)",
+          color:mealTab==="import"?"#fff":"#5A5040",
+          border:mealTab==="import"?"none":"1.5px solid rgba(90,80,60,0.2)",
+          borderRadius:100,padding:"10px 16px",
+          fontWeight:700,fontSize:14,cursor:"pointer",
+          boxShadow:mealTab==="import"?"0 2px 10px rgba(90,120,72,0.3)":"none",
+          transition:"all 0.15s",
+        }}>✨ Import</button>
         <button onClick={()=>save(init())} style={{
           background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:"#5A5040",
           border:"1.5px solid rgba(90,80,60,0.2)",
@@ -1750,6 +1818,156 @@ const sendMealToShop=(meal,label)=>{
       </div>
 
       {/* Recipes tab */}
+
+      {/* ── IMPORT TAB ── */}
+      {mealTab==="import"&&(
+        <div style={{padding:"14px 16px"}}>
+          <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:18,color:"#1A1A10",marginBottom:4}}>✨ Import Meals with AI</div>
+          <div style={{fontSize:13,color:"#1A1A10",marginBottom:14,lineHeight:1.6,background:"rgba(255,255,255,0.85)",borderRadius:12,padding:"8px 12px"}}>
+            Type or paste a meal plan, recipe list, or screenshot — AI will read it and fill in your week automatically.
+          </div>
+
+          {/* Text input */}
+          <textarea
+            value={importText}
+            onChange={e=>setImportText(e.target.value)}
+            placeholder={"e.g. Monday: pasta, Tuesday: chicken stir fry, Wednesday: soup...\n\nOr paste any text with meals in it!"}
+            style={{width:"100%",minHeight:120,padding:"12px",borderRadius:14,border:"1.5px solid rgba(90,120,72,0.25)",fontSize:14,fontFamily:"'Segoe UI',sans-serif",resize:"vertical",outline:"none",background:"rgba(255,255,255,0.9)",color:"#1A1A10",boxSizing:"border-box",marginBottom:10}}
+          />
+
+          {/* Image upload */}
+          <input ref={importFileRef} type="file" accept="image/*" style={{display:"none"}} onChange={async e=>{
+            const file=e.target.files[0];
+            if(!file)return;
+            const reader=new FileReader();
+            reader.onload=ev=>{
+              const b64=ev.target.result.split(",")[1];
+              setImportImg({b64,type:file.type,name:file.name});
+            };
+            reader.readAsDataURL(file);
+          }}/>
+
+          {importImg?(
+            <div style={{background:"rgba(90,120,72,0.08)",border:"1.5px solid rgba(90,120,72,0.20)",borderRadius:12,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:20}}>🖼️</span>
+              <span style={{flex:1,fontSize:13,color:"#1A1A10",fontWeight:600}}>{importImg.name}</span>
+              <button onClick={()=>setImportImg(null)} style={{background:"none",border:"none",color:"#c0392b",cursor:"pointer",fontSize:16}}>✕</button>
+            </div>
+          ):(
+            <button onClick={()=>importFileRef.current.click()}
+              style={{width:"100%",padding:"12px",marginBottom:10,background:"rgba(255,255,255,0.6)",border:"1.5px dashed rgba(90,120,72,0.30)",borderRadius:12,cursor:"pointer",fontSize:13,fontWeight:600,color:"#3A5828",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              <span>📸</span> Upload screenshot of a meal plan
+            </button>
+          )}
+
+          {/* Day labels preview */}
+          <div style={{fontSize:12,color:"#5A4A30",marginBottom:12,background:"rgba(255,255,255,0.6)",borderRadius:10,padding:"8px 12px"}}>
+            <b>Your days:</b> {plan.labels.join(", ")}
+          </div>
+
+          {/* Run AI */}
+          <button onClick={async()=>{
+            if(!importText.trim()&&!importImg){alert("Please enter some text or upload a screenshot first.");return;}
+            setImportLoading(true);
+            setImportResult(null);
+            try{
+              const messages=[];
+              const textPart={type:"text",text:`You are helping fill a meal planner. The user has ${plan.labels.length} days labelled: ${plan.labels.join(", ")}.
+
+Extract meals from the content below and assign them to days in order. Return ONLY valid JSON.
+
+Rules:
+- "MEAL 1", "MEAL 2" etc map in order to the day labels: MEAL 1 = ${plan.labels[0]}, MEAL 2 = ${plan.labels[1]}, and so on
+- If content mentions Monday/Tuesday etc, map those to the closest day label
+- If multiple dishes are listed under one meal, join them with " + " into one meal string
+- Ignore per-person variations like "Kids:", "Me:", "Maleeka:" — just extract the main dish names
+- Keep meal names concise but descriptive
+- Return ONLY this JSON format, no markdown, no explanation:
+{"meals":[{"day":"${plan.labels[0]}","meal":"Thai soup"},{"day":"${plan.labels[1]}","meal":"Cheese and bean pie"}]}
+
+Content to analyse:
+${importText}`};
+
+              if(importImg){
+                messages.push({role:"user",content:[
+                  {type:"image",source:{type:"base64",media_type:importImg.type,data:importImg.b64}},
+                  textPart
+                ]});
+              } else {
+                messages.push({role:"user",content:[textPart]});
+              }
+
+              const res=await fetch("https://api.anthropic.com/v1/messages",{
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({
+                  model:"claude-sonnet-4-6",
+                  max_tokens:1000,
+                  system:"You extract meal plans from text or images and return only valid JSON. No markdown, no explanation, no preamble. Start your response with { and end with }.",
+                  messages
+                })
+              });
+              const data=await res.json();
+              if(data.error){throw new Error(data.error.message);}
+              const raw=data.content?.[0]?.text||"{}";
+              console.log("AI raw response:",raw);
+              const clean=raw.replace(/```json|```/g,"").trim();
+              // Find JSON object in response
+              const jsonMatch=clean.match(/\{[\s\S]*\}/);
+              if(!jsonMatch) throw new Error("No JSON in response: "+clean.slice(0,200));
+              const parsed=JSON.parse(jsonMatch[0]);
+              setImportResult(parsed.meals||[]);
+            }catch(err){
+              alert("Sorry, couldn't read that. Try again or check your text.");
+              console.error(err);
+            }
+            setImportLoading(false);
+          }}
+            disabled={importLoading}
+            style={{width:"100%",padding:"14px",background:importLoading?"rgba(90,120,72,0.40)":"#5A7848",color:"#fff",border:"none",borderRadius:100,fontSize:15,fontWeight:700,cursor:importLoading?"not-allowed":"pointer",marginBottom:16}}>
+            {importLoading?"✨ Reading your meals...":"✨ Extract meals with AI"}
+          </button>
+
+          {/* Results */}
+          {importResult&&(
+            <div>
+              <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:16,color:"#1A1A10",marginBottom:10}}>
+                {importResult.length>0?`Found ${importResult.length} meal${importResult.length!==1?"s":""}:`:"No meals found — try different text"}
+              </div>
+              {importResult.map((item,i)=>(
+                <div key={i} style={{background:"rgba(255,255,255,0.7)",borderRadius:12,padding:"10px 14px",marginBottom:8,display:"flex",alignItems:"center",gap:10,border:"1px solid rgba(90,120,72,0.15)"}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#5A7848",marginBottom:2}}>{item.day}</div>
+                    <div style={{fontSize:14,fontWeight:600,color:"#1A1A10"}}>{item.meal}</div>
+                  </div>
+                  <button onClick={()=>setImportResult(importResult.filter((_,j)=>j!==i))}
+                    style={{background:"none",border:"none",color:"#c0392b",cursor:"pointer",fontSize:16}}>✕</button>
+                </div>
+              ))}
+              {importResult.length>0&&(
+                <button onClick={()=>{
+                  const newDays=[...plan.days.map(d=>[...d])];
+                  importResult.forEach(item=>{
+                    const dayIdx=plan.labels.findIndex(l=>l.toLowerCase()===item.day.toLowerCase());
+                    if(dayIdx>-1){
+                      newDays[dayIdx]=[...newDays[dayIdx],{id:Date.now()+Math.random(),text:item.meal,url:"",ingredients:[],had:false}];
+                    }
+                  });
+                  save({...plan,days:newDays});
+                  setImportResult(null);
+                  setImportText("");
+                  setImportImg(null);
+                  setMealTab("week");
+                }}
+                  style={{width:"100%",padding:"14px",background:"#1A1A10",color:"#fff",border:"none",borderRadius:100,fontSize:15,fontWeight:700,cursor:"pointer"}}>
+                  ✅ Add all to meal plan
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── IDEAS TAB ── */}
       {mealTab==="ideas"&&(
         <div style={{padding:"0 14px 20px"}}>
@@ -1854,6 +2072,67 @@ const sendMealToShop=(meal,label)=>{
           {addingRecipe&&(
             <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:22,padding:"20px 18px",marginBottom:14,boxShadow:"0 4px 24px rgba(0,0,0,0.08)",border:"1px solid rgba(90,120,72,0.18)"}}>
               <div style={{fontWeight:700,color:"#2A4020",fontSize:15,marginBottom:12}}>📖 New Recipe</div>
+
+              {/* AI extract from text/URL */}
+              <button onClick={()=>setShowRecipeAi(a=>!a)}
+                style={{width:"100%",padding:"10px",marginBottom:12,background:showRecipeAi?"#5A7848":"rgba(90,120,72,0.08)",color:showRecipeAi?"#fff":"#3A5828",border:"1.5px solid rgba(90,120,72,0.25)",borderRadius:100,fontWeight:700,fontSize:13,cursor:"pointer"}}>
+                ✨ {showRecipeAi?"Hide AI import":"Import recipe with AI (paste text or URL)"}
+              </button>
+              {showRecipeAi&&(
+                <div style={{background:"rgba(255,255,255,0.6)",borderRadius:16,padding:"12px",marginBottom:12,border:"1px solid rgba(90,120,72,0.15)"}}>
+                  <textarea value={recipeAiText} onChange={e=>setRecipeAiText(e.target.value)}
+                    placeholder={"Paste recipe text, a website URL, or Pinterest link here..."}
+                    rows={4}
+                    style={{width:"100%",boxSizing:"border-box",padding:"10px",borderRadius:12,border:"1.5px solid rgba(90,120,72,0.20)",fontSize:13,fontFamily:"inherit",resize:"none",outline:"none",marginBottom:8,background:"rgba(255,255,255,0.9)"}}/>
+                  <button onClick={async()=>{
+                    if(!recipeAiText.trim())return;
+                    setRecipeAiLoading(true);
+                    try{
+                      const res=await fetch("https://api.anthropic.com/v1/messages",{
+                        method:"POST",
+                        headers:{"Content-Type":"application/json"},
+                        body:JSON.stringify({
+                          model:"claude-sonnet-4-6",
+                          max_tokens:1000,
+                          system:"Extract recipe details from text or URLs. Return only valid JSON, no markdown.",
+                          messages:[{role:"user",content:[{type:"text",text:`Extract this recipe and return ONLY JSON in this exact format:
+{"name":"Recipe name","ingredients":"ingredient 1\ningredient 2\ningredient 3","method":"Step 1...\nStep 2...","description":"Brief description"}
+
+If it is a URL, describe what the recipe would likely contain based on the URL name.
+Keep ingredients one per line. Return ONLY the JSON object.
+
+Content:
+${recipeAiText}`}]}]
+                        })
+                      });
+                      const data=await res.json();
+                      if(data.error)throw new Error(data.error.message);
+                      const raw=data.content?.[0]?.text||"{}";
+                      const jsonMatch=raw.match(/\{[\s\S]*\}/);
+                      if(!jsonMatch)throw new Error("No JSON found");
+                      const parsed=JSON.parse(jsonMatch[0]);
+                      setRecipeDraft(d=>({
+                        ...d,
+                        name:parsed.name||d.name,
+                        ingredients:parsed.ingredients||d.ingredients,
+                        method:parsed.method||d.method,
+                        description:parsed.description||d.description,
+                      }));
+                      setShowRecipeAi(false);
+                      setRecipeAiText("");
+                    }catch(err){
+                      alert("Couldn't extract recipe. Try pasting the recipe text directly.");
+                      console.error(err);
+                    }
+                    setRecipeAiLoading(false);
+                  }}
+                    disabled={recipeAiLoading}
+                    style={{width:"100%",padding:"10px",background:recipeAiLoading?"#aaa":"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:13,cursor:recipeAiLoading?"not-allowed":"pointer"}}>
+                    {recipeAiLoading?"✨ Extracting...":"✨ Extract recipe with AI"}
+                  </button>
+                </div>
+              )}
+
               <input value={recipeDraft.name} onChange={e=>setRecipeDraft(d=>({...d,name:e.target.value}))} placeholder="Recipe name" style={{width:"100%",boxSizing:"border-box",padding:"12px 16px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.25)",fontSize:15,fontWeight:600,color:"#1A1A10",outline:"none",marginBottom:10,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)"}}/>
               {/* Photo upload */}
               <label style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"rgba(90,120,72,0.06)",borderRadius:16,border:"1.5px dashed rgba(90,120,72,0.22)",cursor:"pointer",marginBottom:10}}>
