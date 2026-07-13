@@ -3041,7 +3041,11 @@ function Housework({setScreen}){
                           {zTasks.filter(t=>!borrowedIds.some(b=>b.taskId===t.id)).map(t=>(
                             <div key={t.id} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 0',borderBottom:'1px solid rgba(90,80,60,0.06)'}}>
                               <div style={{flex:1,fontSize:13,color:'#1A1A10'}}>{t.name}</div>
-                              <button onClick={()=>setBorrowedIds(b=>[...b,{taskId:t.id,fromZone:zn.id}])}
+                              <button onClick={()=>{
+                                  const newTaskObj={id:Date.now()+Math.random(),name:t.name,score:t.score||3,reason:t.reason||'',done:false,color:t.color||'lilac'};
+                                  saveTasks(prev=>({...prev,[activeZone]:[...(prev[activeZone]||[]),newTaskObj]}));
+                                  setShowBorrow(false);
+                                }}
                                 style={{background:'rgba(90,120,72,0.10)',border:'1px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'4px 9px',fontSize:10,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>+ Borrow</button>
                             </div>
                           ))}
@@ -3050,9 +3054,9 @@ function Housework({setScreen}){
                             <div key={name} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 0',borderBottom:'1px solid rgba(90,80,60,0.06)'}}>
                               <div style={{flex:1,fontSize:13,color:'#1A1A10'}}>{name}</div>
                               <button onClick={()=>{
-                                  const newTaskObj={id:Date.now()+Math.random(),name,score:3,reason:'',done:false};
-                                  saveTasks(prev=>({...prev,[zn.id]:[...(prev[zn.id]||[]),newTaskObj]}));
-                                  setBorrowedIds(b=>[...b,{taskId:newTaskObj.id,fromZone:zn.id}]);
+                                  const newTaskObj={id:Date.now()+Math.random(),name,score:3,reason:'',done:false,color:'lilac'};
+                                  saveTasks(prev=>({...prev,[activeZone]:[...(prev[activeZone]||[]),newTaskObj]}));
+                                  setShowBorrow(false);
                                 }}
                                 style={{background:'rgba(90,120,72,0.10)',border:'1px solid rgba(90,120,72,0.25)',borderRadius:7,padding:'4px 9px',fontSize:10,fontWeight:700,color:'#3A5828',cursor:'pointer'}}>+ Borrow</button>
                             </div>
