@@ -256,6 +256,7 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
         {/* Delete — visible on card */}
         {onLater&&<button onClick={()=>onLater(task.id)} title="Save for later" style={{background:task.later?"rgba(212,160,32,0.18)":"rgba(90,120,72,0.08)",color:task.later?"#B8860B":"#5A7848",border:`1px solid ${task.later?"rgba(212,160,32,0.35)":"rgba(90,120,72,0.20)"}`,borderRadius:9,width:32,height:32,cursor:"pointer",fontSize:14,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}} title={task.later?"Move back to list":"Save for later"}>💾</button>}
         {onDelete&&<button onClick={()=>onDelete(task.id)} style={{background:"rgba(192,57,43,0.09)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.18)",borderRadius:9,width:32,height:32,cursor:"pointer",fontSize:14,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>🗑</button>}
+
         {/* Save for later */}
 
       </div>
@@ -488,7 +489,7 @@ function BreakTimer({setScreen}) {
 }
 
 
-function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusMins,setFocusMins,focusLeft,setFocusLeft,focusOn,setFocusOn,setFocusAlerted,fmtTimer}) {
+function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusMins,setFocusMins,focusLeft,setFocusLeft,focusOn,setFocusOn,setFocusAlerted,fmtTimer,onMoveToHw,hwZones}) {
   const [newTask,setNewTask]=useState("");
   const [newUrl,setNewUrl]=useState("");
   const [prioritized,setPrioritized]=useState(false);
@@ -509,6 +510,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
   };
   const deleteTask=id=>{onUpdate(curr=>({...curr,tasks:curr.tasks.filter(t=>t.id!==id)}));setPrioritized(false);};
   const laterTask=id=>onUpdate(curr=>({...curr,tasks:curr.tasks.map(t=>t.id===id?{...t,later:!t.later}:t)}));
+  const [moveTodoMenu,setMoveTodoMenu]=useState(null); // taskId
 
   const launchTaskConfetti=allDone=>{
     const emojis=allDone?["🏆","⭐","🌟","💫","✨","🎊","🎉","💥"]:["🎉","✨","⭐","💫","🌿","🎊"];
@@ -768,6 +770,28 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
                   onTouchMove:priTaskTouchMove,
                   onTouchEnd:priTaskTouchEnd,
                 }}/>
+              {/* Move to chores dropdown */}
+              {onMoveToHw&&hwZones&&hwZones.length>0&&(
+                <div style={{position:"relative",display:"inline-block",marginTop:-4,marginBottom:6}}>
+                  <button onClick={()=>setMoveTodoMenu(m=>m===task.id?null:task.id)}
+                    style={{background:"rgba(90,80,60,0.07)",color:"#5A4A30",border:"1px solid rgba(90,80,60,0.12)",borderRadius:8,padding:"3px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+                    ⋯ Move to chores
+                  </button>
+                  {moveTodoMenu===task.id&&(
+                    <div style={{position:"absolute",left:0,top:28,background:"#fff",borderRadius:14,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(90,80,60,0.12)",zIndex:100,minWidth:170,overflow:"hidden"}}>
+                      {hwZones.map(z=>(
+                        <button key={z.id} onClick={()=>{
+                          onMoveToHw(z.id,{id:Date.now()+Math.random(),name:task.name,score:3,reason:'',done:false,color:task.color||'lilac'});
+                          deleteTask(task.id);
+                          setMoveTodoMenu(null);
+                        }} style={{width:"100%",padding:"10px 14px",background:"none",border:"none",textAlign:"left",fontSize:13,fontWeight:600,color:"#1A1A10",cursor:"pointer",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid rgba(90,80,60,0.06)"}}>
+                          {z.icon} {z.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>)
           </div>
         ))}
@@ -2389,7 +2413,7 @@ const statusByKey=k=>STATUSES.find(s=>s.key===k)||STATUSES[0];
 // ═══════════════════════════════════════════════════════════
 //   HOUSEWORK  — clean rebuild
 // ═══════════════════════════════════════════════════════════
-function Housework({setScreen}){
+function Housework({setScreen,onMoveToPri,hwZones}){
   // Inject confetti animation
   React.useEffect(()=>{
     const style=document.createElement('style');
@@ -2527,6 +2551,7 @@ function Housework({setScreen}){
   const [showTemplates,setShowTemplates]=useState(false);
   const [dragTask,setDragTask]=useState(null);
   const [showAddZone,setShowAddZone]=useState(false);
+  const [moveChoreMenu,setMoveChoreMenu]=useState(null); // taskId
   const [newZoneName,setNewZoneName]=useState('');
   const [newZoneIcon,setNewZoneIcon]=useState('📋');
   const [editingChoreId,setEditingChoreId]=useState(null);
@@ -3163,6 +3188,22 @@ function Housework({setScreen}){
                   style={{background:t.later?'rgba(212,160,32,0.18)':'rgba(90,120,72,0.08)',color:t.later?'#B8860B':'#5A7848',border:`1.5px solid ${t.later?'rgba(212,160,32,0.35)':'rgba(90,120,72,0.20)'}`,borderRadius:9,width:32,height:32,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>💾</button>
                 <button onClick={()=>delTask(activeZone,t.id)}
                   style={{background:'rgba(200,80,60,0.08)',border:'1.5px solid rgba(200,80,60,0.15)',borderRadius:9,width:32,height:32,fontSize:13,fontWeight:700,color:'#C04030',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+                <div style={{position:'relative'}}>
+                  <button onClick={()=>setMoveChoreMenu(moveChoreMenu===t.id?null:t.id)}
+                    style={{background:'rgba(90,80,60,0.08)',border:'1.5px solid rgba(90,80,60,0.15)',borderRadius:9,width:32,height:32,fontSize:13,fontWeight:700,color:'#5A4A30',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>⋯</button>
+                  {moveChoreMenu===t.id&&(
+                    <div style={{position:'absolute',right:0,bottom:38,background:'#fff',borderRadius:14,boxShadow:'0 4px 20px rgba(0,0,0,0.15)',border:'1px solid rgba(90,80,60,0.12)',zIndex:100,minWidth:160,overflow:'hidden'}}>
+                      <div style={{fontSize:11,fontWeight:700,color:'#8A8070',padding:'8px 12px 4px',textTransform:'uppercase',letterSpacing:0.5}}>Move to</div>
+                      <button onClick={()=>{
+                        if(onMoveToPri){onMoveToPri({id:Date.now()+Math.random(),name:t.name,done:false,color:'lilac',url:''});}
+                        delTask(activeZone,t.id);
+                        setMoveChoreMenu(null);
+                      }} style={{width:'100%',padding:'10px 14px',background:'none',border:'none',textAlign:'left',fontSize:13,fontWeight:600,color:'#1A1A10',cursor:'pointer',display:'flex',alignItems:'center',gap:8}}>
+                        📋 To Do list
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -3480,7 +3521,7 @@ export default function App(){
 
   // ── SCREENS ──
   if(screen==='todo') return(<><GardenBg/><div style={{position:'relative',zIndex:10,minHeight:'100vh',paddingBottom:80}}>
-    <PriList list={{...( priData.length>0?priData[0]:{id:'main',name:'To Do',tasks:[]}),tasks:(priData.length>0&&priData[0].tasks)?priData[0].tasks:[]}} onBack={()=>setScreen('home')} onUpdate={(updater)=>{
+    <PriList hwZones={load('hw_zones',[])} onMoveToHw={(zoneId,task)=>{const hw=load('hw_tasks',{});hw[zoneId]=[...(hw[zoneId]||[]),task];try{localStorage.setItem('hw_tasks',JSON.stringify(hw));}catch{}}} list={{...( priData.length>0?priData[0]:{id:'main',name:'To Do',tasks:[]}),tasks:(priData.length>0&&priData[0].tasks)?priData[0].tasks:[]}} onBack={()=>setScreen('home')} onUpdate={(updater)=>{
             setPriData(prevData=>{
               const currentList=prevData.length>0?prevData[0]:{id:'main',name:'To Do',tasks:[]};
               const newList=typeof updater==='function'?updater(currentList):updater;
@@ -3493,7 +3534,7 @@ export default function App(){
   </div></>);
 
   if(screen==='housework') return(<><GardenBg/><div style={{position:'relative',zIndex:10,minHeight:'100vh',paddingBottom:80}}>
-    <Housework setScreen={setScreen}/>
+    <Housework setScreen={setScreen} hwZones={load('hw_zones',[])} onMoveToPri={(task)=>{setPriData(prev=>{const list=prev[0]||{id:'main',name:'To Do',tasks:[]};const updated=[{...list,tasks:[...list.tasks,task]}];save('chores_pri',updated);return updated;});}}/>
     <NavBar current="housework" setScreen={setScreen}/>
   </div></>);
 
