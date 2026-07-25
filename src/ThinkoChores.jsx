@@ -170,7 +170,7 @@ function ColourPicker({current,onChange,onClose}) {
   );
 }
 
-function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMoveToList,lists,onPrioritizeThis,onSendTo,onEdit,onLater,onMoveToHw,hwZones,onMoveUp,onMoveDown,isFirst,isLast,setScreen,dragHandlers}) {
+function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMoveToList,lists,onPrioritizeThis,onSendTo,onEdit,onLater,onMoveToHw,hwZones,onPlaceOne,onMoveUp,onMoveDown,isFirst,isLast,setScreen,dragHandlers}) {
   const sw=swatchById(task.color);
   const [editingName,setEditingName]=useState(false);
   const [editText,setEditText]=useState(task.name);
@@ -263,8 +263,14 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
               style={{background:"rgba(90,80,60,0.07)",color:"#5A4A30",border:"1px solid rgba(90,80,60,0.12)",borderRadius:9,width:32,height:32,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>⋯</button>
             {moveMenu&&(
               <div style={{position:"absolute",right:0,bottom:38,background:"#fff",borderRadius:14,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(90,80,60,0.12)",zIndex:200,minWidth:170,overflow:"hidden"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#8A8070",padding:"8px 12px 4px",textTransform:"uppercase",letterSpacing:0.5}}>Move to chores</div>
-                {hwZones.map(z=>(
+                {onPlaceOne&&(
+                  <button onClick={()=>{onPlaceOne(task);setMoveMenu(false);}}
+                    style={{width:"100%",padding:"10px 14px",background:"rgba(90,120,72,0.06)",border:"none",textAlign:"left",fontSize:13,fontWeight:700,color:"#3A5828",cursor:"pointer",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid rgba(90,80,60,0.10)"}}>
+                    📍 Place in priority list
+                  </button>
+                )}
+                {hwZones&&hwZones.length>0&&<div style={{fontSize:11,fontWeight:700,color:"#8A8070",padding:"8px 12px 4px",textTransform:"uppercase",letterSpacing:0.5}}>Move to chores</div>}
+                {hwZones&&hwZones.map(z=>(
                   <button key={z.id} onClick={()=>{
                     onMoveToHw(z.id,{id:Date.now()+Math.random(),name:task.name,score:3,reason:'',done:false,color:task.color||'lilac'});
                     onDelete(task.id);
@@ -511,6 +517,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
   const [newTask,setNewTask]=useState("");
   const [newUrl,setNewUrl]=useState("");
   const [prioritized,setPrioritized]=useState(false);
+  const [placeOneTask,setPlaceOneTask]=useState(null);
   const [comparing,setComparing]=useState(false);
   const [taskCelebration,setTaskCelebration]=useState(null);
   const [taskConfetti,setTaskConfetti]=useState([]);
@@ -602,6 +609,25 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
     onUpdate(curr=>({...curr,tasks:recoloured}));
     setComparing(false);setPrioritized(true);
   };
+  // Place one item into existing sorted list
+  if(placeOneTask){
+    const others=active.filter(t=>t.id!==placeOneTask.id);
+    return <PlaceOne
+      newTask={placeOneTask}
+      existingTasks={others}
+      onDone={(insertIdx)=>{
+        // Rebuild task array with the item placed at insertIdx
+        const withoutIt=list.tasks.filter(t=>t.id!==placeOneTask.id);
+        const nonDone=withoutIt.filter(t=>!t.done&&!t.later);
+        const doneAndLater=withoutIt.filter(t=>t.done||t.later);
+        nonDone.splice(insertIdx,0,placeOneTask);
+        onUpdate(curr=>({...curr,tasks:[...nonDone,...doneAndLater]}));
+        setPlaceOneTask(null);
+      }}
+      onCancel={()=>setPlaceOneTask(null)}
+    />;
+  }
+
   if(comparing){
     return <PriCompare tasks={list.tasks.filter(t=>!t.later)} onDone={onPriDone}/>;
   }
@@ -777,7 +803,7 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
             <div key={task.id}
                 data-pritaskid={task.id}
                 style={{opacity:dragTaskId===task.id?0.5:1,transform:dragTaskId===task.id?"scale(1.02)":"scale(1)",transition:"all 0.15s"}}>
-              <PriTaskRow task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onEdit={editTask} onLater={laterTask} onMoveToHw={onMoveToHw} hwZones={hwZones} onAddSub={addSubItems} lists={[]} onPrioritizeThis={()=>setComparing(true)} onSendTo={sendTaskTo} onMoveUp={()=>moveTask(task.id,-1)} onMoveDown={()=>moveTask(task.id,1)} isFirst={i===0} isLast={i===active.length-1} setScreen={setScreen}
+              <PriTaskRow task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onEdit={editTask} onLater={laterTask} onMoveToHw={onMoveToHw} hwZones={hwZones} onPlaceOne={setPlaceOneTask} onAddSub={addSubItems} lists={[]} onPrioritizeThis={()=>setComparing(true)} onSendTo={sendTaskTo} onMoveUp={()=>moveTask(task.id,-1)} onMoveDown={()=>moveTask(task.id,1)} isFirst={i===0} isLast={i===active.length-1} setScreen={setScreen}
                 dragHandlers={{
                   draggable:true,
                   onDragStart:e=>{e.dataTransfer.effectAllowed="move";setDragTaskId(task.id);},
@@ -2408,6 +2434,82 @@ const statusByKey=k=>STATUSES.find(s=>s.key===k)||STATUSES[0];
 // ═══════════════════════════════════════════════════════════
 //   HOUSEWORK  — clean rebuild
 // ═══════════════════════════════════════════════════════════
+// ── PlaceOne: binary insert a single new task into an existing ordered list ──
+function PlaceOne({newTask, existingTasks, onDone, onCancel}) {
+  // existingTasks is already ordered (index 0 = most urgent)
+  // We binary search to find where newTask belongs
+  const [lo,setLo]=useState(0);
+  const [hi,setHi]=useState(existingTasks.length);
+  const lockRef=useRef(false);
+
+  // If list is empty or 1 item, just place at start
+  useEffect(()=>{
+    if(existingTasks.length===0){onDone(0);return;}
+  },[]);
+
+  const mid=Math.floor((lo+hi)/2);
+  const pivot=existingTasks[mid];
+
+  // Done — found insertion point
+  if(lo>=hi){
+    onDone(lo);
+    return null;
+  }
+
+  if(!pivot) { onDone(lo); return null; }
+
+  const choose=(winner)=>{
+    if(lockRef.current)return;
+    lockRef.current=true;
+    // If newTask won (more urgent), it goes before pivot → hi=mid
+    // If pivot won (more urgent), newTask goes after pivot → lo=mid+1
+    const newTaskWon=winner==="new";
+    if(newTaskWon) setHi(mid); else setLo(mid+1);
+    setTimeout(()=>{lockRef.current=false;},200);
+  };
+
+  const total=Math.ceil(Math.log2(existingTasks.length+1));
+  const done=total-Math.ceil(Math.log2(hi-lo+1));
+  const pct=Math.round((done/Math.max(1,total))*100);
+
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(20,30,10,0.7)",backdropFilter:"blur(4px)",display:"flex",flexDirection:"column"}}>
+      <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.97) 0%,rgba(210,195,220,0.97) 35%,rgba(190,215,200,0.97) 70%,rgba(220,210,185,0.97) 100%)",padding:"14px 18px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid rgba(90,80,60,0.10)"}}>
+        <button onClick={onCancel} style={{background:"none",border:"none",cursor:"pointer",fontSize:22,padding:0}}>✕</button>
+        <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:17,color:"#1A1A10",flex:1}}>📍 Where does this fit?</div>
+        <div style={{fontSize:11,color:"#5A4A30",fontWeight:700,background:"rgba(255,255,255,0.5)",borderRadius:8,padding:"3px 8px"}}>~{total-done} left</div>
+      </div>
+      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px 20px",gap:16}}>
+        <div style={{width:"100%",maxWidth:480}}>
+          <div style={{height:4,borderRadius:2,background:"rgba(90,80,60,0.10)",marginBottom:20,overflow:"hidden"}}>
+            <div style={{height:"100%",width:`${pct}%`,background:"#5A7848",borderRadius:2,transition:"width 0.3s"}}/>
+          </div>
+          <div style={{fontSize:13,fontWeight:700,color:"#1A1A10",textAlign:"center",marginBottom:20,background:"rgba(255,255,255,0.6)",borderRadius:10,padding:"6px 14px"}}>
+            Which is more urgent?
+          </div>
+          {/* New task */}
+          <button onClick={()=>choose("new")}
+            style={{width:"100%",marginBottom:14,padding:"18px 20px",background:"linear-gradient(135deg,rgba(90,120,72,0.15),rgba(90,120,72,0.05))",border:"2.5px solid rgba(90,120,72,0.35)",borderRadius:20,textAlign:"left",cursor:"pointer",display:"flex",alignItems:"center",gap:14,userSelect:"none"}}>
+            <div style={{width:34,height:34,borderRadius:"50%",background:"#5A7848",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,flexShrink:0}}>NEW</div>
+            <div style={{flex:1,fontWeight:700,fontSize:15,color:"#1A1A10"}}>{newTask.name}</div>
+          </button>
+          <div style={{textAlign:"center",fontSize:12,fontWeight:700,color:"rgba(90,80,60,0.5)",marginBottom:14}}>OR</div>
+          {/* Existing pivot */}
+          <button onClick={()=>choose("pivot")}
+            style={{width:"100%",padding:"18px 20px",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:"2px solid rgba(180,160,140,0.25)",borderRadius:20,textAlign:"left",cursor:"pointer",display:"flex",alignItems:"center",gap:14,userSelect:"none"}}>
+            <div style={{width:34,height:34,borderRadius:"50%",background:"rgba(90,80,60,0.15)",color:"#3A2A18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,flexShrink:0}}>#{mid+1}</div>
+            <div style={{flex:1,fontWeight:700,fontSize:15,color:"#1A1A10"}}>{pivot.name}</div>
+          </button>
+          <div style={{marginTop:16,fontSize:12,color:"rgba(90,80,60,0.6)",textAlign:"center",fontWeight:600}}>
+            Tap whichever needs doing first
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function Housework({setScreen,onMoveToPri,hwZones,saveTasksRef}){
   // Inject confetti animation
   React.useEffect(()=>{
@@ -2549,6 +2651,7 @@ function Housework({setScreen,onMoveToPri,hwZones,saveTasksRef}){
   const [dragTask,setDragTask]=useState(null);
   const [showAddZone,setShowAddZone]=useState(false);
   const [moveChoreMenu,setMoveChoreMenu]=useState(null); // taskId
+  const [placeOneChore,setPlaceOneChore]=useState(null); // chore being placed
   const [newZoneName,setNewZoneName]=useState('');
   const [newZoneIcon,setNewZoneIcon]=useState('📋');
   const [editingChoreId,setEditingChoreId]=useState(null);
@@ -2744,20 +2847,40 @@ function Housework({setScreen,onMoveToPri,hwZones,saveTasksRef}){
     }).filter(Boolean);
     const todo=[...ownTasks,...borrowed];
     if(todo.length<2){alert("Add at least 2 chores first!");return;}
-    // Round-robin: build all pairs (everyone vs everyone once)
+    // Binary insertion sort — much fewer comparisons than round-robin
     const shuffled=[...todo].sort(()=>Math.random()-0.5);
-    const p=[];
-    const winsMap={};
-    shuffled.forEach(t=>{winsMap[t.id]=0;});
-    for(let i=0;i<shuffled.length;i++)
-      for(let j=i+1;j<shuffled.length;j++)
-        p.push([shuffled[i],shuffled[j]]);
-    setPairs(p);
-    setPairIdx(0);
     setAvbTasks(shuffled);
-    setAvbWins(winsMap);
+    setSortedList([shuffled[0]]);
+    setPendingQueue(shuffled.slice(1));
+    setInsLo(0);
+    setInsHi(1);
     setDoneComparisons(0);
     setView('avb');
+  };
+
+  const chooseAvB=(winner)=>{
+    if(avbLockRef.current)return;
+    avbLockRef.current=true;
+    const pendingItem=pendingQueue[0];
+    const pendingWon=winner.id===pendingItem.id;
+    let newLo=insLo, newHi=insHi;
+    if(pendingWon) newHi=mid; else newLo=mid+1;
+    setDoneComparisons(d=>d+1);
+    if(newLo>=newHi){
+      const newSorted=[...sortedList];
+      newSorted.splice(newLo,0,pendingItem);
+      const newQueue=pendingQueue.slice(1);
+      setSortedList(newSorted);
+      setPendingQueue(newQueue);
+      if(newQueue.length===0){
+        finishSort(newSorted);
+      } else {
+        setInsLo(0);setInsHi(newSorted.length);
+      }
+    } else {
+      setInsLo(newLo);setInsHi(newHi);
+    }
+    setTimeout(()=>{avbLockRef.current=false;},200);
   };
 
   const finishSort=(sortedList)=>{
@@ -2797,28 +2920,26 @@ function Housework({setScreen,onMoveToPri,hwZones,saveTasksRef}){
     setView('zone');
   };
 
-  const chooseAvB=(winner)=>{
-    if(avbLockRef.current)return;
-    avbLockRef.current=true;
-    const newWins={...avbWins,[winner.id]:(avbWins[winner.id]||0)+1};
-    setAvbWins(newWins);
-    setDoneComparisons(d=>d+1);
-    const next=pairIdx+1;
-    if(next>=pairs.length){
-      // Sort by wins descending
-      const sorted=[...avbTasks].sort((a,b)=>(newWins[b.id]||0)-(newWins[a.id]||0));
-      finishSort(sorted);
-    } else {
-      setPairIdx(next);
-    }
-    setTimeout(()=>{avbLockRef.current=false;},200);
-  };
+
 
   if(view==='avb'){
-    if(!pairs||pairs.length===0||pairIdx>=pairs.length){setView('zone');return null;}
-    const [taskA,taskB]=pairs[pairIdx];
-    if(!taskA||!taskB){setView('zone');return null;}
-    const pct=Math.round((pairIdx/pairs.length)*100);
+    if(!pendingQueue||pendingQueue.length===0){setView('zone');return null;}
+    const pendingItem=pendingQueue[0];
+    const mid=Math.floor((insLo+insHi)/2);
+    const pivot=sortedList[mid];
+    if(!pivot){setView('zone');return null;}
+    // Self-comparison safety net
+    if(pivot.id===pendingItem.id){
+      const ns=[...sortedList];ns.splice(mid,0,pendingItem);
+      const nq=pendingQueue.slice(1);
+      setSortedList(ns);setPendingQueue(nq);
+      if(nq.length===0){finishSort(ns);}else{setInsLo(0);setInsHi(ns.length);}
+      return null;
+    }
+    const totalComparisons=avbTasks.length<=1?1:avbTasks.reduce((acc,_,i)=>i===0?acc:acc+Math.ceil(Math.log2(i+1)),0);
+    const pct=Math.min(100,Math.round((doneComparisons/Math.max(1,totalComparisons))*100));
+    const taskA=pendingItem;
+    const taskB=pivot;
     return(
       <div style={{minHeight:'100vh',background:'transparent',fontFamily:"'Segoe UI',sans-serif",paddingBottom:90}}>
         <div style={{background:MULTI,padding:'14px 18px',display:'flex',alignItems:'center',gap:12,borderBottom:'1px solid rgba(90,80,60,0.08)',position:'sticky',top:0,zIndex:50}}>
@@ -2826,14 +2947,14 @@ function Housework({setScreen,onMoveToPri,hwZones,saveTasksRef}){
             <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="#1A1A10" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
           <div style={{fontFamily:'Georgia,serif',fontWeight:700,fontSize:18,color:'#1A1A10',flex:1}}>Which is more urgent?</div>
-          <div style={{fontSize:12,color:'#5A4A30',fontWeight:700}}>{pairIdx+1} / {pairs.length}</div>
+          <div style={{fontSize:12,color:'#5A4A30',fontWeight:700}}>{sortedList.length} placed · {pendingQueue.length} left</div>
         </div>
         <div style={{padding:'20px 16px'}}>
           <div style={{height:4,borderRadius:2,background:'rgba(90,80,60,0.10)',marginBottom:16,overflow:'hidden'}}>
             <div style={{height:'100%',width:`${pct}%`,background:'#5A7848',borderRadius:2,transition:'width 0.3s'}}/>
           </div>
           <div style={{fontSize:12,color:'#3A2A18',fontWeight:700,marginBottom:20,textAlign:'center',background:'rgba(255,255,255,0.55)',borderRadius:10,padding:'5px 14px',display:'inline-block'}}>
-            Comparing {avbTasks.length} chore{avbTasks.length!==1?'s':''} total · {pairs.length-pairIdx} left
+            Comparing {avbTasks.length} chore{avbTasks.length!==1?'s':''} · {pendingQueue.length} left to place
           </div>
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
             {[{label:'A',task:taskA},{label:'B',task:taskB}].map(({label,task})=>(
@@ -2854,7 +2975,6 @@ function Housework({setScreen,onMoveToPri,hwZones,saveTasksRef}){
       </div>
     );
   }
-
 
   // ── A vs B DONE ──
   if(view==='avbdone'){
@@ -3001,6 +3121,24 @@ function Housework({setScreen,onMoveToPri,hwZones,saveTasksRef}){
   }
 
   // ── ZONE DETAIL ──
+  // Place one chore into existing priority order
+  if(placeOneChore&&view==='zone'&&activeZone){
+    const others=todo.filter(t=>t.id!==placeOneChore.id);
+    return <PlaceOne
+      newTask={placeOneChore}
+      existingTasks={others}
+      onDone={(insertIdx)=>{
+        const allTasks=getZT(activeZone);
+        const doneAndLater=allTasks.filter(t=>t.done||t.later);
+        const notDone=allTasks.filter(t=>!t.done&&!t.later&&t.id!==placeOneChore.id);
+        notDone.splice(insertIdx,0,placeOneChore);
+        saveTasks(prev=>({...prev,[activeZone]:[...notDone,...doneAndLater]}));
+        setPlaceOneChore(null);
+      }}
+      onCancel={()=>setPlaceOneChore(null)}
+    />;
+  }
+
   if(view==='zone'&&activeZone){
     const z=zones?.find(zn=>zn.id===activeZone);
     const zt=getZT(activeZone);
@@ -3190,6 +3328,10 @@ function Housework({setScreen,onMoveToPri,hwZones,saveTasksRef}){
                     style={{background:'rgba(90,80,60,0.08)',border:'1.5px solid rgba(90,80,60,0.15)',borderRadius:9,width:32,height:32,fontSize:13,fontWeight:700,color:'#5A4A30',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>⋯</button>
                   {moveChoreMenu===t.id&&(
                     <div style={{position:'absolute',right:0,bottom:38,background:'#fff',borderRadius:14,boxShadow:'0 4px 20px rgba(0,0,0,0.15)',border:'1px solid rgba(90,80,60,0.12)',zIndex:100,minWidth:160,overflow:'hidden'}}>
+                      <button onClick={()=>{setPlaceOneChore(t);setMoveChoreMenu(null);}}
+                        style={{width:'100%',padding:'10px 14px',background:'rgba(90,120,72,0.06)',border:'none',textAlign:'left',fontSize:13,fontWeight:700,color:'#3A5828',cursor:'pointer',display:'flex',alignItems:'center',gap:8,borderBottom:'1px solid rgba(90,80,60,0.10)'}}>
+                        📍 Place in priority list
+                      </button>
                       <div style={{fontSize:11,fontWeight:700,color:'#8A8070',padding:'8px 12px 4px',textTransform:'uppercase',letterSpacing:0.5}}>Move to</div>
                       <button onClick={()=>{
                         if(onMoveToPri){onMoveToPri({id:Date.now()+Math.random(),name:t.name,done:false,color:'lilac',url:''});}
