@@ -2766,6 +2766,7 @@ function Housework({setScreen,onMoveToPri,hwZones,saveTasksRef}){
     if(avbLockRef.current)return;
     avbLockRef.current=true;
     const pendingItem=pendingQueue[0];
+    const mid=Math.floor((insLo+insHi)/2);
     const pendingWon=winner.id===pendingItem.id;
     let newLo=insLo, newHi=insHi;
     if(pendingWon) newHi=mid; else newLo=mid+1;
