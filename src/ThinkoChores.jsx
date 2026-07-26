@@ -2436,27 +2436,24 @@ const statusByKey=k=>STATUSES.find(s=>s.key===k)||STATUSES[0];
 // ═══════════════════════════════════════════════════════════
 // ── PlaceOne: binary insert a single new task into an existing ordered list ──
 function PlaceOne({newTask, existingTasks, onDone, onCancel}) {
-  // existingTasks is already ordered (index 0 = most urgent)
-  // We binary search to find where newTask belongs
   const [lo,setLo]=useState(0);
   const [hi,setHi]=useState(existingTasks.length);
+  const [placeDone,setPlaceDone]=useState(false);
   const lockRef=useRef(false);
-
-  // If list is empty or 1 item, just place at start
-  useEffect(()=>{
-    if(existingTasks.length===0){onDone(0);return;}
-  },[]);
 
   const mid=Math.floor((lo+hi)/2);
   const pivot=existingTasks[mid];
 
-  // Done — found insertion point
-  if(lo>=hi){
-    onDone(lo);
-    return null;
-  }
+  // Call onDone via useEffect to avoid calling during render
+  useEffect(()=>{
+    if(placeDone) return;
+    if(existingTasks.length===0){setPlaceDone(true);onDone(0);return;}
+    if(lo>=hi){setPlaceDone(true);onDone(lo);return;}
+    if(!pivot){setPlaceDone(true);onDone(lo);return;}
+  },[lo,hi,pivot,done]);
 
-  if(!pivot) { onDone(lo); return null; }
+  if(placeDone) return null;
+  if(existingTasks.length===0||lo>=hi||!pivot) return null;
 
   const choose=(winner)=>{
     if(lockRef.current)return;
