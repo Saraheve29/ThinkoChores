@@ -264,23 +264,7 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
             {moveMenu&&(
               <div style={{position:"absolute",right:0,bottom:38,background:"#fff",borderRadius:14,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(90,80,60,0.12)",zIndex:200,minWidth:170,overflow:"hidden"}}>
 
-                <button onClick={()=>{
-                    const pos=parseInt(prompt(`Move "${task.name}" to position (1-${active.length}):`));
-                    if(!isNaN(pos)&&pos>=1&&pos<=active.length){
-                      onUpdate(curr=>{
-                        const tasks=[...curr.tasks];
-                        const from=tasks.findIndex(x=>x.id===task.id);
-                        const notDone=tasks.filter(t=>!t.done&&!t.later);
-                        const rest=tasks.filter(t=>t.done||t.later);
-                        const fromND=notDone.findIndex(x=>x.id===task.id);
-                        notDone.splice(pos-1,0,...notDone.splice(fromND,1));
-                        return {...curr,tasks:[...notDone,...rest]};
-                      });
-                    }
-                    setMoveMenu(false);
-                  }} style={{width:"100%",padding:"10px 14px",background:"rgba(90,120,72,0.06)",border:"none",textAlign:"left",fontSize:13,fontWeight:700,color:"#3A5828",cursor:"pointer",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid rgba(90,80,60,0.06)"}}>
-                  📍 Move to position
-                </button>
+
                 {hwZones&&hwZones.length>0&&<div style={{fontSize:11,fontWeight:700,color:"#8A8070",padding:"8px 12px 4px",textTransform:"uppercase",letterSpacing:0.5}}>Move to chores</div>}
                 {hwZones&&hwZones.map(z=>(
                   <button key={z.id} onClick={()=>{
@@ -3233,19 +3217,7 @@ function Housework({setScreen,onMoveToPri,hwZones,saveTasksRef}){
                   {moveChoreMenu===t.id&&(
                     <div style={{position:'absolute',right:0,bottom:38,background:'#fff',borderRadius:14,boxShadow:'0 4px 20px rgba(0,0,0,0.15)',border:'1px solid rgba(90,80,60,0.12)',zIndex:100,minWidth:160,overflow:'hidden'}}>
 
-                      <button onClick={()=>{
-                          const pos=parseInt(prompt(`Move "${t.name}" to position (1-${todo.length}):`));
-                          if(!isNaN(pos)&&pos>=1&&pos<=todo.length){
-                            const list=[...getZT(activeZone)];
-                            const from=list.findIndex(x=>x.id===t.id);
-                            const to=pos-1;
-                            list.splice(to,0,...list.splice(from,1));
-                            saveTasks(prev=>({...prev,[activeZone]:list}));
-                          }
-                          setMoveChoreMenu(null);
-                        }} style={{width:'100%',padding:'10px 14px',background:'rgba(90,120,72,0.06)',border:'none',textAlign:'left',fontSize:13,fontWeight:700,color:'#3A5828',cursor:'pointer',display:'flex',alignItems:'center',gap:8,borderBottom:'1px solid rgba(90,80,60,0.10)'}}>
-                        📍 Move to position
-                      </button>
+
                       <div style={{fontSize:11,fontWeight:700,color:'#8A8070',padding:'8px 12px 4px',textTransform:'uppercase',letterSpacing:0.5}}>Move to</div>
                       <button onClick={()=>{
                         if(onMoveToPri){onMoveToPri({id:Date.now()+Math.random(),name:t.name,done:false,color:'lilac',url:''});}
