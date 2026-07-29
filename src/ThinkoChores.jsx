@@ -3391,6 +3391,15 @@ function Housework({setScreen,onMoveToPri,hwZones,saveTasksRef}){
                     </div>}
                   </div>
                   {urgent>0&&<div style={{background:'#E03020',color:'#fff',borderRadius:100,padding:'2px 8px',fontSize:11,fontWeight:700,flexShrink:0}}>{urgent} urgent</div>}
+                  {z.id.startsWith('custom_')&&(
+                    <button onClick={e=>{
+                      e.stopPropagation();
+                      if(window.confirm(`Delete "${z.name}"? This will remove all chores in it.`)){
+                        saveTasks(prev=>{const updated={...prev};delete updated[z.id];return updated;});
+                        saveZones(zoneList.filter(x=>x.id!==z.id));
+                      }
+                    }} style={{background:'rgba(192,57,43,0.09)',border:'1px solid rgba(192,57,43,0.20)',borderRadius:8,padding:'6px 8px',fontSize:13,cursor:'pointer',color:'#c0392b',flexShrink:0}}>🗑</button>
+                  )}
                 </button>
               );
             })}
