@@ -2181,63 +2181,69 @@ ${recipeAiText}`}]}]
                   <div style={{fontSize:11,color:"#5A4A30"}}>AI will extract recipe, ingredients & steps automatically</div>
                 </div>
                 {recipeAiLoading&&<div style={{fontSize:11,color:"#5A7848",fontWeight:700}}>✨ Reading...</div>}
-                <input type="file" accept="image/*" style={{display:"none"}} onChange={async e=>{
+                <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
                   const f=e.target.files[0];
                   if(!f) return;
                   const reader=new FileReader();
-                  reader.onload=async ev=>{
-                    const dataUrl=ev.target.result;
-                    const b64=dataUrl.split(",")[1];
-                    const mimeType=f.type||"image/jpeg";
-                    setRecipeDraft(d=>({...d,photo:dataUrl}));
-                    setRecipeAiLoading(true);
-                    try{
-                      const res=await fetch("https://api.anthropic.com/v1/messages",{
-                        method:"POST",
-                        headers:{"Content-Type":"application/json"},
-                        body:JSON.stringify({
-                          model:"claude-sonnet-4-6",
-                          max_tokens:1500,
-                          system:"You extract recipe details from photos or screenshots. Return ONLY valid JSON, no markdown, no explanation.",
-                          messages:[{role:"user",content:[
-                            {type:"image",source:{type:"base64",media_type:mimeType,data:b64}},
-                            {type:"text",text:`You are extracting a recipe from this image. Look very carefully at ALL text visible — including partially cut off text, small print, cookbook pages, handwritten notes, or screenshots. Read every word of the recipe text.
-
-Return ONLY this JSON (no markdown, no explanation):
-{"name":"Recipe name","ingredients":"ingredient 1\ningredient 2\ningredient 3","method":"Step 1. Do this\nStep 2. Do that\nStep 3. etc","description":"Any notes like serving size, calories, tips"}
-
-Important rules:
-- Extract ALL ingredients you can see, one per line
-- Extract ALL method steps you can see, numbered
-- Read partial text at edges — guess sensibly if cut off
-- If it is a cookbook page photo, extract the full recipe shown
-- Never return empty ingredients or method if text is visible in the image`}
-                          ]}]
-                        })
-                      });
-                      const data=await res.json();
-                      if(data.error) throw new Error(data.error.message);
-                      const raw=data.content?.[0]?.text||"{}";
-                      const match=raw.match(/\{[\s\S]*\}/);
-                      if(!match) throw new Error("No JSON");
-                      const parsed=JSON.parse(match[0]);
-                      setRecipeDraft(d=>({
-                        ...d,
-                        photo:dataUrl,
-                        name:parsed.name&&!d.name?parsed.name:d.name,
-                        ingredients:parsed.ingredients&&!d.ingredients?parsed.ingredients:d.ingredients,
-                        method:parsed.method&&!d.method?parsed.method:d.method,
-                        description:parsed.description&&!d.description?parsed.description:d.description,
-                      }));
-                    }catch(err){
-                      console.error("Photo extract error:",err);
-                      // Photo still saved even if AI fails
-                    }
-                    setRecipeAiLoading(false);
+                  reader.onload=ev=>{
+                    setRecipeDraft(d=>({...d,photo:ev.target.result,_photoMime:f.type||"image/jpeg"}));
                   };
                   reader.readAsDataURL(f);
                 }}/>
               </label>
+              {recipeDraft.photo&&!recipeAiLoading&&(
+                <button onClick={async()=>{
+                  const dataUrl=recipeDraft.photo;
+                  const mimeType=recipeDraft._photoMime||"image/jpeg";
+                  const b64=dataUrl.split(",")[1];
+                  setRecipeAiLoading(true);
+                  try{
+                    const res=await fetch("https://api.anthropic.com/v1/messages",{
+                      method:"POST",
+                      headers:{"Content-Type":"application/json"},
+                      body:JSON.stringify({
+                        model:"claude-sonnet-4-6",
+                        max_tokens:1500,
+                        system:"You extract recipe details from photos or screenshots. Return ONLY valid JSON, no markdown, no explanation.",
+                        messages:[{role:"user",content:[
+                          {type:"image",source:{type:"base64",media_type:mimeType,data:b64}},
+                          {type:"text",text:`You are extracting a recipe from this image. Look very carefully at ALL text visible — including partially cut off text, small print, cookbook pages, handwritten notes, or screenshots. Read every word.
+
+Return ONLY this JSON (no markdown, no explanation):
+{"name":"Recipe name","ingredients":"ingredient 1\ningredient 2\ningredient 3","method":"Step 1. Do this\nStep 2. Do that","description":"Serving size, calories, tips"}
+
+Rules:
+- Extract ALL ingredients with quantities (e.g. 200g flour, 2 eggs)
+- Extract ALL numbered method steps
+- Read partial/cut-off text at edges and complete sensibly
+- For cookbook photos extract the full recipe text shown
+- Never leave ingredients or method empty if text is visible`}
+                        ]}]
+                      })
+                    });
+                    const data=await res.json();
+                    if(data.error) throw new Error(data.error.message);
+                    const raw=data.content?.[0]?.text||"{}";
+                    const jsonMatch=raw.match(/\{[\s\S]*\}/);
+                    if(!jsonMatch) throw new Error("No JSON found");
+                    const parsed=JSON.parse(jsonMatch[0]);
+                    setRecipeDraft(d=>({
+                      ...d,
+                      name:parsed.name||(d.name||""),
+                      ingredients:parsed.ingredients||(d.ingredients||""),
+                      method:parsed.method||(d.method||""),
+                      description:parsed.description||(d.description||""),
+                    }));
+                  }catch(err){
+                    alert("Couldn't read the recipe from this photo. Try the text import instead.");
+                    console.error(err);
+                  }
+                  setRecipeAiLoading(false);
+                }}
+                  style={{width:"100%",padding:"12px",marginBottom:8,background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                  ✨ Extract recipe from photo
+                </button>
+              )}
               {recipeAiLoading&&(
                 <div style={{background:"rgba(90,120,72,0.08)",borderRadius:12,padding:"10px 14px",marginBottom:8,fontSize:13,color:"#5A7848",fontWeight:600,textAlign:"center"}}>
                   ✨ Reading your recipe photo... filling in the details automatically
