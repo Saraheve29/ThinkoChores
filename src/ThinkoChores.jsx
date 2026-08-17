@@ -2126,13 +2126,17 @@ ${importText}`};
                         headers:{"Content-Type":"application/json"},
                         body:JSON.stringify({
                           model:"claude-sonnet-4-6",
-                          max_tokens:1000,
-                          system:"Extract recipe details from text or URLs. Return only valid JSON, no markdown.",
+                          max_tokens:1500,
+                          system:"Extract recipe details from text or URLs. Return only valid JSON, no markdown, no explanation.",
                           messages:[{role:"user",content:[{type:"text",text:`Extract this recipe and return ONLY JSON in this exact format:
-{"name":"Recipe name","ingredients":"ingredient 1\ningredient 2\ningredient 3","method":"Step 1...\nStep 2...","description":"Brief description"}
+{"name":"Recipe name","ingredients":"ingredient 1\ningredient 2\ningredient 3","method":"Step 1. Do this\nStep 2. Do that","description":"Serving size, tips, notes"}
 
-If it is a URL, describe what the recipe would likely contain based on the URL name.
-Keep ingredients one per line. Return ONLY the JSON object.
+Rules:
+- Extract ALL ingredients listed, one per line including quantities
+- Extract ALL method steps, numbered
+- If it is a URL, extract the recipe name from the URL and make sensible guesses
+- Keep ingredient quantities (e.g. "200g flour", "2 eggs")
+- Return ONLY the JSON object, nothing else
 
 Content:
 ${recipeAiText}`}]}]
@@ -2197,10 +2201,17 @@ ${recipeAiText}`}]}]
                           system:"You extract recipe details from photos or screenshots. Return ONLY valid JSON, no markdown, no explanation.",
                           messages:[{role:"user",content:[
                             {type:"image",source:{type:"base64",media_type:mimeType,data:b64}},
-                            {type:"text",text:`Look at this image and extract any recipe information you can see. Return ONLY this JSON:
-{"name":"Recipe name","ingredients":"ingredient 1\ningredient 2\ningredient 3","method":"Step 1...\nStep 2...","description":"Brief description or notes"}
+                            {type:"text",text:`You are extracting a recipe from this image. Look very carefully at ALL text visible — including partially cut off text, small print, cookbook pages, handwritten notes, or screenshots. Read every word of the recipe text.
 
-If you cannot see recipe details clearly, return what you can. Use empty strings for fields you cannot determine.`}
+Return ONLY this JSON (no markdown, no explanation):
+{"name":"Recipe name","ingredients":"ingredient 1\ningredient 2\ningredient 3","method":"Step 1. Do this\nStep 2. Do that\nStep 3. etc","description":"Any notes like serving size, calories, tips"}
+
+Important rules:
+- Extract ALL ingredients you can see, one per line
+- Extract ALL method steps you can see, numbered
+- Read partial text at edges — guess sensibly if cut off
+- If it is a cookbook page photo, extract the full recipe shown
+- Never return empty ingredients or method if text is visible in the image`}
                           ]}]
                         })
                       });
