@@ -1557,7 +1557,16 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
   const [importLoading,setImportLoading]=useState(false);
   const [importResult,setImportResult]=useState(null); // [{day,meal}]
   const importFileRef=useRef(null);
-  const [recipes,setRecipes]=useState([]);
+  const [recipes,setRecipesRaw]=useState(()=>{
+    try{const v=localStorage.getItem('chores_recipes');return v?JSON.parse(v):[];}catch{return [];}
+  });
+  const setRecipes=d=>{
+    setRecipesRaw(prev=>{
+      const next=typeof d==='function'?d(prev):d;
+      try{localStorage.setItem('chores_recipes',JSON.stringify(next));}catch{}
+      return next;
+    });
+  };
   const [addingRecipe,setAddingRecipe]=useState(false);
   const [recipeDetail,setRecipeDetail]=useState(null);
   const [recipeAiLoading,setRecipeAiLoading]=useState(false);
@@ -2158,14 +2167,71 @@ ${recipeAiText}`}]}]
               )}
 
               <input value={recipeDraft.name} onChange={e=>setRecipeDraft(d=>({...d,name:e.target.value}))} placeholder="Recipe name" style={{width:"100%",boxSizing:"border-box",padding:"12px 16px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.25)",fontSize:15,fontWeight:600,color:"#1A1A10",outline:"none",marginBottom:10,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)"}}/>
-              {/* Photo upload */}
-              <label style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"rgba(90,120,72,0.06)",borderRadius:16,border:"1.5px dashed rgba(90,120,72,0.22)",cursor:"pointer",marginBottom:10}}>
+              {/* Smart photo upload with AI extraction */}
+              <label style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"rgba(90,120,72,0.06)",borderRadius:16,border:"1.5px dashed rgba(90,120,72,0.22)",cursor:"pointer",marginBottom:6,position:"relative"}}>
                 {recipeDraft.photo
                   ?<img src={recipeDraft.photo} alt="" style={{width:52,height:52,borderRadius:12,objectFit:"cover",flexShrink:0}}/>
                   :<span style={{fontSize:26}}>📷</span>}
-                <span style={{fontSize:13,color:"#5A7848",fontWeight:600}}>{recipeDraft.photo?"Change photo":"Add a photo (optional)"}</span>
-                <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setRecipeDraft(d=>({...d,photo:ev.target.result}));r.readAsDataURL(f);}}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,color:"#5A7848",fontWeight:700}}>{recipeDraft.photo?"Change photo":"📸 Upload photo"}</div>
+                  <div style={{fontSize:11,color:"#5A4A30"}}>AI will extract recipe, ingredients & steps automatically</div>
+                </div>
+                {recipeAiLoading&&<div style={{fontSize:11,color:"#5A7848",fontWeight:700}}>✨ Reading...</div>}
+                <input type="file" accept="image/*" style={{display:"none"}} onChange={async e=>{
+                  const f=e.target.files[0];
+                  if(!f) return;
+                  const reader=new FileReader();
+                  reader.onload=async ev=>{
+                    const dataUrl=ev.target.result;
+                    const b64=dataUrl.split(",")[1];
+                    const mimeType=f.type||"image/jpeg";
+                    setRecipeDraft(d=>({...d,photo:dataUrl}));
+                    setRecipeAiLoading(true);
+                    try{
+                      const res=await fetch("https://api.anthropic.com/v1/messages",{
+                        method:"POST",
+                        headers:{"Content-Type":"application/json"},
+                        body:JSON.stringify({
+                          model:"claude-sonnet-4-6",
+                          max_tokens:1500,
+                          system:"You extract recipe details from photos or screenshots. Return ONLY valid JSON, no markdown, no explanation.",
+                          messages:[{role:"user",content:[
+                            {type:"image",source:{type:"base64",media_type:mimeType,data:b64}},
+                            {type:"text",text:`Look at this image and extract any recipe information you can see. Return ONLY this JSON:
+{"name":"Recipe name","ingredients":"ingredient 1\ningredient 2\ningredient 3","method":"Step 1...\nStep 2...","description":"Brief description or notes"}
+
+If you cannot see recipe details clearly, return what you can. Use empty strings for fields you cannot determine.`}
+                          ]}]
+                        })
+                      });
+                      const data=await res.json();
+                      if(data.error) throw new Error(data.error.message);
+                      const raw=data.content?.[0]?.text||"{}";
+                      const match=raw.match(/\{[\s\S]*\}/);
+                      if(!match) throw new Error("No JSON");
+                      const parsed=JSON.parse(match[0]);
+                      setRecipeDraft(d=>({
+                        ...d,
+                        photo:dataUrl,
+                        name:parsed.name&&!d.name?parsed.name:d.name,
+                        ingredients:parsed.ingredients&&!d.ingredients?parsed.ingredients:d.ingredients,
+                        method:parsed.method&&!d.method?parsed.method:d.method,
+                        description:parsed.description&&!d.description?parsed.description:d.description,
+                      }));
+                    }catch(err){
+                      console.error("Photo extract error:",err);
+                      // Photo still saved even if AI fails
+                    }
+                    setRecipeAiLoading(false);
+                  };
+                  reader.readAsDataURL(f);
+                }}/>
               </label>
+              {recipeAiLoading&&(
+                <div style={{background:"rgba(90,120,72,0.08)",borderRadius:12,padding:"10px 14px",marginBottom:8,fontSize:13,color:"#5A7848",fontWeight:600,textAlign:"center"}}>
+                  ✨ Reading your recipe photo... filling in the details automatically
+                </div>
+              )}
               <UrlField value={recipeDraft.url} onChange={v=>setRecipeDraft(d=>({...d,url:v}))} style={{marginBottom:8}}/>
               <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"rgba(230,0,35,0.05)",borderRadius:100,border:"1.5px solid rgba(230,0,35,0.15)",marginBottom:10}}>
                 <span style={{fontSize:16,flexShrink:0}}>📌</span>
@@ -3510,19 +3576,25 @@ export default function App(){
           if(seenIds.has(t.id)) return false;
           seenIds.add(t.id);
           return true;
-        }).map(t=>{const {savedForLater,...rest}=t;return rest;});
+        });
         return {...list,tasks:dedupedTasks};
       });
       return cleaned;
     }
     return [{id:'main',name:'To Do',tasks:[],created:Date.now()}];
   });
+  // Ensure priData is always persisted to localStorage
+  useEffect(()=>{
+    save('chores_pri', priData);
+  },[priData]);
+
   const dedupePriList=list=>{
-    // De-duplicate by unique ID only — tasks with the same name but different IDs are genuinely separate
     const seen=new Set();
     const dedupedTasks=(list.tasks||[]).filter(t=>{
-      if(seen.has(t.id)) return false;
-      seen.add(t.id);
+      // Use string version of ID to avoid float comparison issues
+      const key=String(t.id);
+      if(seen.has(key)) return false;
+      seen.add(key);
       return true;
     });
     return {...list,tasks:dedupedTasks};
@@ -3540,7 +3612,7 @@ export default function App(){
   const setShopData=d=>{setShopDataRaw(prev=>{const next=typeof d==='function'?d(prev):d;save('chores_shop',next);return next;});};
 
   const [mealData,setMealDataRaw]=useState(()=>load('chores_meal',{}));
-  const setMealData=d=>{setMealDataRaw(d);save('chores_meal',d);};
+  const setMealData=d=>{setMealDataRaw(prev=>{const next=typeof d==='function'?d(prev):d;save('chores_meal',next);return next;});};
 
   // Greeting
   const greeting=()=>{
