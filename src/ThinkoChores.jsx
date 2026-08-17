@@ -2195,9 +2195,26 @@ ${recipeAiText}`}]}]
                 <button onClick={async()=>{
                   const dataUrl=recipeDraft.photo;
                   const mimeType=recipeDraft._photoMime||"image/jpeg";
-                  const b64=dataUrl.split(",")[1];
                   setRecipeAiLoading(true);
                   try{
+                    // Resize image before sending to API
+                    const resized = await new Promise(resolve=>{
+                      const img=new Image();
+                      img.onload=()=>{
+                        const MAX=1120;
+                        let w=img.width, h=img.height;
+                        if(w>MAX||h>MAX){
+                          if(w>h){h=Math.round(h*MAX/w);w=MAX;}
+                          else{w=Math.round(w*MAX/h);h=MAX;}
+                        }
+                        const canvas=document.createElement('canvas');
+                        canvas.width=w; canvas.height=h;
+                        canvas.getContext('2d').drawImage(img,0,0,w,h);
+                        resolve(canvas.toDataURL('image/jpeg',0.85));
+                      };
+                      img.src=dataUrl;
+                    });
+                    const b64=resized.split(",")[1];
                     const res=await fetch("https://api.anthropic.com/v1/messages",{
                       method:"POST",
                       headers:{"Content-Type":"application/json"},
@@ -2235,8 +2252,9 @@ Rules:
                       description:parsed.description||(d.description||""),
                     }));
                   }catch(err){
-                    alert("Couldn't read the recipe from this photo. Try the text import instead.");
-                    console.error(err);
+                    const msg=err?.message||String(err);
+                    alert("Extract failed: "+msg);
+                    console.error("Recipe photo extract error:",err);
                   }
                   setRecipeAiLoading(false);
                 }}
