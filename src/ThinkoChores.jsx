@@ -1,5 +1,35 @@
 import React,{useState,useEffect,useRef,useCallback} from 'react';
 
+// Fetch Anthropic API key from Vercel backend
+async function getApiKey(){
+  try{
+    const r=await fetch('/api/key');
+    const d=await r.json();
+    return d.key||'';
+  }catch(e){
+    console.error('Could not fetch API key:',e);
+    return '';
+  }
+}
+
+// Call Anthropic API securely
+async function callAnthropic(body){
+  const key=await getApiKey();
+  if(!key) throw new Error('API key not available — check Vercel environment variables');
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'anthropic-version':'2023-06-01',
+      'x-api-key':key,
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify(body)
+  });
+  if(data.error) throw new Error(data.error.message);
+  return data;
+}
+
 const C = {
   dp:"#2C3820", mp:"#4A7038", pp:"#6A9058",
   lp:"#A8C5B0", ll:"#D4E4D8", pale:"#F0EBE0",
@@ -1930,17 +1960,12 @@ ${importText}`};
                 messages.push({role:"user",content:[textPart]});
               }
 
-              const res=await fetch("https://api.anthropic.com/v1/messages",{
-                method:"POST",
-                headers:{"Content-Type":"application/json"},
-                body:JSON.stringify({
+              const data=await callAnthropic({
                   model:"claude-sonnet-4-6",
                   max_tokens:1000,
                   system:"You extract meal plans from text or images and return only valid JSON. No markdown, no explanation, no preamble. Start your response with { and end with }.",
                   messages
-                })
-              });
-              const data=await res.json();
+                });
               if(data.error){throw new Error(data.error.message);}
               const raw=data.content?.[0]?.text||"{}";
               console.log("AI raw response:",raw);
@@ -2121,10 +2146,7 @@ ${importText}`};
                     if(!recipeAiText.trim())return;
                     setRecipeAiLoading(true);
                     try{
-                      const res=await fetch("https://api.anthropic.com/v1/messages",{
-                        method:"POST",
-                        headers:{"Content-Type":"application/json"},
-                        body:JSON.stringify({
+                      const data=await callAnthropic({
                           model:"claude-sonnet-4-6",
                           max_tokens:1500,
                           system:"Extract recipe details from text or URLs. Return only valid JSON, no markdown, no explanation.",
@@ -2140,9 +2162,7 @@ Rules:
 
 Content:
 ${recipeAiText}`}]}]
-                        })
-                      });
-                      const data=await res.json();
+                        });
                       if(data.error)throw new Error(data.error.message);
                       const raw=data.content?.[0]?.text||"{}";
                       const jsonMatch=raw.match(/\{[\s\S]*\}/);
@@ -2197,28 +2217,36 @@ ${recipeAiText}`}]}]
                   const mimeType=recipeDraft._photoMime||"image/jpeg";
                   setRecipeAiLoading(true);
                   try{
-                    // Resize image before sending to API
+                    // Aggressively resize image for mobile — target <800KB base64
                     const resized = await new Promise(resolve=>{
                       const img=new Image();
+                      img.onerror=()=>resolve(dataUrl); // fallback to original
                       img.onload=()=>{
-                        const MAX=1120;
-                        let w=img.width, h=img.height;
-                        if(w>MAX||h>MAX){
-                          if(w>h){h=Math.round(h*MAX/w);w=MAX;}
-                          else{w=Math.round(w*MAX/h);h=MAX;}
+                        try{
+                          const MAX=800;
+                          let w=img.naturalWidth||img.width;
+                          let h=img.naturalHeight||img.height;
+                          if(w>MAX||h>MAX){
+                            if(w>h){h=Math.round(h*MAX/w);w=MAX;}
+                            else{w=Math.round(w*MAX/h);h=MAX;}
+                          }
+                          const canvas=document.createElement('canvas');
+                          canvas.width=w; canvas.height=h;
+                          const ctx=canvas.getContext('2d');
+                          ctx.drawImage(img,0,0,w,h);
+                          const out=canvas.toDataURL('image/jpeg',0.75);
+                          console.log('Resized to',w+'x'+h,'base64 length:',out.length);
+                          resolve(out);
+                        }catch(e){
+                          console.error('Resize failed:',e);
+                          resolve(dataUrl);
                         }
-                        const canvas=document.createElement('canvas');
-                        canvas.width=w; canvas.height=h;
-                        canvas.getContext('2d').drawImage(img,0,0,w,h);
-                        resolve(canvas.toDataURL('image/jpeg',0.85));
                       };
                       img.src=dataUrl;
                     });
                     const b64=resized.split(",")[1];
-                    const res=await fetch("https://api.anthropic.com/v1/messages",{
-                      method:"POST",
-                      headers:{"Content-Type":"application/json"},
-                      body:JSON.stringify({
+                    console.log('Sending b64 length:',b64.length);
+                    const data=await callAnthropic({
                         model:"claude-sonnet-4-6",
                         max_tokens:1500,
                         system:"You extract recipe details from photos or screenshots. Return ONLY valid JSON, no markdown, no explanation.",
@@ -2236,9 +2264,7 @@ Rules:
 - For cookbook photos extract the full recipe text shown
 - Never leave ingredients or method empty if text is visible`}
                         ]}]
-                      })
-                    });
-                    const data=await res.json();
+                      });
                     if(data.error) throw new Error(data.error.message);
                     const raw=data.content?.[0]?.text||"{}";
                     const jsonMatch=raw.match(/\{[\s\S]*\}/);
