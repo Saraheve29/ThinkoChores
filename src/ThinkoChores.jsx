@@ -285,7 +285,7 @@ function PriTaskRow({task,index,onDelete,onComplete,onColorChange,onAddSub,onMov
         {/* Complete */}
         <button onClick={()=>onComplete(task.id)} style={{background:task.done?C.ll:sw.num,color:task.done?C.mid:"#fff",border:"none",borderRadius:9,width:32,height:32,cursor:"pointer",fontSize:15,flexShrink:0}}>{task.done?"↩":"✓"}</button>
         {/* Delete — visible on card */}
-        {onLater&&<button onClick={()=>onLater(task.id)} title="Save for later" style={{background:task.later?"rgba(212,160,32,0.18)":"rgba(90,120,72,0.08)",color:task.later?"#B8860B":"#5A7848",border:`1px solid ${task.later?"rgba(212,160,32,0.35)":"rgba(90,120,72,0.20)"}`,borderRadius:9,width:32,height:32,cursor:"pointer",fontSize:14,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}} title={task.later?"Move back to list":"Save for later"}>💾</button>}
+        {onLater&&<button onClick={()=>onLater(task.id)} title={task.later?"Move back to list":"Save for later"} style={{background:task.later?"rgba(212,160,32,0.18)":"rgba(90,120,72,0.08)",color:task.later?"#B8860B":"#5A7848",border:`1px solid ${task.later?"rgba(212,160,32,0.35)":"rgba(90,120,72,0.20)"}`,borderRadius:9,width:32,height:32,cursor:"pointer",fontSize:14,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>💾</button>}
         {onDelete&&<button onClick={()=>onDelete(task.id)} style={{background:"rgba(192,57,43,0.09)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.18)",borderRadius:9,width:32,height:32,cursor:"pointer",fontSize:14,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>🗑</button>}
         {onMoveToHw&&hwZones&&hwZones.length>0&&(
           <div style={{position:"relative",flexShrink:0}}>
