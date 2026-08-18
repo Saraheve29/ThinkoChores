@@ -19,6 +19,25 @@ const C = {
   soft:"#8A8070", done:"#D8D0C0",
 };
 const MULTI="linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)";
+const RECIPE_CUISINES=[
+  {id:"any",      label:"Any cuisine",  icon:"🌍"},
+  {id:"british",  label:"British",      icon:"🇬🇧"},
+  {id:"jamaican", label:"Jamaican",     icon:"🇯🇲"},
+  {id:"mexican",  label:"Mexican",      icon:"🇲🇽"},
+  {id:"italian",  label:"Italian",      icon:"🇮🇹"},
+  {id:"chinese",  label:"Chinese",      icon:"🇨🇳"},
+  {id:"indian",   label:"Indian",       icon:"🇮🇳"},
+  {id:"american", label:"American",     icon:"🇺🇸"},
+  {id:"french",   label:"French",       icon:"🇫🇷"},
+  {id:"thai",     label:"Thai",         icon:"🇹🇭"},
+  {id:"greek",    label:"Greek",        icon:"🇬🇷"},
+  {id:"spanish",  label:"Spanish",      icon:"🇪🇸"},
+  {id:"caribbean",label:"Caribbean",    icon:"🌴"},
+  {id:"african",  label:"African",      icon:"🌍"},
+  {id:"turkish",  label:"Turkish",      icon:"🇹🇷"},
+  {id:"other",    label:"Other",        icon:"🌐"},
+];
+
 const RECIPE_CATS=[
   {id:"all",      label:"All",       icon:"🍽️"},
   {id:"meat",     label:"Meat",      icon:"🥩"},
@@ -1585,6 +1604,7 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
   const [importResult,setImportResult]=useState(null); // [{day,meal}]
   const importFileRef=useRef(null);
   const [recipeCatFilter,setRecipeCatFilter]=useState("all");
+  const [recipeCuisineFilter,setRecipeCuisineFilter]=useState("any");
   const [recipes,setRecipesRaw]=useState(()=>{
     try{const v=localStorage.getItem('chores_recipes');return v?JSON.parse(v):[];}catch{return [];}
   });
@@ -1612,7 +1632,7 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
   const [recipeAiText,setRecipeAiText]=useState('');
   const [showRecipeAi,setShowRecipeAi]=useState(false);
   const [showAddToDay,setShowAddToDay]=useState(false);
-  const [recipeDraft,setRecipeDraft]=useState({name:'',description:'',ingredients:'',method:'',url:'',pinUrl:'',photo:'',category:'other'});
+  const [recipeDraft,setRecipeDraft]=useState({name:'',description:'',ingredients:'',method:'',url:'',pinUrl:'',photo:'',category:'other',cuisine:'other'});
   const [editLabelIdx,setEditLabelIdx]=useState(null);
   const [labelDraft,setLabelDraft]=useState('');
 
@@ -2120,7 +2140,7 @@ ${importText}`};
           )}
 
           {/* Category filter bar */}
-          <div style={{overflowX:"auto",marginBottom:12}}>
+          <div style={{overflowX:"auto",marginBottom:6}}>
             <div style={{display:"flex",gap:7,paddingBottom:4}}>
               {RECIPE_CATS.map(c=>{
                 const count=c.id==="all"?recipes.length:recipes.filter(r=>(r.category||"other")===c.id).length;
@@ -2137,9 +2157,27 @@ ${importText}`};
               })}
             </div>
           </div>
+          {/* Cuisine filter bar */}
+          <div style={{overflowX:"auto",marginBottom:12}}>
+            <div style={{display:"flex",gap:7,paddingBottom:4}}>
+              {RECIPE_CUISINES.map(c=>{
+                const count=c.id==="any"?recipes.length:recipes.filter(r=>(r.cuisine||"other")===c.id).length;
+                if(count===0&&c.id!=="any") return null;
+                return(
+                  <button key={c.id} onClick={()=>setRecipeCuisineFilter(c.id)}
+                    style={{flexShrink:0,padding:"6px 12px",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer",
+                      background:recipeCuisineFilter===c.id?"#2980b9":"rgba(255,255,255,0.65)",
+                      color:recipeCuisineFilter===c.id?"#fff":"#5A4A30",
+                      border:recipeCuisineFilter===c.id?"none":"1.5px solid rgba(90,80,60,0.15)"}}>
+                    {c.icon} {c.label} <span style={{opacity:0.65}}>({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            {(recipeCatFilter==="all"?recipes:recipes.filter(r=>(r.category||"other")===recipeCatFilter)).map(r=>(
+            {recipes.filter(r=>(recipeCatFilter==="all"||(r.category||"other")===recipeCatFilter)&&(recipeCuisineFilter==="any"||(r.cuisine||"other")===recipeCuisineFilter)).map(r=>(
               <div key={r.id} style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:18,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.07)",border:"1px solid rgba(90,120,72,0.12)",cursor:"pointer"}}
                 onClick={()=>setRecipeDetail(r)}>
                 {r.photo
@@ -2174,7 +2212,7 @@ ${importText}`};
                   model:"claude-sonnet-4-6",
                   max_tokens:800,
                   system:"You categorise recipes. Return only valid JSON, no markdown.",
-                  messages:[{role:"user",content:[{type:"text",text:"Categorise each recipe into one of these categories: meat, fish, chicken, veggie, pasta, pies, soups, baking, breakfast, dessert, snacks, other. Recipes to categorise: "+uncategorised.map(r=>"- id:"+r.id+" name:"+r.name).join(" | ")+" Return ONLY this JSON: {categories:[{id:id_here,category:meat}]} where id matches exactly the recipe ids given."}]}]
+                  messages:[{role:"user",content:[{type:"text",text:"Categorise each recipe with a category AND cuisine. Categories: meat, fish, chicken, veggie, pasta, pies, soups, baking, breakfast, dessert, snacks, other. Cuisines: british, jamaican, mexican, italian, chinese, indian, american, french, thai, greek, spanish, caribbean, african, turkish, other. Recipes: "+uncategorised.map(r=>"id:"+r.id+" name:"+r.name).join(" | ")+" Return ONLY JSON with this structure: categories array with id category and cuisine fields for each recipe."}]}]
                 });
                 const raw=data.content?.[0]?.text||"{}";
                 const match=raw.match(/\{[\s\S]*\}/);
@@ -2183,7 +2221,7 @@ ${importText}`};
                 if(parsed.categories){
                   setRecipes(prev=>prev.map(r=>{
                     const found=parsed.categories.find(c=>String(c.id)===String(r.id));
-                    return found?{...r,category:found.category}:r;
+                    return found?{...r,category:found.category,cuisine:found.cuisine||r.cuisine||'other'}:r;
                   }));
                   alert("✅ All recipes categorised!");
                 }
@@ -2264,6 +2302,17 @@ ${recipeAiText}`}]}]
                     style={{padding:"5px 12px",borderRadius:100,fontSize:12,fontWeight:700,cursor:"pointer",
                       background:recipeDraft.category===c.id?"#5A7848":"rgba(90,80,60,0.08)",
                       color:recipeDraft.category===c.id?"#fff":"#5A4A30",border:"none"}}>
+                    {c.icon} {c.label}
+                  </button>
+                ))}
+              </div>
+              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>Cuisine</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+                {RECIPE_CUISINES.filter(c=>c.id!=="any").map(c=>(
+                  <button key={c.id} onClick={()=>setRecipeDraft(d=>({...d,cuisine:c.id}))}
+                    style={{padding:"5px 12px",borderRadius:100,fontSize:12,fontWeight:700,cursor:"pointer",
+                      background:recipeDraft.cuisine===c.id?"#2980b9":"rgba(90,80,60,0.08)",
+                      color:recipeDraft.cuisine===c.id?"#fff":"#5A4A30",border:"none"}}>
                     {c.icon} {c.label}
                   </button>
                 ))}
