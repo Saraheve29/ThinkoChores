@@ -2119,45 +2119,6 @@ ${importText}`};
             </div>
           )}
 
-          {/* Auto-categorise button — only show if any recipes lack a category */}
-          {recipes.some(r=>!r.category||r.category==="other")&&(
-            <div style={{marginBottom:10}}>
-              <button onClick={async()=>{
-                const uncategorised=recipes.filter(r=>!r.category||r.category==="other");
-                if(uncategorised.length===0) return;
-                try{
-                  const data=await callAnthropic({
-                    model:"claude-sonnet-4-6",
-                    max_tokens:800,
-                    system:"You categorise recipes. Return only valid JSON, no markdown.",
-                    messages:[{role:"user",content:[{type:"text",text:`Categorise each recipe into one of these categories: meat, fish, chicken, veggie, pasta, pies, soups, baking, breakfast, dessert, snacks, other.
-
-Recipes to categorise:
-${uncategorised.map(r=>`- id:${r.id} name:"${r.name}"`).join("\n")}
-
-Return ONLY this JSON format:
-{"categories":[{"id":"recipe_id_here","category":"meat"}]}`}]}]
-                  });
-                  const raw=data.content?.[0]?.text||"{}";
-                  const match=raw.match(/\{[\s\S]*\}/);
-                  if(!match) return;
-                  const parsed=JSON.parse(match[0]);
-                  if(parsed.categories){
-                    setRecipes(prev=>prev.map(r=>{
-                      const found=parsed.categories.find(c=>String(c.id)===String(r.id));
-                      return found?{...r,category:found.category}:r;
-                    }));
-                    alert("✅ Recipes categorised!");
-                  }
-                }catch(err){
-                  alert("Could not auto-categorise: "+err.message);
-                }
-              }} style={{width:"100%",padding:"10px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:13,cursor:"pointer"}}>
-                ✨ Auto-categorise my recipes with AI
-              </button>
-            </div>
-          )}
-
           {/* Category filter bar */}
           <div style={{overflowX:"auto",marginBottom:12}}>
             <div style={{display:"flex",gap:7,paddingBottom:4}}>
@@ -2201,9 +2162,38 @@ Return ONLY this JSON format:
 
       {mealTab==="recipes"&&(
         <div style={{padding:"8px 16px"}}>
-          <button onClick={()=>setAddingRecipe(true)} style={{width:"100%",padding:"14px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:15,cursor:"pointer",marginBottom:14,boxShadow:"0 3px 12px rgba(58,80,38,0.28)",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+          <button onClick={()=>setAddingRecipe(true)} style={{width:"100%",padding:"14px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:15,cursor:"pointer",marginBottom:10,boxShadow:"0 3px 12px rgba(58,80,38,0.28)",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
             <span style={{fontSize:18}}>+</span> Add Recipe
           </button>
+          {recipes.some(r=>!r.category||r.category==="other")&&(
+            <button onClick={async()=>{
+              const uncategorised=recipes.filter(r=>!r.category||r.category==="other");
+              if(uncategorised.length===0) return;
+              try{
+                const data=await callAnthropic({
+                  model:"claude-sonnet-4-6",
+                  max_tokens:800,
+                  system:"You categorise recipes. Return only valid JSON, no markdown.",
+                  messages:[{role:"user",content:[{type:"text",text:"Categorise each recipe into one of these categories: meat, fish, chicken, veggie, pasta, pies, soups, baking, breakfast, dessert, snacks, other. Recipes to categorise: "+uncategorised.map(r=>"- id:"+r.id+" name:"+r.name).join(" | ")+" Return ONLY this JSON: {categories:[{id:id_here,category:meat}]} where id matches exactly the recipe ids given."}]}]
+                });
+                const raw=data.content?.[0]?.text||"{}";
+                const match=raw.match(/\{[\s\S]*\}/);
+                if(!match) throw new Error("No JSON");
+                const parsed=JSON.parse(match[0]);
+                if(parsed.categories){
+                  setRecipes(prev=>prev.map(r=>{
+                    const found=parsed.categories.find(c=>String(c.id)===String(r.id));
+                    return found?{...r,category:found.category}:r;
+                  }));
+                  alert("✅ All recipes categorised!");
+                }
+              }catch(err){
+                alert("Could not auto-categorise: "+err.message);
+              }
+            }} style={{width:"100%",padding:"10px",background:"rgba(90,120,72,0.10)",color:"#3A5828",border:"1.5px solid rgba(90,120,72,0.25)",borderRadius:100,fontWeight:700,fontSize:13,cursor:"pointer",marginBottom:10}}>
+              ✨ Auto-categorise my recipes with AI
+            </button>
+          )}
           {addingRecipe&&(
             <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:22,padding:"20px 18px",marginBottom:14,boxShadow:"0 4px 24px rgba(0,0,0,0.08)",border:"1px solid rgba(90,120,72,0.18)"}}>
               <div style={{fontWeight:700,color:"#2A4020",fontSize:15,marginBottom:12}}>📖 New Recipe</div>
