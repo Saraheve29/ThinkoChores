@@ -2139,40 +2139,6 @@ ${importText}`};
             </div>
           )}
 
-          {/* Category filter bar */}
-          <div style={{overflowX:"auto",marginBottom:6}}>
-            <div style={{display:"flex",gap:7,paddingBottom:4}}>
-              {RECIPE_CATS.map(c=>{
-                const count=c.id==="all"?recipes.length:recipes.filter(r=>(r.category||"other")===c.id).length;
-                return(
-                  <button key={c.id} onClick={()=>setRecipeCatFilter(c.id)}
-                    style={{flexShrink:0,padding:"6px 12px",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer",
-                      background:recipeCatFilter===c.id?"#5A7848":"rgba(255,255,255,0.65)",
-                      color:recipeCatFilter===c.id?"#fff":"#5A4A30",
-                      border:recipeCatFilter===c.id?"none":"1.5px solid rgba(90,80,60,0.15)"}}>
-                    {c.icon} {c.label} <span style={{opacity:0.65}}>({count})</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          {/* Cuisine filter bar */}
-          <div style={{overflowX:"auto",marginBottom:12}}>
-            <div style={{display:"flex",gap:7,paddingBottom:4}}>
-              {RECIPE_CUISINES.map(c=>{
-                const count=c.id==="any"?recipes.length:recipes.filter(r=>(r.cuisine||"other")===c.id).length;
-                return(
-                  <button key={c.id} onClick={()=>setRecipeCuisineFilter(c.id)}
-                    style={{flexShrink:0,padding:"6px 12px",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer",
-                      background:recipeCuisineFilter===c.id?"#2980b9":"rgba(255,255,255,0.65)",
-                      color:recipeCuisineFilter===c.id?"#fff":"#5A4A30",
-                      border:recipeCuisineFilter===c.id?"none":"1.5px solid rgba(90,80,60,0.15)"}}>
-                    {c.icon} {c.label} <span style={{opacity:0.65}}>({count})</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
 
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             {recipes.filter(r=>(recipeCatFilter==="all"||(r.category||"other")===recipeCatFilter)&&(recipeCuisineFilter==="any"||(r.cuisine||"other")===recipeCuisineFilter)).map(r=>(
@@ -2230,6 +2196,40 @@ ${importText}`};
               ✨ Auto-categorise my recipes with AI
             </button>
           )}
+          {/* Category filter bar */}
+          <div style={{overflowX:"auto",marginBottom:6}}>
+            <div style={{display:"flex",gap:7,paddingBottom:4}}>
+              {RECIPE_CATS.map(c=>{
+                const count=c.id==="all"?recipes.length:recipes.filter(r=>(r.category||"other")===c.id).length;
+                return(
+                  <button key={c.id} onClick={()=>setRecipeCatFilter(c.id)}
+                    style={{flexShrink:0,padding:"6px 12px",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer",
+                      background:recipeCatFilter===c.id?"#5A7848":"rgba(255,255,255,0.65)",
+                      color:recipeCatFilter===c.id?"#fff":"#5A4A30",
+                      border:recipeCatFilter===c.id?"none":"1.5px solid rgba(90,80,60,0.15)"}}>
+                    {c.icon} {c.label} <span style={{opacity:0.65}}>({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {/* Cuisine filter bar */}
+          <div style={{overflowX:"auto",marginBottom:12}}>
+            <div style={{display:"flex",gap:7,paddingBottom:4}}>
+              {RECIPE_CUISINES.map(c=>{
+                const count=c.id==="any"?recipes.length:recipes.filter(r=>(r.cuisine||"other")===c.id).length;
+                return(
+                  <button key={c.id} onClick={()=>setRecipeCuisineFilter(c.id)}
+                    style={{flexShrink:0,padding:"6px 12px",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer",
+                      background:recipeCuisineFilter===c.id?"#2980b9":"rgba(255,255,255,0.65)",
+                      color:recipeCuisineFilter===c.id?"#fff":"#5A4A30",
+                      border:recipeCuisineFilter===c.id?"none":"1.5px solid rgba(90,80,60,0.15)"}}>
+                    {c.icon} {c.label} <span style={{opacity:0.65}}>({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           {addingRecipe&&(
             <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:22,padding:"20px 18px",marginBottom:14,boxShadow:"0 4px 24px rgba(0,0,0,0.08)",border:"1px solid rgba(90,120,72,0.18)"}}>
               <div style={{fontWeight:700,color:"#2A4020",fontSize:15,marginBottom:12}}>📖 New Recipe</div>
