@@ -2144,7 +2144,6 @@ ${importText}`};
             <div style={{display:"flex",gap:7,paddingBottom:4}}>
               {RECIPE_CATS.map(c=>{
                 const count=c.id==="all"?recipes.length:recipes.filter(r=>(r.category||"other")===c.id).length;
-                if(count===0&&c.id!=="all") return null;
                 return(
                   <button key={c.id} onClick={()=>setRecipeCatFilter(c.id)}
                     style={{flexShrink:0,padding:"6px 12px",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer",
@@ -2162,7 +2161,6 @@ ${importText}`};
             <div style={{display:"flex",gap:7,paddingBottom:4}}>
               {RECIPE_CUISINES.map(c=>{
                 const count=c.id==="any"?recipes.length:recipes.filter(r=>(r.cuisine||"other")===c.id).length;
-                if(count===0&&c.id!=="any") return null;
                 return(
                   <button key={c.id} onClick={()=>setRecipeCuisineFilter(c.id)}
                     style={{flexShrink:0,padding:"6px 12px",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer",
@@ -2203,7 +2201,7 @@ ${importText}`};
           <button onClick={()=>setAddingRecipe(true)} style={{width:"100%",padding:"14px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:15,cursor:"pointer",marginBottom:10,boxShadow:"0 3px 12px rgba(58,80,38,0.28)",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
             <span style={{fontSize:18}}>+</span> Add Recipe
           </button>
-          {recipes.some(r=>!r.category||r.category==="other")&&(
+          {recipes.length>0&&(
             <button onClick={async()=>{
               const uncategorised=recipes.filter(r=>!r.category||r.category==="other");
               if(uncategorised.length===0) return;
