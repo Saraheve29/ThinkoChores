@@ -1,33 +1,14 @@
 import React,{useState,useEffect,useRef,useCallback} from 'react';
 
-// Fetch Anthropic API key from Vercel backend
-async function getApiKey(){
-  try{
-    const r=await fetch('/api/key');
-    const d=await r.json();
-    return d.key||'';
-  }catch(e){
-    console.error('Could not fetch API key:',e);
-    return '';
-  }
-}
-
-// Call Anthropic API securely
+// Call Anthropic API via secure Vercel proxy
 async function callAnthropic(body){
-  const key=await getApiKey();
-  if(!key) throw new Error('API key not available — check Vercel environment variables');
-  const res=await fetch('https://api.anthropic.com/v1/messages',{
+  const res=await fetch('/api/ai',{
     method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'anthropic-version':'2023-06-01',
-      'x-api-key':key,
-      'anthropic-dangerous-direct-browser-access':'true'
-    },
+    headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body)
   });
   const data=await res.json();
-  if(data.error) throw new Error(data.error.message);
+  if(data.error) throw new Error(data.error.message||JSON.stringify(data.error));
   return data;
 }
 
