@@ -2190,7 +2190,7 @@ ${importText}`};
               }catch(err){
                 alert("Could not auto-categorise: "+err.message);
               }
-            }} style={{width:"100%",padding:"10px",background:"rgba(90,120,72,0.10)",color:"#3A5828",border:"1.5px solid rgba(90,120,72,0.25)",borderRadius:100,fontWeight:700,fontSize:13,cursor:"pointer",marginBottom:10}}>
+            }} style={{width:"100%",padding:"12px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer",marginBottom:10,boxShadow:"0 3px 12px rgba(58,80,38,0.28)"}}>
               ✨ Auto-categorise my recipes with AI
             </button>
           )}
