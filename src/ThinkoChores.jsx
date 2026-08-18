@@ -19,6 +19,21 @@ const C = {
   soft:"#8A8070", done:"#D8D0C0",
 };
 const MULTI="linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)";
+const RECIPE_CATS=[
+  {id:"all",      label:"All",       icon:"🍽️"},
+  {id:"meat",     label:"Meat",      icon:"🥩"},
+  {id:"fish",     label:"Fish",      icon:"🐟"},
+  {id:"chicken",  label:"Chicken",   icon:"🍗"},
+  {id:"veggie",   label:"Veggie",    icon:"🥗"},
+  {id:"pasta",    label:"Pasta",     icon:"🍝"},
+  {id:"pies",     label:"Pies",      icon:"🥧"},
+  {id:"soups",    label:"Soups",     icon:"🍲"},
+  {id:"baking",   label:"Baking",    icon:"🧁"},
+  {id:"breakfast",label:"Breakfast", icon:"🍳"},
+  {id:"dessert",  label:"Dessert",   icon:"🍮"},
+  {id:"snacks",   label:"Snacks",    icon:"🧀"},
+  {id:"other",    label:"Other",     icon:"📌"},
+];
 const headerGrad  = `linear-gradient(135deg,#3A5030 0%,#4A6840 50%,#5A7850 100%)`;
 const pageGrad    = `linear-gradient(180deg,#F5F0E4 0%,#EDE8D8 40%,#E5DFC8 100%)`;
 const btnGrad     = `linear-gradient(135deg,#3D5A2A,#6A9058)`;
@@ -1569,6 +1584,7 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
   const [importLoading,setImportLoading]=useState(false);
   const [importResult,setImportResult]=useState(null); // [{day,meal}]
   const importFileRef=useRef(null);
+  const [recipeCatFilter,setRecipeCatFilter]=useState("all");
   const [recipes,setRecipesRaw]=useState(()=>{
     try{const v=localStorage.getItem('chores_recipes');return v?JSON.parse(v):[];}catch{return [];}
   });
@@ -1592,10 +1608,11 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
   const [addingRecipe,setAddingRecipe]=useState(false);
   const [recipeDetail,setRecipeDetail]=useState(null);
   const [recipeAiLoading,setRecipeAiLoading]=useState(false);
+  const [recipeFilter,setRecipeFilter]=useState("all");
   const [recipeAiText,setRecipeAiText]=useState('');
   const [showRecipeAi,setShowRecipeAi]=useState(false);
   const [showAddToDay,setShowAddToDay]=useState(false);
-  const [recipeDraft,setRecipeDraft]=useState({name:'',description:'',ingredients:'',method:'',url:'',pinUrl:'',photo:''});
+  const [recipeDraft,setRecipeDraft]=useState({name:'',description:'',ingredients:'',method:'',url:'',pinUrl:'',photo:'',category:'other'});
   const [editLabelIdx,setEditLabelIdx]=useState(null);
   const [labelDraft,setLabelDraft]=useState('');
 
@@ -2102,8 +2119,27 @@ ${importText}`};
             </div>
           )}
 
+          {/* Category filter bar */}
+          <div style={{overflowX:"auto",marginBottom:12}}>
+            <div style={{display:"flex",gap:7,paddingBottom:4}}>
+              {RECIPE_CATS.map(c=>{
+                const count=c.id==="all"?recipes.length:recipes.filter(r=>(r.category||"other")===c.id).length;
+                if(count===0&&c.id!=="all") return null;
+                return(
+                  <button key={c.id} onClick={()=>setRecipeCatFilter(c.id)}
+                    style={{flexShrink:0,padding:"6px 12px",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer",
+                      background:recipeCatFilter===c.id?"#5A7848":"rgba(255,255,255,0.65)",
+                      color:recipeCatFilter===c.id?"#fff":"#5A4A30",
+                      border:recipeCatFilter===c.id?"none":"1.5px solid rgba(90,80,60,0.15)"}}>
+                    {c.icon} {c.label} <span style={{opacity:0.65}}>({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            {recipes.map(r=>(
+            {(recipeCatFilter==="all"?recipes:recipes.filter(r=>(r.category||"other")===recipeCatFilter)).map(r=>(
               <div key={r.id} style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:18,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.07)",border:"1px solid rgba(90,120,72,0.12)",cursor:"pointer"}}
                 onClick={()=>setRecipeDetail(r)}>
                 {r.photo
@@ -2192,6 +2228,17 @@ ${recipeAiText}`}]}]
                 </div>
               )}
 
+              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>Category</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+                {RECIPE_CATS.filter(c=>c.id!=="all").map(c=>(
+                  <button key={c.id} onClick={()=>setRecipeDraft(d=>({...d,category:c.id}))}
+                    style={{padding:"5px 12px",borderRadius:100,fontSize:12,fontWeight:700,cursor:"pointer",
+                      background:recipeDraft.category===c.id?"#5A7848":"rgba(90,80,60,0.08)",
+                      color:recipeDraft.category===c.id?"#fff":"#5A4A30",border:"none"}}>
+                    {c.icon} {c.label}
+                  </button>
+                ))}
+              </div>
               <input value={recipeDraft.name} onChange={e=>setRecipeDraft(d=>({...d,name:e.target.value}))} placeholder="Recipe name" style={{width:"100%",boxSizing:"border-box",padding:"12px 16px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.25)",fontSize:15,fontWeight:600,color:"#1A1A10",outline:"none",marginBottom:10,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)"}}/>
               {/* Smart photo upload with AI extraction */}
               <label style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"rgba(90,120,72,0.06)",borderRadius:16,border:"1.5px dashed rgba(90,120,72,0.22)",cursor:"pointer",marginBottom:6,position:"relative"}}>
@@ -2310,7 +2357,29 @@ Rules:
               <textarea value={recipeDraft.description} onChange={e=>setRecipeDraft(d=>({...d,description:e.target.value}))} placeholder="Serving size, calories, tips..." rows={3} style={{width:"100%",boxSizing:"border-box",padding:"14px 16px",borderRadius:16,border:"1.5px solid rgba(90,120,72,0.2)",fontSize:15,lineHeight:1.7,color:"#1A1A10",outline:"none",resize:"vertical",fontFamily:"inherit",marginBottom:14,background:"rgba(255,255,255,0.8)"}}/>
               <div style={{display:"flex",gap:10}}>
                 <button onClick={()=>{setAddingRecipe(false);setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",photo:""});}} style={{flex:1,background:"rgba(90,80,60,0.08)",color:"#8A8070",border:"none",borderRadius:100,padding:"11px",fontWeight:600,fontSize:13,cursor:"pointer"}}>Cancel</button>
-                <button onClick={()=>{if(!recipeDraft.name.trim())return;setRecipes(rs=>[...rs,{id:Date.now(),...recipeDraft}]);setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",photo:""});setAddingRecipe(false);}} style={{flex:2,background:"#5A7848",color:"#fff",border:"none",borderRadius:100,padding:"11px 24px",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 3px 12px rgba(58,80,38,0.28)"}}>Save Recipe</button>
+                <button onClick={async()=>{
+                  if(!recipeDraft.name.trim())return;
+                  setRecipeAiLoading(true);
+                  let category="other";
+                  try{
+                    const data=await callAnthropic({
+                      model:"claude-sonnet-4-6",
+                      max_tokens:20,
+                      system:"Categorise this recipe. Reply with ONLY one word from: meat, fish, veggie, pies, pasta, soup, baking, dessert, snacks, breakfast, other",
+                      messages:[{role:"user",content:[{type:"text",text:`Name: ${recipeDraft.name}\nIngredients: ${(recipeDraft.ingredients||"").slice(0,300)}`}]}]
+                    });
+                    const cat=(data.content?.[0]?.text||"other").toLowerCase().trim().replace(/[^a-z]/g,"");
+                    const valid=["meat","fish","veggie","pies","pasta","soup","baking","dessert","snacks","breakfast","other"];
+                    if(valid.includes(cat)) category=cat;
+                  }catch(e){console.error("Category:",e);}
+                  setRecipes(rs=>[...rs,{id:Date.now(),...recipeDraft,category}]);
+                  setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",photo:""});
+                  setAddingRecipe(false);
+                  setRecipeAiLoading(false);
+                }} disabled={recipeAiLoading}
+                style={{flex:2,background:recipeAiLoading?"#888":"#5A7848",color:"#fff",border:"none",borderRadius:100,padding:"11px 24px",fontWeight:700,fontSize:14,cursor:recipeAiLoading?"not-allowed":"pointer",boxShadow:"0 3px 12px rgba(58,80,38,0.28)"}}>
+                  {recipeAiLoading?"✨ Saving...":"Save Recipe"}
+                </button>
               </div>
             </div>
           )}
@@ -2321,7 +2390,22 @@ Rules:
               <div style={{color:"#1A1A10",fontSize:13,fontWeight:600,background:"rgba(255,255,255,0.85)",borderRadius:12,padding:"8px 12px",marginTop:4}}>Tap above to write your own or paste a link</div>
             </div>
           )}
-          {recipes.map(r=>(
+          {/* Category filter bar */}
+          {recipes.length>0&&(
+            <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:4,WebkitOverflowScrolling:"touch"}}>
+              {RECIPE_CATS.map(cat=>{
+                const count=cat.id==="all"?recipes.length:recipes.filter(r=>r.category===cat.id).length;
+                if(cat.id!=="all"&&count===0) return null;
+                return(
+                  <button key={cat.id} onClick={()=>setRecipeFilter(cat.id)}
+                    style={{flexShrink:0,padding:"7px 14px",borderRadius:100,border:recipeFilter===cat.id?"none":"1.5px solid rgba(90,80,60,0.15)",background:recipeFilter===cat.id?"#5A7848":"rgba(255,255,255,0.65)",color:recipeFilter===cat.id?"#fff":"#1A1A10",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>
+                    {cat.icon} {cat.label}{count>0?` (${count})`:""}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {(recipeFilter==="all"?recipes:recipes.filter(r=>r.category===recipeFilter)).map(r=>(
             <div key={r.id} onClick={()=>setRecipeDetail(r)} style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:20,padding:"14px 16px",marginBottom:10,boxShadow:"0 2px 12px rgba(0,0,0,0.06)",border:"1px solid rgba(90,120,72,0.15)",cursor:"pointer",transition:"transform 0.15s"}}
               onMouseEnter={e=>e.currentTarget.style.transform="translateY(-1px)"}
               onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>
@@ -2329,7 +2413,10 @@ Rules:
                 <div style={{width:42,height:42,borderRadius:12,background:"#5A7848",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>🍽️</div>
                 <div style={{flex:1}}>
                   <div style={{fontWeight:700,fontSize:15,color:"#1A1A10"}}>{r.name}</div>
-                  <div style={{fontSize:12,color:"#8A8070",marginTop:2}}>{r.ingredients?(r.ingredients.split("\n").filter(Boolean).length+" ingredients"):"Freewrite recipe"}{r.url&&" · 🔗 link"}{r.pinUrl&&" · 📌 Pinterest"}</div>
+                  <div style={{fontSize:12,color:"#8A8070",marginTop:2,display:"flex",alignItems:"center",gap:6}}>
+                {r.category&&r.category!=="other"&&<span style={{background:"rgba(90,120,72,0.12)",borderRadius:100,padding:"1px 7px",fontSize:11,fontWeight:700,color:"#3A5828"}}>{RECIPE_CATS.find(c=>c.id===r.category)?.icon} {RECIPE_CATS.find(c=>c.id===r.category)?.label}</span>}
+                {r.ingredients?(r.ingredients.split("\n").filter(Boolean).length+" ingredients"):"Freewrite recipe"}{r.url&&" · 🔗 link"}
+              </div>
                 </div>
                 <span style={{color:"#A0907A",fontSize:18}}>›</span>
               </div>
