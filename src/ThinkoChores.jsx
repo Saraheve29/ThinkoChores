@@ -26,6 +26,7 @@ async function callAnthropic(body){
     },
     body:JSON.stringify(body)
   });
+  const data=await res.json();
   if(data.error) throw new Error(data.error.message);
   return data;
 }
