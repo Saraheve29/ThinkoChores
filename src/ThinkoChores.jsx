@@ -2176,18 +2176,20 @@ ${importText}`};
                   model:"claude-sonnet-4-6",
                   max_tokens:800,
                   system:"You categorise recipes. Return only valid JSON, no markdown.",
-                  messages:[{role:"user",content:[{type:"text",text:"Categorise each recipe with a category AND cuisine. Categories: meat, fish, chicken, veggie, pasta, pies, soups, baking, breakfast, dessert, snacks, other. Cuisines: british, jamaican, mexican, italian, chinese, indian, american, french, thai, greek, spanish, caribbean, african, turkish, other. Recipes: "+uncategorised.map(r=>"id:"+r.id+" name:"+r.name).join(" | ")+" Return ONLY JSON with this structure: categories array with id category and cuisine fields for each recipe."}]}]
+                  messages:[{role:"user",content:[{type:"text",text:'Categorise each recipe below with a food category and a cuisine. Return ONLY a JSON array, no explanation.\n\nCategories (pick one): meat, fish, chicken, veggie, pasta, pies, soups, baking, breakfast, dessert, snacks, other\nCuisines (pick one): british, jamaican, mexican, italian, chinese, indian, american, french, thai, greek, spanish, caribbean, african, turkish, other\n\nRecipes:\n'+uncategorised.map((r,i)=>(i+1)+'. '+r.name).join('\n')+'\n\nReturn this exact JSON format:\n[{"name":"exact recipe name","category":"meat","cuisine":"british"}]'}]}]
                 });
-                const raw=data.content?.[0]?.text||"{}";
-                const match=raw.match(/\{[\s\S]*\}/);
-                if(!match) throw new Error("No JSON");
-                const parsed=JSON.parse(match[0]);
-                if(parsed.categories){
+                const raw=data.content?.[0]?.text||"[]";
+                const arrMatch=raw.match(/\[[\s\S]*\]/);
+                if(!arrMatch) throw new Error("No JSON array in response");
+                const parsed=JSON.parse(arrMatch[0]);
+                if(Array.isArray(parsed)&&parsed.length>0){
                   setRecipes(prev=>prev.map(r=>{
-                    const found=parsed.categories.find(c=>String(c.id)===String(r.id));
-                    return found?{...r,category:found.category,cuisine:found.cuisine||r.cuisine||'other'}:r;
+                    const found=parsed.find(c=>c.name&&r.name&&c.name.toLowerCase().trim()===r.name.toLowerCase().trim());
+                    return found?{...r,category:found.category||r.category||'other',cuisine:found.cuisine||r.cuisine||'other'}:r;
                   }));
                   alert("✅ All recipes categorised!");
+                } else {
+                  alert("AI returned unexpected format — try again");
                 }
               }catch(err){
                 alert("Could not auto-categorise: "+err.message);
