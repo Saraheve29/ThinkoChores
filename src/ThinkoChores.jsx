@@ -2169,7 +2169,7 @@ ${importText}`};
           </button>
           {recipes.length>0&&(
             <button onClick={async()=>{
-              const uncategorised=recipes.filter(r=>!r.category||r.category==="other");
+              const uncategorised=recipes; // run on all recipes to assign both category AND cuisine
               if(uncategorised.length===0) return;
               try{
                 const data=await callAnthropic({
