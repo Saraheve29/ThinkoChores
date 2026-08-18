@@ -2119,6 +2119,45 @@ ${importText}`};
             </div>
           )}
 
+          {/* Auto-categorise button — only show if any recipes lack a category */}
+          {recipes.some(r=>!r.category||r.category==="other")&&(
+            <div style={{marginBottom:10}}>
+              <button onClick={async()=>{
+                const uncategorised=recipes.filter(r=>!r.category||r.category==="other");
+                if(uncategorised.length===0) return;
+                try{
+                  const data=await callAnthropic({
+                    model:"claude-sonnet-4-6",
+                    max_tokens:800,
+                    system:"You categorise recipes. Return only valid JSON, no markdown.",
+                    messages:[{role:"user",content:[{type:"text",text:`Categorise each recipe into one of these categories: meat, fish, chicken, veggie, pasta, pies, soups, baking, breakfast, dessert, snacks, other.
+
+Recipes to categorise:
+${uncategorised.map(r=>`- id:${r.id} name:"${r.name}"`).join("\n")}
+
+Return ONLY this JSON format:
+{"categories":[{"id":"recipe_id_here","category":"meat"}]}`}]}]
+                  });
+                  const raw=data.content?.[0]?.text||"{}";
+                  const match=raw.match(/\{[\s\S]*\}/);
+                  if(!match) return;
+                  const parsed=JSON.parse(match[0]);
+                  if(parsed.categories){
+                    setRecipes(prev=>prev.map(r=>{
+                      const found=parsed.categories.find(c=>String(c.id)===String(r.id));
+                      return found?{...r,category:found.category}:r;
+                    }));
+                    alert("✅ Recipes categorised!");
+                  }
+                }catch(err){
+                  alert("Could not auto-categorise: "+err.message);
+                }
+              }} style={{width:"100%",padding:"10px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:13,cursor:"pointer"}}>
+                ✨ Auto-categorise my recipes with AI
+              </button>
+            </div>
+          )}
+
           {/* Category filter bar */}
           <div style={{overflowX:"auto",marginBottom:12}}>
             <div style={{display:"flex",gap:7,paddingBottom:4}}>
