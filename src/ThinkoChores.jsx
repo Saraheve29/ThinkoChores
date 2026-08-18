@@ -1746,17 +1746,27 @@ const sendMealToShop=(meal,label)=>{
               <span style={{fontSize:13,fontWeight:600,color:"#E60023"}}>View on Pinterest</span>
             </a>
           )}
-          {r.ingredients&&<div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:18,padding:"16px",marginBottom:12,border:"1px solid rgba(90,120,72,0.15)",boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
-            <div style={{fontWeight:700,color:"#2A4020",fontSize:14,marginBottom:8}}>🥕 Ingredients</div>
-            <div style={{fontSize:14,color:"#3A3020",lineHeight:1.8,whiteSpace:"pre-wrap"}}>{r.ingredients}</div>
+          {r.ingredients&&<div style={{background:"rgba(255,255,255,0.82)",borderRadius:18,padding:"18px",marginBottom:14,border:"1.5px solid rgba(90,120,72,0.18)",boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
+            <div style={{fontWeight:800,color:"#2A4020",fontSize:15,marginBottom:12}}>🥄 Ingredients</div>
+            {r.ingredients.split("\n").filter(l=>l.trim()).map((line,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"7px 0",borderBottom:"1px solid rgba(90,80,60,0.07)"}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:"#5A7848",flexShrink:0,marginTop:7}}/>
+                <div style={{fontSize:15,color:"#1A1A10",lineHeight:1.6,flex:1}}>{line.trim()}</div>
+              </div>
+            ))}
           </div>}
-          {r.method&&<div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:18,padding:"16px",marginBottom:12,border:"1px solid rgba(90,120,72,0.15)",boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
-            <div style={{fontWeight:700,color:"#2A4020",fontSize:14,marginBottom:8}}>👨‍🍳 Method</div>
-            <div style={{fontSize:14,color:"#3A3020",lineHeight:1.8,whiteSpace:"pre-wrap"}}>{r.method}</div>
+          {r.method&&<div style={{background:"rgba(255,255,255,0.82)",borderRadius:18,padding:"18px",marginBottom:14,border:"1.5px solid rgba(90,120,72,0.18)",boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
+            <div style={{fontWeight:800,color:"#2A4020",fontSize:15,marginBottom:12}}>📋 Method</div>
+            {r.method.split("\n").filter(l=>l.trim()).map((line,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"flex-start",gap:12,padding:"8px 0",borderBottom:"1px solid rgba(90,80,60,0.07)"}}>
+                <div style={{width:26,height:26,borderRadius:"50%",background:"#5A7848",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,flexShrink:0}}>{i+1}</div>
+                <div style={{fontSize:15,color:"#1A1A10",lineHeight:1.6,flex:1,paddingTop:3}}>{line.trim()}</div>
+              </div>
+            ))}
           </div>}
-          {r.description&&<div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:18,padding:"16px",border:"1px solid rgba(90,120,72,0.15)",boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
-            <div style={{fontWeight:700,color:"#2A4020",fontSize:14,marginBottom:8}}>📝 Notes</div>
-            <div style={{fontSize:14,color:"#3A3020",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{r.description}</div>
+          {r.description&&<div style={{background:"rgba(255,255,255,0.82)",borderRadius:18,padding:"18px",marginBottom:14,border:"1.5px solid rgba(90,120,72,0.18)",boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
+            <div style={{fontWeight:800,color:"#2A4020",fontSize:15,marginBottom:8}}>📝 Notes</div>
+            <div style={{fontSize:15,color:"#3A3020",lineHeight:1.8}}>{r.description}</div>
           </div>}
 
           {/* Action buttons */}
@@ -2292,9 +2302,12 @@ Rules:
                   placeholder="Pinterest pin URL (optional)"
                   style={{flex:1,border:"none",outline:"none",background:"transparent",fontSize:13,color:"#1A1A10"}}/>
               </div>
-              <textarea value={recipeDraft.ingredients} onChange={e=>setRecipeDraft(d=>({...d,ingredients:e.target.value}))} placeholder="Ingredients (one per line)..." rows={4} style={{width:"100%",boxSizing:"border-box",padding:"12px 14px",borderRadius:16,border:"1.5px solid rgba(90,120,72,0.2)",fontSize:13,color:"#1A1A10",outline:"none",resize:"none",fontFamily:"inherit",marginBottom:10,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)"}}/>
-              <textarea value={recipeDraft.method} onChange={e=>setRecipeDraft(d=>({...d,method:e.target.value}))} placeholder="Method / steps..." rows={4} style={{width:"100%",boxSizing:"border-box",padding:"12px 14px",borderRadius:16,border:"1.5px solid rgba(90,120,72,0.2)",fontSize:13,color:"#1A1A10",outline:"none",resize:"none",fontFamily:"inherit",marginBottom:10,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)"}}/>
-              <textarea value={recipeDraft.description} onChange={e=>setRecipeDraft(d=>({...d,description:e.target.value}))} placeholder="Notes (optional)..." rows={2} style={{width:"100%",boxSizing:"border-box",padding:"12px 14px",borderRadius:16,border:"1.5px solid rgba(90,120,72,0.2)",fontSize:13,color:"#1A1A10",outline:"none",resize:"none",fontFamily:"inherit",marginBottom:14,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)"}}/>
+              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>🥄 Ingredients</div>
+              <textarea value={recipeDraft.ingredients} onChange={e=>setRecipeDraft(d=>({...d,ingredients:e.target.value}))} placeholder={"e.g.\n2 eggs\n200g flour\n1 tsp salt"} rows={8} style={{width:"100%",boxSizing:"border-box",padding:"14px 16px",borderRadius:16,border:"1.5px solid rgba(90,120,72,0.2)",fontSize:15,lineHeight:1.8,color:"#1A1A10",outline:"none",resize:"vertical",fontFamily:"inherit",marginBottom:16,background:"rgba(255,255,255,0.8)"}}/>
+              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>📋 Method / Steps</div>
+              <textarea value={recipeDraft.method} onChange={e=>setRecipeDraft(d=>({...d,method:e.target.value}))} placeholder={"e.g.\nStep 1. Preheat oven to 200°C\nStep 2. Mix ingredients\nStep 3. Bake for 30 mins"} rows={8} style={{width:"100%",boxSizing:"border-box",padding:"14px 16px",borderRadius:16,border:"1.5px solid rgba(90,120,72,0.2)",fontSize:15,lineHeight:1.8,color:"#1A1A10",outline:"none",resize:"vertical",fontFamily:"inherit",marginBottom:16,background:"rgba(255,255,255,0.8)"}}/>
+              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>📝 Notes</div>
+              <textarea value={recipeDraft.description} onChange={e=>setRecipeDraft(d=>({...d,description:e.target.value}))} placeholder="Serving size, calories, tips..." rows={3} style={{width:"100%",boxSizing:"border-box",padding:"14px 16px",borderRadius:16,border:"1.5px solid rgba(90,120,72,0.2)",fontSize:15,lineHeight:1.7,color:"#1A1A10",outline:"none",resize:"vertical",fontFamily:"inherit",marginBottom:14,background:"rgba(255,255,255,0.8)"}}/>
               <div style={{display:"flex",gap:10}}>
                 <button onClick={()=>{setAddingRecipe(false);setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",photo:""});}} style={{flex:1,background:"rgba(90,80,60,0.08)",color:"#8A8070",border:"none",borderRadius:100,padding:"11px",fontWeight:600,fontSize:13,cursor:"pointer"}}>Cancel</button>
                 <button onClick={()=>{if(!recipeDraft.name.trim())return;setRecipes(rs=>[...rs,{id:Date.now(),...recipeDraft}]);setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",photo:""});setAddingRecipe(false);}} style={{flex:2,background:"#5A7848",color:"#fff",border:"none",borderRadius:100,padding:"11px 24px",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 3px 12px rgba(58,80,38,0.28)"}}>Save Recipe</button>
