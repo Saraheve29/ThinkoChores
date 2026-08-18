@@ -1575,8 +1575,18 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
   const setRecipes=d=>{
     setRecipesRaw(prev=>{
       const next=typeof d==='function'?d(prev):d;
-      try{localStorage.setItem('chores_recipes',JSON.stringify(next));}catch{}
-      return next;
+      try{
+        // Strip base64 photos before saving — they're too large for localStorage
+        const stripped=next.map(r=>({...r,photo:r.photo&&r.photo.startsWith('data:')?'':r.photo}));
+        localStorage.setItem('chores_recipes',JSON.stringify(stripped));
+      }catch(e){
+        // If still too large, save without photos at all
+        try{
+          const noPhotos=next.map(r=>({...r,photo:''}));
+          localStorage.setItem('chores_recipes',JSON.stringify(noPhotos));
+        }catch{}
+      }
+      return next; // keep photos in memory for current session
     });
   };
   const [addingRecipe,setAddingRecipe]=useState(false);
