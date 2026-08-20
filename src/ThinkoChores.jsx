@@ -30,7 +30,7 @@ const RECIPE_CUISINES=[
   {id:"american", label:"American",     icon:"🇺🇸"},
   {id:"french",   label:"French",       icon:"🇫🇷"},
   {id:"thai",     label:"Thai",         icon:"🇹🇭"},
-  {id:"greek",    label:"Greek",        icon:"🇬🇷"},
+  {id:"mediterranean", label:"Mediterranean", icon:"🌊"},
   {id:"spanish",  label:"Spanish",      icon:"🇪🇸"},
   {id:"caribbean",label:"Caribbean",    icon:"🌴"},
   {id:"african",  label:"African",      icon:"🌍"},
@@ -2414,7 +2414,7 @@ Rules:
                   model:"claude-sonnet-4-6",
                   max_tokens:1000,
                   system:"You categorise recipes. Return only a JSON array, no markdown.",
-                  messages:[{role:"user",content:[{type:"text",text:'Categorise each recipe with a food category and cuisine country. Categories: meat, fish, chicken, veggie, pasta, pies, soups, baking, breakfast, dessert, snacks, other. Cuisines: british, jamaican, mexican, italian, chinese, indian, american, french, thai, greek, spanish, caribbean, african, turkish, other. Recipes: '+recipes.map((r,i)=>(i+1)+'. '+r.name).join(', ')+'. Return JSON array: [{"name":"recipe name","category":"meat","cuisine":"british"}]'}]}]
+                  messages:[{role:"user",content:[{type:"text",text:'Categorise each recipe with a food category and cuisine country. Categories: meat, fish, chicken, veggie, pasta, pies, soups, baking, breakfast, dessert, snacks, other. Cuisines: british, jamaican, mexican, italian, chinese, indian, american, french, thai, mediterranean, spanish, caribbean, african, turkish, other. Recipes: '+recipes.map((r,i)=>(i+1)+'. '+r.name).join(', ')+'. Return JSON array: [{"name":"recipe name","category":"meat","cuisine":"british"}]'}]}]
                 });
                 const raw=data.content?.[0]?.text||"[]";
                 const match=raw.match(/\[[\s\S]*\]/);
@@ -2422,7 +2422,12 @@ Rules:
                 const parsed=JSON.parse(match[0]);
                 if(Array.isArray(parsed)&&parsed.length>0){
                   setRecipes(prev=>prev.map(r=>{
-                    const found=parsed.find(c=>c.name&&r.name&&c.name.toLowerCase().includes(r.name.toLowerCase().slice(0,10)));
+                    const rName=r.name.toLowerCase().trim();
+                    const found=parsed.find(c=>{
+                      const cName=(c.name||"").toLowerCase().trim();
+                      return cName===rName||cName.includes(rName)||rName.includes(cName)||
+                        rName.split(" ").filter(w=>w.length>3).some(w=>cName.includes(w));
+                    });
                     return found?{...r,category:found.category||r.category,cuisine:found.cuisine||r.cuisine}:r;
                   }));
                   alert("Done! "+parsed.length+" recipes categorised.");
