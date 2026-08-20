@@ -2400,85 +2400,218 @@ Rules:
       )}
 
       {mealTab==="recipes"&&(
-        <div style={{padding:"8px 16px"}}>
+        <div style={{padding:"8px 16px 16px"}}>
+
+          {/* Add + Auto-categorise buttons */}
           <button onClick={()=>setAddingRecipe(true)} style={{width:"100%",padding:"14px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:15,cursor:"pointer",marginBottom:10,boxShadow:"0 3px 12px rgba(58,80,38,0.28)",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
             <span style={{fontSize:18}}>+</span> Add Recipe
           </button>
+
           {recipes.length>0&&(
             <button onClick={async()=>{
-              const uncategorised=recipes; // run on all recipes to assign both category AND cuisine
-              if(uncategorised.length===0) return;
               try{
                 const data=await callAnthropic({
                   model:"claude-sonnet-4-6",
-                  max_tokens:800,
-                  system:"You categorise recipes. Return only valid JSON, no markdown.",
-                  messages:[{role:"user",content:[{type:"text",text:'Categorise each recipe below with a food category and a cuisine. Return ONLY a JSON array, no explanation.\n\nCategories (pick one): meat, fish, chicken, veggie, pasta, pies, soups, baking, breakfast, dessert, snacks, other\nCuisines (pick one): british, jamaican, mexican, italian, chinese, indian, american, french, thai, greek, spanish, caribbean, african, turkish, other\n\nRecipes:\n'+uncategorised.map((r,i)=>(i+1)+'. '+r.name).join('\n')+'\n\nReturn this exact JSON format:\n[{"name":"exact recipe name","category":"meat","cuisine":"british"}]'}]}]
+                  max_tokens:1000,
+                  system:"You categorise recipes. Return only a JSON array, no markdown.",
+                  messages:[{role:"user",content:[{type:"text",text:'Categorise each recipe with a food category and cuisine country. Categories: meat, fish, chicken, veggie, pasta, pies, soups, baking, breakfast, dessert, snacks, other. Cuisines: british, jamaican, mexican, italian, chinese, indian, american, french, thai, greek, spanish, caribbean, african, turkish, other. Recipes: '+recipes.map((r,i)=>(i+1)+'. '+r.name).join(', ')+'. Return JSON array: [{"name":"recipe name","category":"meat","cuisine":"british"}]'}]}]
                 });
                 const raw=data.content?.[0]?.text||"[]";
-                const arrMatch=raw.match(/\[[\s\S]*\]/);
-                if(!arrMatch) throw new Error("No JSON array in response");
-                const parsed=JSON.parse(arrMatch[0]);
+                const match=raw.match(/\[[\s\S]*\]/);
+                if(!match) throw new Error("No array found");
+                const parsed=JSON.parse(match[0]);
                 if(Array.isArray(parsed)&&parsed.length>0){
-                  // Debug: show what AI returned
-                  console.log("AI returned:",JSON.stringify(parsed));
-                  let matched=0;
                   setRecipes(prev=>prev.map(r=>{
-                    const found=parsed.find(c=>c.name&&r.name&&c.name.toLowerCase().trim()===r.name.toLowerCase().trim());
-                    if(found) matched++;
-                    return found?{...r,
-                      category:found.category||r.category||'other',
-                      cuisine:found.cuisine||r.cuisine||'other'
-                    }:r;
+                    const found=parsed.find(c=>c.name&&r.name&&c.name.toLowerCase().includes(r.name.toLowerCase().slice(0,10)));
+                    return found?{...r,category:found.category||r.category,cuisine:found.cuisine||r.cuisine}:r;
                   }));
-                  alert("✅ Categorised! Matched "+matched+" of "+recipes.length+" recipes.\nFirst result: "+JSON.stringify(parsed[0]));
-                } else {
-                  alert("AI returned unexpected format.\nRaw: "+raw.slice(0,200));
+                  alert("Done! "+parsed.length+" recipes categorised.");
                 }
-              }catch(err){
-                alert("Could not auto-categorise: "+err.message);
-              }
-            }} style={{width:"100%",padding:"12px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer",marginBottom:10,boxShadow:"0 3px 12px rgba(58,80,38,0.28)"}}>
+              }catch(e){alert("Error: "+e.message);}
+            }} style={{width:"100%",padding:"12px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer",marginBottom:12,boxShadow:"0 3px 12px rgba(58,80,38,0.28)"}}>
               ✨ Auto-categorise my recipes with AI
             </button>
           )}
-          {/* Category filter bar */}
-          <div style={{overflowX:"auto",marginBottom:6}}>
-            <div style={{display:"flex",gap:7,paddingBottom:4}}>
+
+          {/* Category filter */}
+          <div style={{overflowX:"auto",marginBottom:8}}>
+            <div style={{display:"flex",gap:6,paddingBottom:4,minWidth:"max-content"}}>
               {RECIPE_CATS.map(c=>{
-                const count=c.id==="all"?recipes.length:recipes.filter(r=>(r.category||"other")===c.id).length;
-                return(
-                  <button key={c.id} onClick={()=>setRecipeCatFilter(c.id)}
-                    style={{flexShrink:0,padding:"6px 12px",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer",
-                      background:recipeCatFilter===c.id?"#5A7848":"rgba(255,255,255,0.65)",
-                      color:recipeCatFilter===c.id?"#fff":"#5A4A30",
-                      border:recipeCatFilter===c.id?"none":"1.5px solid rgba(90,80,60,0.15)"}}>
-                    {c.icon} {c.label} <span style={{opacity:0.65}}>({count})</span>
-                  </button>
-                );
+                const n=c.id==="all"?recipes.length:recipes.filter(r=>r.category===c.id).length;
+                return <button key={c.id} onClick={()=>setRecipeCatFilter(c.id)}
+                  style={{padding:"6px 12px",borderRadius:100,fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",
+                    background:recipeCatFilter===c.id?"#5A7848":"rgba(255,255,255,0.7)",
+                    color:recipeCatFilter===c.id?"#fff":"#3A2A18",
+                    border:recipeCatFilter===c.id?"none":"1.5px solid rgba(90,80,60,0.20)"}}>
+                  {c.icon} {c.label} ({n})
+                </button>;
               })}
             </div>
           </div>
-          {/* Cuisine filter bar */}
+
+          {/* Cuisine filter */}
           <div style={{overflowX:"auto",marginBottom:12}}>
-            <div style={{display:"flex",gap:7,paddingBottom:4}}>
+            <div style={{display:"flex",gap:6,paddingBottom:4,minWidth:"max-content"}}>
               {RECIPE_CUISINES.map(c=>{
-                const count=c.id==="any"?recipes.length:recipes.filter(r=>(r.cuisine||"other")===c.id).length;
-                return(
-                  <button key={c.id} onClick={()=>setRecipeCuisineFilter(c.id)}
-                    style={{flexShrink:0,padding:"6px 12px",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer",
-                      background:recipeCuisineFilter===c.id?"#2980b9":"rgba(255,255,255,0.65)",
-                      color:recipeCuisineFilter===c.id?"#fff":"#5A4A30",
-                      border:recipeCuisineFilter===c.id?"none":"1.5px solid rgba(90,80,60,0.15)"}}>
-                    {c.icon} {c.label} <span style={{opacity:0.65}}>({count})</span>
-                  </button>
-                );
+                const n=c.id==="any"?recipes.length:recipes.filter(r=>r.cuisine===c.id).length;
+                return <button key={c.id} onClick={()=>setRecipeCuisineFilter(c.id)}
+                  style={{padding:"6px 12px",borderRadius:100,fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",
+                    background:recipeCuisineFilter===c.id?"#2980b9":"rgba(255,255,255,0.7)",
+                    color:recipeCuisineFilter===c.id?"#fff":"#3A2A18",
+                    border:recipeCuisineFilter===c.id?"none":"1.5px solid rgba(90,80,60,0.20)"}}>
+                  {c.icon} {c.label} ({n})
+                </button>;
               })}
             </div>
           </div>
+
+          {/* Add recipe form */}
+          {addingRecipe&&(
+            <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:22,padding:"20px 18px",marginBottom:14,boxShadow:"0 4px 24px rgba(0,0,0,0.08)",border:"1px solid rgba(90,120,72,0.18)"}}>
+              <div style={{fontWeight:700,color:"#2A4020",fontSize:15,marginBottom:12}}>📖 New Recipe</div>
+              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>Category</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+                {RECIPE_CATS.filter(c=>c.id!=="all").map(c=>(
+                  <button key={c.id} onClick={()=>setRecipeDraft(d=>({...d,category:c.id}))}
+                    style={{padding:"5px 12px",borderRadius:100,fontSize:12,fontWeight:700,cursor:"pointer",
+                      background:recipeDraft.category===c.id?"#5A7848":"rgba(90,80,60,0.08)",
+                      color:recipeDraft.category===c.id?"#fff":"#5A4A30",border:"none"}}>
+                    {c.icon} {c.label}
+                  </button>
+                ))}
+              </div>
+              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>Cuisine</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+                {RECIPE_CUISINES.filter(c=>c.id!=="any").map(c=>(
+                  <button key={c.id} onClick={()=>setRecipeDraft(d=>({...d,cuisine:c.id}))}
+                    style={{padding:"5px 12px",borderRadius:100,fontSize:12,fontWeight:700,cursor:"pointer",
+                      background:recipeDraft.cuisine===c.id?"#2980b9":"rgba(90,80,60,0.08)",
+                      color:recipeDraft.cuisine===c.id?"#fff":"#5A4A30",border:"none"}}>
+                    {c.icon} {c.label}
+                  </button>
+                ))}
+              </div>
+              <input value={recipeDraft.name} onChange={e=>setRecipeDraft(d=>({...d,name:e.target.value}))}
+                placeholder="Recipe name" style={{width:"100%",boxSizing:"border-box",padding:"12px 16px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.25)",fontSize:15,fontWeight:600,color:"#1A1A10",outline:"none",marginBottom:10,background:"rgba(255,255,255,0.9)"}}/>
+              <label style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"rgba(90,120,72,0.06)",borderRadius:16,border:"1.5px dashed rgba(90,120,72,0.22)",cursor:"pointer",marginBottom:6}}>
+                {recipeDraft.photo?<img src={recipeDraft.photo} alt="" style={{width:52,height:52,borderRadius:12,objectFit:"cover",flexShrink:0}}/>:<span style={{fontSize:26}}>📷</span>}
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,color:"#5A7848",fontWeight:700}}>{recipeDraft.photo?"Change photo":"📸 Upload photo"}</div>
+                  <div style={{fontSize:11,color:"#5A4A30"}}>AI will extract recipe automatically</div>
+                </div>
+                <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
+                  const f=e.target.files[0]; if(!f)return;
+                  const reader=new FileReader();
+                  reader.onload=ev=>setRecipeDraft(d=>({...d,photo:ev.target.result,_photoMime:f.type||"image/jpeg"}));
+                  reader.readAsDataURL(f);
+                }}/>
+              </label>
+              {recipeDraft.photo&&!recipeAiLoading&&(
+                <button onClick={async()=>{
+                  const dataUrl=recipeDraft.photo;
+                  const mimeType=recipeDraft._photoMime||"image/jpeg";
+                  const resized=await new Promise(resolve=>{
+                    const img=new Image();
+                    img.onerror=()=>resolve(dataUrl);
+                    img.onload=()=>{
+                      try{
+                        const MAX=800; let w=img.naturalWidth||img.width; let h=img.naturalHeight||img.height;
+                        if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+                        const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+                        canvas.getContext('2d').drawImage(img,0,0,w,h);
+                        resolve(canvas.toDataURL('image/jpeg',0.75));
+                      }catch(e){resolve(dataUrl);}
+                    };
+                    img.src=dataUrl;
+                  });
+                  const b64=resized.split(",")[1];
+                  setRecipeAiLoading(true);
+                  try{
+                    const data=await callAnthropic({model:"claude-sonnet-4-6",max_tokens:1500,
+                      system:"Extract recipe from image. Return only JSON.",
+                      messages:[{role:"user",content:[
+                        {type:"image",source:{type:"base64",media_type:mimeType,data:b64}},
+                        {type:"text",text:'Extract recipe. Return ONLY JSON: {"name":"name","ingredients":"item1\nitem2","method":"Step 1...\nStep 2...","description":"notes"}'}
+                      ]}]
+                    });
+                    const raw=data.content?.[0]?.text||"{}";
+                    const match=raw.match(/\{[\s\S]*\}/);
+                    if(match){
+                      const p=JSON.parse(match[0]);
+                      setRecipeDraft(d=>({...d,name:p.name||d.name,ingredients:p.ingredients||d.ingredients,method:p.method||d.method,description:p.description||d.description}));
+                    }
+                  }catch(e){alert("Extract failed: "+e.message);}
+                  setRecipeAiLoading(false);
+                }} style={{width:"100%",padding:"12px",marginBottom:8,background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer"}}>
+                  ✨ Extract recipe from photo
+                </button>
+              )}
+              {recipeAiLoading&&<div style={{textAlign:"center",padding:"10px",color:"#5A7848",fontWeight:700}}>✨ Reading photo...</div>}
+              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>🥄 Ingredients</div>
+              <textarea value={recipeDraft.ingredients} onChange={e=>setRecipeDraft(d=>({...d,ingredients:e.target.value}))} placeholder={"e.g.\n2 eggs\n200g flour"} rows={6} style={{width:"100%",boxSizing:"border-box",padding:"14px 16px",borderRadius:16,border:"1.5px solid rgba(90,120,72,0.2)",fontSize:15,lineHeight:1.8,color:"#1A1A10",outline:"none",resize:"vertical",fontFamily:"inherit",marginBottom:12,background:"rgba(255,255,255,0.8)"}}/>
+              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>📋 Method</div>
+              <textarea value={recipeDraft.method} onChange={e=>setRecipeDraft(d=>({...d,method:e.target.value}))} placeholder={"Step 1. ..\nStep 2. .."} rows={6} style={{width:"100%",boxSizing:"border-box",padding:"14px 16px",borderRadius:16,border:"1.5px solid rgba(90,120,72,0.2)",fontSize:15,lineHeight:1.8,color:"#1A1A10",outline:"none",resize:"vertical",fontFamily:"inherit",marginBottom:12,background:"rgba(255,255,255,0.8)"}}/>
+              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>📝 Notes</div>
+              <textarea value={recipeDraft.description} onChange={e=>setRecipeDraft(d=>({...d,description:e.target.value}))} placeholder="Serving size, calories, tips..." rows={3} style={{width:"100%",boxSizing:"border-box",padding:"14px 16px",borderRadius:16,border:"1.5px solid rgba(90,120,72,0.2)",fontSize:15,lineHeight:1.7,color:"#1A1A10",outline:"none",resize:"vertical",fontFamily:"inherit",marginBottom:14,background:"rgba(255,255,255,0.8)"}}/>
+              <div style={{display:"flex",gap:10}}>
+                <button onClick={()=>{setAddingRecipe(false);setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",pinUrl:"",photo:"",category:"other",cuisine:"other"});}} style={{flex:1,background:"rgba(90,80,60,0.08)",color:"#8A8070",border:"none",borderRadius:100,padding:"11px",fontWeight:600,fontSize:13,cursor:"pointer"}}>Cancel</button>
+                <button onClick={()=>{
+                  if(!recipeDraft.name.trim())return;
+                  const newRecipe={...recipeDraft,id:Date.now()+Math.random(),created:Date.now()};
+                  setRecipes(prev=>[newRecipe,...prev]);
+                  setAddingRecipe(false);
+                  setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",pinUrl:"",photo:"",category:"other",cuisine:"other"});
+                }} style={{flex:2,background:"#5A7848",color:"#fff",border:"none",borderRadius:100,padding:"13px",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 3px 12px rgba(58,80,38,0.28)"}}>
+                  💾 Save Recipe
+                </button>
+              </div>
+            </div>
           )}
+
+          {/* Recipe grid */}
+          {recipes.length===0?(
+            <div style={{textAlign:"center",padding:"32px 16px",color:"#5A4A30"}}>
+              <div style={{fontSize:40,marginBottom:8}}>🍽️</div>
+              <div style={{fontWeight:700,fontSize:16}}>No recipes yet</div>
+              <div style={{fontSize:13,marginTop:4}}>Tap + Add Recipe to get started</div>
+            </div>
+          ):(()=>{
+            const filtered=recipes.filter(r=>
+              (recipeCatFilter==="all"||r.category===recipeCatFilter)&&
+              (recipeCuisineFilter==="any"||r.cuisine===recipeCuisineFilter)
+            );
+            return filtered.length===0?(
+              <div style={{textAlign:"center",padding:"24px",color:"#5A4A30",background:"rgba(255,255,255,0.6)",borderRadius:16}}>
+                <div style={{fontSize:32,marginBottom:6}}>🔍</div>
+                <div style={{fontWeight:700}}>No recipes match this filter</div>
+                <button onClick={()=>{setRecipeCatFilter("all");setRecipeCuisineFilter("any");}} style={{marginTop:10,padding:"8px 20px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,cursor:"pointer",fontSize:13}}>Show all</button>
+              </div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {filtered.map(r=>(
+                  <div key={r.id} onClick={()=>setRecipeDetail(r)}
+                    style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:18,padding:"14px 16px",boxShadow:"0 2px 12px rgba(0,0,0,0.06)",border:"1px solid rgba(90,120,72,0.15)",cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
+                    <div style={{width:48,height:48,borderRadius:12,background:"#5A7848",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0,overflow:"hidden"}}>
+                      {r.photo?<img src={r.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:"🍽️"}
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:700,fontSize:15,color:"#1A1A10",marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}</div>
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                        {r.category&&r.category!=="other"&&(()=>{const cat=RECIPE_CATS.find(c=>c.id===r.category);return cat?<span style={{background:"rgba(90,120,72,0.12)",borderRadius:100,padding:"2px 8px",fontSize:11,fontWeight:700,color:"#3A5828"}}>{cat.icon} {cat.label}</span>:null;})()}
+                        {r.cuisine&&r.cuisine!=="other"&&(()=>{const cu=RECIPE_CUISINES.find(c=>c.id===r.cuisine);return cu?<span style={{background:"rgba(41,128,185,0.10)",borderRadius:100,padding:"2px 8px",fontSize:11,fontWeight:700,color:"#1a5276"}}>{cu.icon} {cu.label}</span>:null;})()}
+                        <span style={{fontSize:11,color:"#8A8070"}}>{r.ingredients?r.ingredients.split("\n").filter(Boolean).length+" ingredients":"No ingredients"}</span>
+                      </div>
+                    </div>
+                    <span style={{color:"#8A8070",fontSize:18}}>›</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
         </div>
       )}
+
 
       {mealTab==="week"&&(
         <div style={{padding:"8px 16px"}}>
