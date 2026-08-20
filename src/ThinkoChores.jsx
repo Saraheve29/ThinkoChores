@@ -2475,40 +2475,9 @@ Rules:
               <div style={{color:"#1A1A10",fontSize:13,fontWeight:600,background:"rgba(255,255,255,0.85)",borderRadius:12,padding:"8px 12px",marginTop:4}}>Tap above to write your own or paste a link</div>
             </div>
           )}
-            <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:4,WebkitOverflowScrolling:"touch"}}>
-              {RECIPE_CATS.map(cat=>{
-                const count=cat.id==="all"?recipes.length:recipes.filter(r=>r.category===cat.id).length;
-                if(cat.id!=="all"&&count===0) return null;
-                return(
-                  <button key={cat.id} onClick={()=>setRecipeFilter(cat.id)}
-                    style={{flexShrink:0,padding:"7px 14px",borderRadius:100,border:recipeFilter===cat.id?"none":"1.5px solid rgba(90,80,60,0.15)",background:recipeFilter===cat.id?"#5A7848":"rgba(255,255,255,0.65)",color:recipeFilter===cat.id?"#fff":"#1A1A10",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>
-                    {cat.icon} {cat.label}{count>0?` (${count})`:""}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          {(recipeFilter==="all"?recipes:recipes.filter(r=>r.category===recipeFilter)).map(r=>(
-            <div key={r.id} onClick={()=>setRecipeDetail(r)} style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:20,padding:"14px 16px",marginBottom:10,boxShadow:"0 2px 12px rgba(0,0,0,0.06)",border:"1px solid rgba(90,120,72,0.15)",cursor:"pointer",transition:"transform 0.15s"}}
-              onMouseEnter={e=>e.currentTarget.style.transform="translateY(-1px)"}
-              onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>
-              <div style={{display:"flex",alignItems:"center",gap:12}}>
-                <div style={{width:42,height:42,borderRadius:12,background:"#5A7848",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>🍽️</div>
-                <div style={{flex:1}}>
-                  <div style={{fontWeight:700,fontSize:15,color:"#1A1A10"}}>{r.name}</div>
-                  <div style={{fontSize:12,color:"#8A8070",marginTop:2,display:"flex",alignItems:"center",gap:6}}>
-                {r.category&&r.category!=="other"&&<span style={{background:"rgba(90,120,72,0.12)",borderRadius:100,padding:"1px 7px",fontSize:11,fontWeight:700,color:"#3A5828"}}>{RECIPE_CATS.find(c=>c.id===r.category)?.icon} {RECIPE_CATS.find(c=>c.id===r.category)?.label}</span>}
-                {r.ingredients?(r.ingredients.split("\n").filter(Boolean).length+" ingredients"):"Freewrite recipe"}{r.url&&" · 🔗 link"}
-              </div>
-                </div>
-                <span style={{color:"#A0907A",fontSize:18}}>›</span>
-              </div>
-            </div>
-          ))}
         </div>
       )}
 
-      {/* Week tab — matching reference exactly */}
       {mealTab==="week"&&(
         <div style={{padding:"8px 16px"}}>
           <button onClick={()=>{
