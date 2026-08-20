@@ -2183,13 +2183,20 @@ ${importText}`};
                 if(!arrMatch) throw new Error("No JSON array in response");
                 const parsed=JSON.parse(arrMatch[0]);
                 if(Array.isArray(parsed)&&parsed.length>0){
+                  // Debug: show what AI returned
+                  console.log("AI returned:",JSON.stringify(parsed));
+                  let matched=0;
                   setRecipes(prev=>prev.map(r=>{
                     const found=parsed.find(c=>c.name&&r.name&&c.name.toLowerCase().trim()===r.name.toLowerCase().trim());
-                    return found?{...r,category:found.category||r.category||'other',cuisine:found.cuisine||r.cuisine||'other'}:r;
+                    if(found) matched++;
+                    return found?{...r,
+                      category:found.category||r.category||'other',
+                      cuisine:found.cuisine||r.cuisine||'other'
+                    }:r;
                   }));
-                  alert("✅ All recipes categorised!");
+                  alert("✅ Categorised! Matched "+matched+" of "+recipes.length+" recipes.\nFirst result: "+JSON.stringify(parsed[0]));
                 } else {
-                  alert("AI returned unexpected format — try again");
+                  alert("AI returned unexpected format.\nRaw: "+raw.slice(0,200));
                 }
               }catch(err){
                 alert("Could not auto-categorise: "+err.message);
@@ -2468,8 +2475,6 @@ Rules:
               <div style={{color:"#1A1A10",fontSize:13,fontWeight:600,background:"rgba(255,255,255,0.85)",borderRadius:12,padding:"8px 12px",marginTop:4}}>Tap above to write your own or paste a link</div>
             </div>
           )}
-          {/* Category filter bar */}
-          {recipes.length>0&&(
             <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:4,WebkitOverflowScrolling:"touch"}}>
               {RECIPE_CATS.map(cat=>{
                 const count=cat.id==="all"?recipes.length:recipes.filter(r=>r.category===cat.id).length;
@@ -3814,10 +3819,7 @@ export default function App(){
     }
     return [{id:'main',name:'To Do',tasks:[],created:Date.now()}];
   });
-  // Ensure priData is always persisted to localStorage
-  useEffect(()=>{
-    save('chores_pri', priData);
-  },[priData]);
+  // priData is saved inside setPriData() every time it changes — no useEffect needed
 
   const dedupePriList=list=>{
     const seen=new Set();
