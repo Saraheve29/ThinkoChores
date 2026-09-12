@@ -577,6 +577,45 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
   };
   const deleteTask=id=>{onUpdate(curr=>({...curr,tasks:curr.tasks.filter(t=>t.id!==id)}));setPrioritized(false);};
   const laterTask=id=>onUpdate(curr=>({...curr,tasks:curr.tasks.map(t=>t.id===id?{...t,later:!t.later}:t)}));
+  const recoverLaterTasks=()=>{
+    // Try to find tasks that might have been lost by checking all localStorage keys
+    const allTasks=[];
+    try{
+      // Check multiple possible backup keys
+      for(let i=0;i<localStorage.length;i++){
+        const key=localStorage.key(i);
+        if(key&&(key.includes('pri')||key.includes('task')||key.includes('todo'))){
+          const val=JSON.parse(localStorage.getItem(key)||'[]');
+          if(Array.isArray(val)){
+            val.forEach(list=>{
+              if(list&&Array.isArray(list.tasks)){
+                list.tasks.forEach(t=>{
+                  if(t&&t.name&&t.later){
+                    allTasks.push(t);
+                  }
+                });
+              }
+            });
+          }
+        }
+      }
+    }catch(e){}
+    if(allTasks.length===0){
+      alert("Sorry — no saved-for-later tasks found in storage. They may have been overwritten.");
+      return;
+    }
+    // Add recovered tasks back
+    onUpdate(curr=>{
+      const existingIds=new Set(curr.tasks.map(t=>String(t.id)));
+      const newTasks=allTasks.filter(t=>!existingIds.has(String(t.id)));
+      if(newTasks.length===0){
+        alert("Your saved-for-later tasks are already in the list!");
+        return curr;
+      }
+      alert("Recovered "+newTasks.length+" task(s)! Check your Save for Later section.");
+      return {...curr,tasks:[...curr.tasks,...newTasks]};
+    });
+  };
 
   const launchTaskConfetti=allDone=>{
     const emojis=allDone?["🏆","⭐","🌟","💫","✨","🎊","🎉","💥"]:["🎉","✨","⭐","💫","🌿","🎊"];
@@ -638,17 +677,20 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
     }
   };
   const onPriDone=fullList=>{
-    // fullList now contains EVERY task (done + not-done) in final order — nothing to re-merge.
+    // fullList only has non-later tasks — merge back with later tasks to preserve them
     let activeIndex=0;
     const recoloured=fullList.map(t=>{
-      if(t.done) return t; // leave completed tasks untouched
+      if(t.done) return t;
       const i=activeIndex++;
       return {
         ...t,
         color: i<3 ? (t.color==="lilac"||t.color==="red" ? "red" : t.color) : (t.color==="red" ? "lilac" : t.color)
       };
     });
-    onUpdate(curr=>({...curr,tasks:recoloured}));
+    onUpdate(curr=>{
+      const laterTasks=curr.tasks.filter(t=>t.later); // preserve save-for-later tasks
+      return {...curr,tasks:[...recoloured,...laterTasks]};
+    });
     setComparing(false);setPrioritized(true);
   };
 
@@ -844,12 +886,19 @@ function PriList({list,onBack,onUpdate,matrixData,setMatrixData,setScreen,focusM
         {done.length>0&&<><div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",textTransform:"uppercase",letterSpacing:1.5,margin:"16px 0 8px"}}>✓ Completed</div>{done.map((task,i)=>(<PriTaskRow key={task.id} task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onEdit={editTask}/>))}</>}
         {later.length>0&&(
           <div style={{marginTop:8}}>
-            <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.7)",textTransform:"uppercase",letterSpacing:1.5,margin:"16px 0 8px",display:"flex",alignItems:"center",gap:6}}>💾 Save for later ({later.length})</div>
+            <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.7)",textTransform:"uppercase",letterSpacing:1.5,margin:"16px 0 8px",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+              💾 Save for later ({later.length})
+              <button onClick={recoverLaterTasks} style={{fontSize:10,padding:"2px 8px",background:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.3)",borderRadius:100,color:"#fff",cursor:"pointer",fontWeight:600}}>↩ Recover lost tasks</button>
+            </div>
             {later.map((task,i)=>(
               <PriTaskRow key={task.id} task={task} index={i} onDelete={deleteTask} onComplete={completeTask} onColorChange={colorTask} onEdit={editTask} onLater={laterTask}/>
             ))}
           </div>
         )}
+        <div style={{textAlign:"center",marginTop:8,marginBottom:4}}>
+          <button onClick={recoverLaterTasks} style={{fontSize:11,color:"rgba(255,255,255,0.55)",background:"none",border:"none",cursor:"pointer",textDecoration:"underline"}}>↩ Recover lost saved-for-later tasks</button>
+        </div>
+
         {active.length>1&&(
           <div style={{position:"sticky",bottom:90,left:0,right:0,padding:"12px 0 4px",background:"transparent",pointerEvents:"none"}}>
             <button onClick={()=>setComparing(true)}
