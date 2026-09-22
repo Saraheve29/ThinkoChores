@@ -2746,23 +2746,18 @@ Step 2. ..."
           {/* Save current week button */}
           <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:20,padding:"16px",marginBottom:14,boxShadow:"0 2px 10px rgba(0,0,0,0.06)"}}>
             <div style={{fontWeight:700,fontSize:15,color:"#1A1A10",marginBottom:10}}>💾 Save this week's plan</div>
-            {(()=>{
-              const [saveName,setSaveName]=React.useState("");
-              return(
-                <div style={{display:"flex",gap:8}}>
-                  <input value={saveName} onChange={e=>setSaveName(e.target.value)} placeholder="Name this plan..." style={{flex:1,padding:"10px 14px",borderRadius:100,border:"1.5px solid rgba(90,80,60,0.2)",fontSize:14,outline:"none",background:"rgba(255,255,255,0.8)",color:"#1A1A10"}}/>
-                  <button onClick={()=>{
-                    if(!saveName.trim())return;
-                    const saved={id:Date.now(),name:saveName.trim(),plan:{...plan},savedAt:Date.now()};
-                    setSavedMealPlans(prev=>[saved,...prev]);
-                    setSaveName("");
-                    alert("Plan saved as \""+saveName.trim()+"\"!");
-                  }} style={{padding:"10px 18px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer",whiteSpace:"nowrap"}}>
-                    Save
-                  </button>
-                </div>
-              );
-            })()}
+            <div style={{display:"flex",gap:8}}>
+              <input value={savePlanName} onChange={e=>setSavePlanName(e.target.value)}
+                placeholder="Name this plan e.g. Week 1..." style={{flex:1,padding:"10px 14px",borderRadius:100,border:"1.5px solid rgba(90,80,60,0.2)",fontSize:14,outline:"none",background:"rgba(255,255,255,0.8)",color:"#1A1A10"}}/>
+              <button onClick={()=>{
+                if(!savePlanName.trim())return;
+                const sp={id:Date.now(),name:savePlanName.trim(),plan:{...plan},savedAt:Date.now()};
+                setSavedMealPlans(prev=>[sp,...prev]);
+                setSavePlanName("");
+              }} style={{padding:"10px 18px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer",whiteSpace:"nowrap"}}>
+                💾 Save
+              </button>
+            </div>
           </div>
 
           {/* Saved plans list */}
@@ -2770,7 +2765,7 @@ Step 2. ..."
             <div style={{textAlign:"center",padding:"40px 16px",color:"#5A4A30"}}>
               <div style={{fontSize:48,marginBottom:10}}>📅</div>
               <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>No saved plans yet</div>
-              <div style={{fontSize:13,color:"#8A8070"}}>Save your week plans above to reload them later</div>
+              <div style={{fontSize:13,color:"#8A8070"}}>Name your plan above and tap Save</div>
             </div>
           ):(
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -2783,7 +2778,7 @@ Step 2. ..."
                     </div>
                     <div style={{display:"flex",gap:8}}>
                       <button onClick={()=>{
-                        if(window.confirm("Load \""+sp.name+"\" as your current week plan? This will replace your current plan.")){
+                        if(window.confirm("Load \""+sp.name+"\" as your current week plan? Your current plan will be replaced.")){
                           save({...sp.plan});
                           setMealTab("week");
                         }
@@ -2799,13 +2794,12 @@ Step 2. ..."
                       </button>
                     </div>
                   </div>
-                  {/* Preview of days */}
                   <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                     {(sp.plan.labels||[]).map((label,i)=>{
                       const meals=sp.plan.days?.[i]||[];
                       return meals.length>0?(
                         <div key={i} style={{background:"rgba(255,255,255,0.6)",borderRadius:8,padding:"4px 8px",fontSize:11,color:"#3A5828",fontWeight:600}}>
-                          {label}: {meals.map(m=>m.name||m).join(", ")}
+                          {label}: {meals.map(m=>m.name||m.text||m).join(", ")}
                         </div>
                       ):null;
                     })}
@@ -2819,13 +2813,18 @@ Step 2. ..."
 
       {mealTab==="week"&&(
         <div style={{padding:"8px 16px"}}>
-          <button onClick={()=>{
-              const days=plan.days.map(d=>d.map(m=>({...m,had:false})));
-              save({...plan,days});
-            }}
-            style={{width:"100%",marginBottom:12,padding:"10px",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:"1.5px solid rgba(90,80,60,0.18)",borderRadius:100,fontSize:13,fontWeight:700,color:"#1A1A10",cursor:"pointer"}}>
-            🔁 Reset for next week — un-mark all as had
-          </button>
+          <div style={{display:"flex",gap:8,marginBottom:12}}>
+            <button onClick={()=>{setMealTab("saved");}} style={{flex:1,padding:"10px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+              💾 Save this plan
+            </button>
+            <button onClick={()=>{
+                const days=plan.days.map(d=>d.map(m=>({...m,had:false})));
+                save({...plan,days});
+              }}
+              style={{flex:1,padding:"10px",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",border:"1.5px solid rgba(90,80,60,0.18)",borderRadius:100,fontSize:13,fontWeight:700,color:"#1A1A10",cursor:"pointer"}}>
+              🔁 Reset for next week
+            </button>
+          </div>
           {plan.labels.map((label,dayIdx)=>{
             const meals=plan.days[dayIdx]||[];
             const bg=DAY_GRADS[dayIdx];
@@ -4155,6 +4154,7 @@ export default function App(){
   const [mealData,setMealDataRaw]=useState(()=>load('chores_meal',{}));
   const [savedMealPlans,setSavedMealPlansRaw]=useState(()=>load('chores_saved_plans',[]));
   const setSavedMealPlans=d=>{setSavedMealPlansRaw(prev=>{const next=typeof d==='function'?d(prev):d;save('chores_saved_plans',next);return next;});};
+  const [savePlanName,setSavePlanName]=useState('');
   const setMealData=d=>{setMealDataRaw(prev=>{const next=typeof d==='function'?d(prev):d;save('chores_meal',next);return next;});};
 
   // Greeting
