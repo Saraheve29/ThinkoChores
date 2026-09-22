@@ -1939,8 +1939,9 @@ const sendMealToShop=(meal,label)=>{
         <button style={{background:"rgba(90,80,60,0.08)",border:"1px solid rgba(90,80,60,0.15)",borderRadius:"50%",width:36,height:36,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#5A5040",fontSize:15}}>⊙</button>
       </div>
 
-      {/* Tabs — Week Plan | Recipes | Reset */}
-      <div style={{padding:"14px 16px 8px",display:"flex",gap:8,alignItems:"center"}}>
+      {/* Tabs — scrollable row */}
+      <div style={{padding:"14px 0 8px",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+      <div style={{padding:"0 16px",display:"flex",gap:8,alignItems:"center",minWidth:"max-content"}}>
         <button onClick={()=>setMealTab("week")} style={{
           background:mealTab==="week"?"#1A1A10":"rgba(248,245,236,0.88)",
           color:mealTab==="week"?"#fff":"#5A5040",
@@ -1990,10 +1991,11 @@ const sendMealToShop=(meal,label)=>{
         <button onClick={()=>save(init())} style={{
           background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:"#5A5040",
           border:"1.5px solid rgba(90,80,60,0.2)",
-          borderRadius:100,padding:"10px 20px",
+          borderRadius:100,padding:"10px 16px",
           fontWeight:700,fontSize:14,cursor:"pointer",
-          marginLeft:"auto",
+          whiteSpace:"nowrap",
         }}>Reset</button>
+      </div>
       </div>
 
       {/* Recipes tab */}
@@ -2594,19 +2596,36 @@ Rules:
               </div>
               <input value={recipeDraft.name} onChange={e=>setRecipeDraft(d=>({...d,name:e.target.value}))}
                 placeholder="Recipe name" style={{width:"100%",boxSizing:"border-box",padding:"12px 16px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.25)",fontSize:15,fontWeight:600,color:"#1A1A10",outline:"none",marginBottom:10,background:"rgba(255,255,255,0.9)"}}/>
-              <label style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"rgba(90,120,72,0.06)",borderRadius:16,border:"1.5px dashed rgba(90,120,72,0.22)",cursor:"pointer",marginBottom:6}}>
-                {recipeDraft.photo?<img src={recipeDraft.photo} alt="" style={{width:52,height:52,borderRadius:12,objectFit:"cover",flexShrink:0}}/>:<span style={{fontSize:26}}>📷</span>}
-                <div style={{flex:1}}>
-                  <div style={{fontSize:13,color:"#5A7848",fontWeight:700}}>{recipeDraft.photo?"Change photo":"📸 Upload photo"}</div>
-                  <div style={{fontSize:11,color:"#5A4A30"}}>AI will extract recipe automatically</div>
+              <div style={{marginBottom:6}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>📷 Photos (up to 3 — great for multi-page recipes)</div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-start"}}>
+                  {(recipeDraft.photos||[]).map((ph,pi)=>(
+                    <div key={pi} style={{position:"relative",width:72,height:72,flexShrink:0}}>
+                      <img src={ph} alt="" style={{width:72,height:72,objectFit:"cover",borderRadius:12,border:"2px solid rgba(90,120,72,0.3)"}}/>
+                      <button onClick={()=>setRecipeDraft(d=>{const newPhotos=(d.photos||[]).filter((_,i)=>i!==pi);return{...d,photos:newPhotos,photo:newPhotos[0]||''}})}
+                        style={{position:"absolute",top:-7,right:-7,width:22,height:22,borderRadius:"50%",background:"#c03c3c",color:"#fff",border:"2px solid #fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,lineHeight:1}}>×</button>
+                    </div>
+                  ))}
+                  {(recipeDraft.photos||[]).length<3&&(
+                    <label style={{width:72,height:72,borderRadius:12,border:"2px dashed rgba(90,120,72,0.35)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",background:"rgba(90,120,72,0.06)",gap:2,flexShrink:0}}>
+                      <span style={{fontSize:20}}>📷</span>
+                      <span style={{fontSize:10,color:"#5A7848",fontWeight:700,textAlign:"center",lineHeight:1.2}}>Add<br/>photo</span>
+                      <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
+                        const f=e.target.files[0];if(!f)return;
+                        const reader=new FileReader();
+                        reader.onload=ev=>{
+                          const dataUrl=ev.target.result;
+                          setRecipeDraft(d=>{
+                            const newPhotos=[...(d.photos||[]),dataUrl].slice(0,3);
+                            return{...d,photos:newPhotos,photo:newPhotos[0]||d.photo,_photoMime:f.type||"image/jpeg"};
+                          });
+                        };
+                        reader.readAsDataURL(f);
+                      }}/>
+                    </label>
+                  )}
                 </div>
-                <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
-                  const f=e.target.files[0]; if(!f)return;
-                  const reader=new FileReader();
-                  reader.onload=ev=>setRecipeDraft(d=>({...d,photo:ev.target.result,_photoMime:f.type||"image/jpeg"}));
-                  reader.readAsDataURL(f);
-                }}/>
-              </label>
+              </div>
               {recipeDraft.photo&&!recipeAiLoading&&(
                 <button onClick={async()=>{
                   const dataUrl=recipeDraft.photo;
