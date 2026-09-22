@@ -2338,62 +2338,52 @@ ${recipeAiText}`}]}]
                   {recipeAiLoading&&<div style={{fontSize:11,color:"#5A7848",fontWeight:700,alignSelf:"center"}}>✨ Reading...</div>}
                 </div>
               </div>
-              {recipeDraft.photo&&!recipeAiLoading&&(
+              {(recipeDraft.photos||[]).length>0&&!recipeAiLoading&&(
                 <button onClick={async()=>{
-                  const dataUrl=recipeDraft.photo;
-                  const mimeType=recipeDraft._photoMime||"image/jpeg";
                   setRecipeAiLoading(true);
                   try{
-                    // Aggressively resize image for mobile — target <800KB base64
-                    const resized = await new Promise(resolve=>{
+                    const resizePhoto=async(dataUrl)=>new Promise(resolve=>{
                       const img=new Image();
-                      img.onerror=()=>resolve(dataUrl); // fallback to original
+                      img.onerror=()=>resolve(dataUrl);
                       img.onload=()=>{
                         try{
                           const MAX=800;
                           let w=img.naturalWidth||img.width;
                           let h=img.naturalHeight||img.height;
-                          if(w>MAX||h>MAX){
-                            if(w>h){h=Math.round(h*MAX/w);w=MAX;}
-                            else{w=Math.round(w*MAX/h);h=MAX;}
-                          }
+                          if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
                           const canvas=document.createElement('canvas');
-                          canvas.width=w; canvas.height=h;
-                          const ctx=canvas.getContext('2d');
-                          ctx.drawImage(img,0,0,w,h);
-                          const out=canvas.toDataURL('image/jpeg',0.75);
-                          console.log('Resized to',w+'x'+h,'base64 length:',out.length);
-                          resolve(out);
-                        }catch(e){
-                          console.error('Resize failed:',e);
-                          resolve(dataUrl);
-                        }
+                          canvas.width=w;canvas.height=h;
+                          canvas.getContext('2d').drawImage(img,0,0,w,h);
+                          resolve(canvas.toDataURL('image/jpeg',0.75));
+                        }catch(e){resolve(dataUrl);}
                       };
                       img.src=dataUrl;
                     });
-                    const b64=resized.split(",")[1];
-                    console.log('Sending b64 length:',b64.length);
+                    const allPhotos=[...(recipeDraft.photos||[])].filter(Boolean);
+                    if(recipeDraft.photo&&!allPhotos.includes(recipeDraft.photo)) allPhotos.unshift(recipeDraft.photo);
+                    const resizedPhotos=await Promise.all(allPhotos.map(resizePhoto));
+                    const imageBlocks=resizedPhotos.map(r=>({type:"image",source:{type:"base64",media_type:"image/jpeg",data:r.split(",")[1]}}));
+                    const pageCount=resizedPhotos.length;
                     const data=await callAnthropic({
-                        model:"claude-sonnet-4-6",
-                        max_tokens:1500,
-                        system:"You extract recipe details from photos or screenshots. Return ONLY valid JSON, no markdown, no explanation.",
-                        messages:[{role:"user",content:[
-                          {type:"image",source:{type:"base64",media_type:mimeType,data:b64}},
-                          {type:"text",text:`You are extracting a recipe from this image. Look very carefully at ALL text visible — including partially cut off text, small print, cookbook pages, handwritten notes, or screenshots. Read every word.
+                      model:"claude-sonnet-4-6",
+                      max_tokens:1500,
+                      system:"You extract recipe details from photos or screenshots. Return ONLY valid JSON, no markdown, no explanation.",
+                      messages:[{role:"user",content:[
+                        ...imageBlocks,
+                        {type:"text",text:`You are extracting a recipe from ${pageCount>1?`these ${pageCount} images (they are pages of the same recipe — read ALL of them together)`:"this image"}. Look very carefully at ALL text visible across every image.
 
 Return ONLY this JSON (no markdown, no explanation):
 {"name":"Recipe name","ingredients":"ingredient 1\ningredient 2\ningredient 3","method":"Step 1. Do this\nStep 2. Do that","description":"Serving size, calories, tips"}
 
 Rules:
+- Combine information from ALL images/pages into one complete recipe
 - Extract ALL ingredients with quantities (e.g. 200g flour, 2 eggs)
-- Extract ALL method steps — even if the book uses paragraphs with no numbers, split each paragraph or sentence into a separate numbered step: "Step 1. ...
-Step 2. ..."
+- Extract ALL method steps — even if the book uses paragraphs with no numbers, split each paragraph into a separate numbered step: "Step 1. ...\nStep 2. ..."
 - Read partial/cut-off text at edges and include it
-- For cookbook photos extract every word of the recipe shown
-- If this looks like page 2 of a recipe (starts mid-method), still extract whatever steps are shown
-- Never leave ingredients or method empty if text is visible`}
-                        ]}]
-                      });
+- If images are page 1 and page 2 of a cookbook recipe, stitch them together
+- Never leave ingredients or method empty if text is visible in ANY of the images`}
+                      ]}]
+                    });
                     if(data.error) throw new Error(data.error.message);
                     const raw=data.content?.[0]?.text||"{}";
                     const jsonMatch=raw.match(/\{[\s\S]*\}/);
@@ -2414,7 +2404,7 @@ Step 2. ..."
                   setRecipeAiLoading(false);
                 }}
                   style={{width:"100%",padding:"12px",marginBottom:8,background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-                  ✨ Extract recipe from photo
+                  ✨ Extract recipe from photo{(recipeDraft.photos||[]).length>1?`s (${(recipeDraft.photos||[]).length} pages)`:""}
                 </button>
               )}
               {recipeAiLoading&&(
@@ -2629,32 +2619,35 @@ Step 2. ..."
                   )}
                 </div>
               </div>
-              {recipeDraft.photo&&!recipeAiLoading&&(
+              {(recipeDraft.photos||[]).length>0&&!recipeAiLoading&&(
                 <button onClick={async()=>{
-                  const dataUrl=recipeDraft.photo;
-                  const mimeType=recipeDraft._photoMime||"image/jpeg";
-                  const resized=await new Promise(resolve=>{
-                    const img=new Image();
-                    img.onerror=()=>resolve(dataUrl);
-                    img.onload=()=>{
-                      try{
-                        const MAX=800; let w=img.naturalWidth||img.width; let h=img.naturalHeight||img.height;
-                        if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
-                        const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
-                        canvas.getContext('2d').drawImage(img,0,0,w,h);
-                        resolve(canvas.toDataURL('image/jpeg',0.75));
-                      }catch(e){resolve(dataUrl);}
-                    };
-                    img.src=dataUrl;
-                  });
-                  const b64=resized.split(",")[1];
                   setRecipeAiLoading(true);
                   try{
+                    const resizePhoto=async(dataUrl)=>new Promise(resolve=>{
+                      const img=new Image();
+                      img.onerror=()=>resolve(dataUrl);
+                      img.onload=()=>{
+                        try{
+                          const MAX=800;
+                          let w=img.naturalWidth||img.width;let h=img.naturalHeight||img.height;
+                          if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+                          const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+                          canvas.getContext('2d').drawImage(img,0,0,w,h);
+                          resolve(canvas.toDataURL('image/jpeg',0.75));
+                        }catch(e){resolve(dataUrl);}
+                      };
+                      img.src=dataUrl;
+                    });
+                    const allPhotos=[...(recipeDraft.photos||[])].filter(Boolean);
+                    if(recipeDraft.photo&&!allPhotos.includes(recipeDraft.photo)) allPhotos.unshift(recipeDraft.photo);
+                    const resizedPhotos=await Promise.all(allPhotos.map(resizePhoto));
+                    const imageBlocks=resizedPhotos.map(r=>({type:"image",source:{type:"base64",media_type:"image/jpeg",data:r.split(",")[1]}}));
+                    const pageCount=resizedPhotos.length;
                     const data=await callAnthropic({model:"claude-sonnet-4-6",max_tokens:1500,
-                      system:"Extract recipe from image. Return only JSON.",
+                      system:"Extract recipe from images. Return only JSON.",
                       messages:[{role:"user",content:[
-                        {type:"image",source:{type:"base64",media_type:mimeType,data:b64}},
-                        {type:"text",text:'Extract recipe. Return ONLY JSON: {"name":"name","ingredients":"item1\nitem2","method":"Step 1...\nStep 2...","description":"notes"}'}
+                        ...imageBlocks,
+                        {type:"text",text:`Extract recipe from ${pageCount>1?`these ${pageCount} images (same recipe across pages — combine all pages)`:"this image"}. Return ONLY JSON: {"name":"name","ingredients":"item1\nitem2","method":"Step 1. ...\nStep 2. ...","description":"notes"}. Split every paragraph into numbered steps. Never say 'not visible' if text exists in any image.`}
                       ]}]
                     });
                     const raw=data.content?.[0]?.text||"{}";
@@ -2666,7 +2659,7 @@ Step 2. ..."
                   }catch(e){alert("Extract failed: "+e.message);}
                   setRecipeAiLoading(false);
                 }} style={{width:"100%",padding:"12px",marginBottom:8,background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer"}}>
-                  ✨ Extract recipe from photo
+                  ✨ Extract recipe from photo{(recipeDraft.photos||[]).length>1?`s (${(recipeDraft.photos||[]).length} pages)`:""}
                 </button>
               )}
               {recipeAiLoading&&<div style={{textAlign:"center",padding:"10px",color:"#5A7848",fontWeight:700}}>✨ Reading photo...</div>}
