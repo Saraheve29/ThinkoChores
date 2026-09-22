@@ -1661,17 +1661,15 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
     setRecipesRaw(prev=>{
       const next=typeof d==='function'?d(prev):d;
       try{
-        // Strip base64 photos before saving — they're too large for localStorage
-        const stripped=next.map(r=>({...r,photo:r.photo&&r.photo.startsWith('data:')?'':r.photo}));
+        const stripped=next.map(r=>({...r,
+          photo:r.photo&&r.photo.startsWith('data:')?'':r.photo,
+          photos:(r.photos||[]).map(p=>p&&p.startsWith('data:')?'':p)
+        }));
         localStorage.setItem('chores_recipes',JSON.stringify(stripped));
       }catch(e){
-        // If still too large, save without photos at all
-        try{
-          const noPhotos=next.map(r=>({...r,photo:''}));
-          localStorage.setItem('chores_recipes',JSON.stringify(noPhotos));
-        }catch{}
+        try{localStorage.setItem('chores_recipes',JSON.stringify(next.map(r=>({...r,photo:'',photos:[]}))));}catch{}
       }
-      return next; // keep photos in memory for current session
+      return next;
     });
   };
   const [addingRecipe,setAddingRecipe]=useState(false);
@@ -1681,7 +1679,8 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
   const [recipeAiText,setRecipeAiText]=useState('');
   const [showRecipeAi,setShowRecipeAi]=useState(false);
   const [showAddToDay,setShowAddToDay]=useState(false);
-  const [recipeDraft,setRecipeDraft]=useState({name:'',description:'',ingredients:'',method:'',url:'',pinUrl:'',photo:'',category:'other',cuisine:'other'});
+  const [recipeDraft,setRecipeDraft]=useState({name:'',description:'',ingredients:'',method:'',url:'',pinUrl:'',photo:'',photos:[],category:'other',cuisine:'other',favourite:false});
+  const [recipeFavFilter,setRecipeFavFilter]=useState(false);
   const [editLabelIdx,setEditLabelIdx]=useState(null);
   const [labelDraft,setLabelDraft]=useState('');
 
@@ -1821,10 +1820,29 @@ const sendMealToShop=(meal,label)=>{
     return(
       <div style={{minHeight:"100vh",background:"transparent",fontFamily:"'Segoe UI',sans-serif",paddingBottom:90}}>
         <Header title={r.name} onBack={()=>setRecipeDetail(null)} right={
-          <button onClick={()=>{setRecipes(rs=>rs.filter(x=>x.id!==r.id));setRecipeDetail(null);}} style={{background:"rgba(192,57,43,0.15)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.3)",borderRadius:10,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer"}}>🗑 Delete</button>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <button onClick={()=>{setRecipes(rs=>rs.map(rx=>rx.id===r.id?{...rx,favourite:!rx.favourite}:rx));setRecipeDetail(rv=>({...rv,favourite:!rv.favourite}));}}
+              style={{background:"none",border:"none",fontSize:24,cursor:"pointer",padding:"4px",lineHeight:1}}>
+              {r.favourite?"❤️":"🤍"}
+            </button>
+            <button onClick={()=>{setRecipes(rs=>rs.filter(x=>x.id!==r.id));setRecipeDetail(null);}} style={{background:"rgba(192,57,43,0.15)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.3)",borderRadius:10,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer"}}>🗑 Delete</button>
+          </div>
         }/>
         <div style={{padding:"16px 14px"}}>
-          {r.photo&&<img src={r.photo} alt={r.name} style={{width:"100%",maxHeight:220,objectFit:"cover",borderRadius:20,marginBottom:14,boxShadow:"0 4px 18px rgba(0,0,0,0.10)"}}/>}
+          {/* Photo gallery — show all uploaded photos */}
+          {(()=>{
+            const allPhotos=[...(r.photos||[])].filter(Boolean);
+            if(r.photo&&!allPhotos.includes(r.photo)) allPhotos.unshift(r.photo);
+            if(allPhotos.length===0) return null;
+            if(allPhotos.length===1) return <img src={allPhotos[0]} alt={r.name} style={{width:"100%",maxHeight:220,objectFit:"cover",borderRadius:20,marginBottom:14,boxShadow:"0 4px 18px rgba(0,0,0,0.10)"}}/>;
+            return(
+              <div style={{display:"flex",gap:8,marginBottom:14,overflowX:"auto",paddingBottom:4}}>
+                {allPhotos.map((ph,pi)=>(
+                  <img key={pi} src={ph} alt={r.name+' '+(pi+1)} style={{height:180,width:"auto",maxWidth:"80vw",objectFit:"cover",borderRadius:16,flexShrink:0,boxShadow:"0 4px 18px rgba(0,0,0,0.10)"}}/>
+                ))}
+              </div>
+            );
+          })()}
           {r.url&&<div style={{marginBottom:8}}><UrlBadge url={r.url}/></div>}
           {r.pinUrl&&(
             <a href={r.pinUrl} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:8,padding:"9px 14px",background:"rgba(230,0,35,0.06)",border:"1.5px solid rgba(230,0,35,0.15)",borderRadius:100,marginBottom:12,textDecoration:"none"}}>
@@ -1959,6 +1977,16 @@ const sendMealToShop=(meal,label)=>{
           boxShadow:mealTab==="import"?"0 2px 10px rgba(90,120,72,0.3)":"none",
           transition:"all 0.15s",
         }}>✨ Import</button>
+        <button onClick={()=>setMealTab("saved")} style={{
+          background:mealTab==="saved"?"#5A7848":"rgba(248,245,236,0.88)",
+          color:mealTab==="saved"?"#fff":"#5A5040",
+          border:mealTab==="saved"?"none":"1.5px solid rgba(90,80,60,0.2)",
+          borderRadius:100,padding:"10px 16px",
+          fontWeight:700,fontSize:14,cursor:"pointer",
+          boxShadow:mealTab==="saved"?"0 2px 10px rgba(90,120,72,0.3)":"none",
+          transition:"all 0.15s",
+          whiteSpace:"nowrap",
+        }}>💾 Saved</button>
         <button onClick={()=>save(init())} style={{
           background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:"#5A5040",
           border:"1.5px solid rgba(90,80,60,0.2)",
@@ -2275,26 +2303,38 @@ ${recipeAiText}`}]}]
                 ))}
               </div>
               <input value={recipeDraft.name} onChange={e=>setRecipeDraft(d=>({...d,name:e.target.value}))} placeholder="Recipe name" style={{width:"100%",boxSizing:"border-box",padding:"12px 16px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.25)",fontSize:15,fontWeight:600,color:"#1A1A10",outline:"none",marginBottom:10,background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)"}}/>
-              {/* Smart photo upload with AI extraction */}
-              <label style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"rgba(90,120,72,0.06)",borderRadius:16,border:"1.5px dashed rgba(90,120,72,0.22)",cursor:"pointer",marginBottom:6,position:"relative"}}>
-                {recipeDraft.photo
-                  ?<img src={recipeDraft.photo} alt="" style={{width:52,height:52,borderRadius:12,objectFit:"cover",flexShrink:0}}/>
-                  :<span style={{fontSize:26}}>📷</span>}
-                <div style={{flex:1}}>
-                  <div style={{fontSize:13,color:"#5A7848",fontWeight:700}}>{recipeDraft.photo?"Change photo":"📸 Upload photo"}</div>
-                  <div style={{fontSize:11,color:"#5A4A30"}}>AI will extract recipe, ingredients & steps automatically</div>
+              {/* Multi-photo upload + AI extraction */}
+              <div style={{marginBottom:6}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>📷 Photos (up to 3 — great for multi-page recipes)</div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-start"}}>
+                  {(recipeDraft.photos||[]).map((ph,pi)=>(
+                    <div key={pi} style={{position:"relative",width:72,height:72,flexShrink:0}}>
+                      <img src={ph} alt="" style={{width:72,height:72,objectFit:"cover",borderRadius:12,border:"2px solid rgba(90,120,72,0.3)"}}/>
+                      <button onClick={()=>setRecipeDraft(d=>{const newPhotos=(d.photos||[]).filter((_,i)=>i!==pi);return{...d,photos:newPhotos,photo:newPhotos[0]||''}})}
+                        style={{position:"absolute",top:-7,right:-7,width:22,height:22,borderRadius:"50%",background:"#c03c3c",color:"#fff",border:"2px solid #fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,lineHeight:1}}>×</button>
+                    </div>
+                  ))}
+                  {(recipeDraft.photos||[]).length<3&&(
+                    <label style={{width:72,height:72,borderRadius:12,border:"2px dashed rgba(90,120,72,0.35)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",background:"rgba(90,120,72,0.06)",gap:2,flexShrink:0}}>
+                      <span style={{fontSize:20}}>📷</span>
+                      <span style={{fontSize:10,color:"#5A7848",fontWeight:700,textAlign:"center",lineHeight:1.2}}>Add<br/>photo</span>
+                      <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
+                        const f=e.target.files[0];if(!f)return;
+                        const reader=new FileReader();
+                        reader.onload=ev=>{
+                          const dataUrl=ev.target.result;
+                          setRecipeDraft(d=>{
+                            const newPhotos=[...(d.photos||[]),dataUrl].slice(0,3);
+                            return{...d,photos:newPhotos,photo:newPhotos[0]||d.photo,_photoMime:f.type||"image/jpeg"};
+                          });
+                        };
+                        reader.readAsDataURL(f);
+                      }}/>
+                    </label>
+                  )}
+                  {recipeAiLoading&&<div style={{fontSize:11,color:"#5A7848",fontWeight:700,alignSelf:"center"}}>✨ Reading...</div>}
                 </div>
-                {recipeAiLoading&&<div style={{fontSize:11,color:"#5A7848",fontWeight:700}}>✨ Reading...</div>}
-                <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
-                  const f=e.target.files[0];
-                  if(!f) return;
-                  const reader=new FileReader();
-                  reader.onload=ev=>{
-                    setRecipeDraft(d=>({...d,photo:ev.target.result,_photoMime:f.type||"image/jpeg"}));
-                  };
-                  reader.readAsDataURL(f);
-                }}/>
-              </label>
+              </div>
               {recipeDraft.photo&&!recipeAiLoading&&(
                 <button onClick={async()=>{
                   const dataUrl=recipeDraft.photo;
@@ -2391,7 +2431,7 @@ Rules:
               <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>📝 Notes</div>
               <textarea value={recipeDraft.description} onChange={e=>setRecipeDraft(d=>({...d,description:e.target.value}))} placeholder="Serving size, calories, tips..." rows={3} style={{width:"100%",boxSizing:"border-box",padding:"14px 16px",borderRadius:16,border:"1.5px solid rgba(90,120,72,0.2)",fontSize:15,lineHeight:1.7,color:"#1A1A10",outline:"none",resize:"vertical",fontFamily:"inherit",marginBottom:14,background:"rgba(255,255,255,0.8)"}}/>
               <div style={{display:"flex",gap:10}}>
-                <button onClick={()=>{setAddingRecipe(false);setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",photo:""});}} style={{flex:1,background:"rgba(90,80,60,0.08)",color:"#8A8070",border:"none",borderRadius:100,padding:"11px",fontWeight:600,fontSize:13,cursor:"pointer"}}>Cancel</button>
+                <button onClick={()=>{setAddingRecipe(false);setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",photo:"",photos:[],category:"other",cuisine:"other",favourite:false});}} style={{flex:1,background:"rgba(90,80,60,0.08)",color:"#8A8070",border:"none",borderRadius:100,padding:"11px",fontWeight:600,fontSize:13,cursor:"pointer"}}>Cancel</button>
                 <button onClick={async()=>{
                   if(!recipeDraft.name.trim())return;
                   setRecipeAiLoading(true);
@@ -2408,7 +2448,7 @@ Rules:
                     if(valid.includes(cat)) category=cat;
                   }catch(e){console.error("Category:",e);}
                   setRecipes(rs=>[...rs,{id:Date.now(),...recipeDraft,category}]);
-                  setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",photo:""});
+                  setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",photo:"",photos:[],category:"other",cuisine:"other",favourite:false});
                   setAddingRecipe(false);
                   setRecipeAiLoading(false);
                 }} disabled={recipeAiLoading}
@@ -2490,6 +2530,13 @@ Rules:
           {/* Category filter */}
           <div style={{overflowX:"auto",marginBottom:8}}>
             <div style={{display:"flex",gap:6,paddingBottom:4,minWidth:"max-content"}}>
+              <button onClick={()=>setRecipeFavFilter(f=>!f)}
+                style={{padding:"6px 12px",borderRadius:100,fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",
+                  background:recipeFavFilter?"#e74c3c":"rgba(255,255,255,0.7)",
+                  color:recipeFavFilter?"#fff":"#3A2A18",
+                  border:recipeFavFilter?"none":"1.5px solid rgba(90,80,60,0.20)"}}>
+                ❤️ Favourites ({recipes.filter(r=>r.favourite).length})
+              </button>
               {RECIPE_CATS.map(c=>{
                 const n=c.id==="all"?recipes.length:recipes.filter(r=>r.category===c.id).length;
                 return <button key={c.id} onClick={()=>setRecipeCatFilter(c.id)}
@@ -2614,7 +2661,7 @@ Rules:
                   const newRecipe={...recipeDraft,id:Date.now()+Math.random(),created:Date.now()};
                   setRecipes(prev=>[newRecipe,...prev]);
                   setAddingRecipe(false);
-                  setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",pinUrl:"",photo:"",category:"other",cuisine:"other"});
+                  setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",pinUrl:"",photo:"",photos:[],category:"other",cuisine:"other",favourite:false});
                 }} style={{flex:2,background:"#5A7848",color:"#fff",border:"none",borderRadius:100,padding:"13px",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 3px 12px rgba(58,80,38,0.28)"}}>
                   💾 Save Recipe
                 </button>
@@ -2632,7 +2679,8 @@ Rules:
           ):(()=>{
             const filtered=recipes.filter(r=>
               (recipeCatFilter==="all"||r.category===recipeCatFilter)&&
-              (recipeCuisineFilter==="any"||r.cuisine===recipeCuisineFilter)
+              (recipeCuisineFilter==="any"||r.cuisine===recipeCuisineFilter)&&
+              (!recipeFavFilter||r.favourite)
             );
             return filtered.length===0?(
               <div style={{textAlign:"center",padding:"24px",color:"#5A4A30",background:"rgba(255,255,255,0.6)",borderRadius:16}}>
@@ -2656,6 +2704,10 @@ Rules:
                         <span style={{fontSize:11,color:"#8A8070"}}>{r.ingredients?r.ingredients.split("\n").filter(Boolean).length+" ingredients":"No ingredients"}</span>
                       </div>
                     </div>
+                    <button onClick={e=>{e.stopPropagation();setRecipes(prev=>prev.map(rx=>rx.id===r.id?{...rx,favourite:!rx.favourite}:rx));}}
+                      style={{background:"none",border:"none",fontSize:22,cursor:"pointer",padding:"4px",flexShrink:0,lineHeight:1}}>
+                      {r.favourite?"❤️":"🤍"}
+                    </button>
                     <span style={{color:"#8A8070",fontSize:18}}>›</span>
                   </div>
                 ))}
@@ -2666,6 +2718,82 @@ Rules:
         </div>
       )}
 
+
+      {mealTab==="saved"&&(
+        <div style={{padding:"8px 16px 80px"}}>
+          {/* Save current week button */}
+          <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:20,padding:"16px",marginBottom:14,boxShadow:"0 2px 10px rgba(0,0,0,0.06)"}}>
+            <div style={{fontWeight:700,fontSize:15,color:"#1A1A10",marginBottom:10}}>💾 Save this week's plan</div>
+            {(()=>{
+              const [saveName,setSaveName]=React.useState("");
+              return(
+                <div style={{display:"flex",gap:8}}>
+                  <input value={saveName} onChange={e=>setSaveName(e.target.value)} placeholder="Name this plan..." style={{flex:1,padding:"10px 14px",borderRadius:100,border:"1.5px solid rgba(90,80,60,0.2)",fontSize:14,outline:"none",background:"rgba(255,255,255,0.8)",color:"#1A1A10"}}/>
+                  <button onClick={()=>{
+                    if(!saveName.trim())return;
+                    const saved={id:Date.now(),name:saveName.trim(),plan:{...plan},savedAt:Date.now()};
+                    setSavedMealPlans(prev=>[saved,...prev]);
+                    setSaveName("");
+                    alert("Plan saved as \""+saveName.trim()+"\"!");
+                  }} style={{padding:"10px 18px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer",whiteSpace:"nowrap"}}>
+                    Save
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Saved plans list */}
+          {savedMealPlans.length===0?(
+            <div style={{textAlign:"center",padding:"40px 16px",color:"#5A4A30"}}>
+              <div style={{fontSize:48,marginBottom:10}}>📅</div>
+              <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>No saved plans yet</div>
+              <div style={{fontSize:13,color:"#8A8070"}}>Save your week plans above to reload them later</div>
+            </div>
+          ):(
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {savedMealPlans.map(sp=>(
+                <div key={sp.id} style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:18,padding:"14px 16px",boxShadow:"0 2px 10px rgba(0,0,0,0.06)",border:"1px solid rgba(90,120,72,0.15)"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                    <div>
+                      <div style={{fontWeight:700,fontSize:15,color:"#1A1A10"}}>{sp.name}</div>
+                      <div style={{fontSize:11,color:"#8A8070",marginTop:2}}>Saved {new Date(sp.savedAt).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</div>
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={()=>{
+                        if(window.confirm("Load \""+sp.name+"\" as your current week plan? This will replace your current plan.")){
+                          save({...sp.plan});
+                          setMealTab("week");
+                        }
+                      }} style={{padding:"8px 16px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:13,cursor:"pointer"}}>
+                        Load
+                      </button>
+                      <button onClick={()=>{
+                        if(window.confirm("Delete \""+sp.name+"\"?")){
+                          setSavedMealPlans(prev=>prev.filter(p=>p.id!==sp.id));
+                        }
+                      }} style={{padding:"8px 12px",background:"rgba(200,60,60,0.12)",color:"#c03c3c",border:"none",borderRadius:100,fontWeight:700,fontSize:13,cursor:"pointer"}}>
+                        🗑
+                      </button>
+                    </div>
+                  </div>
+                  {/* Preview of days */}
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                    {(sp.plan.labels||[]).map((label,i)=>{
+                      const meals=sp.plan.days?.[i]||[];
+                      return meals.length>0?(
+                        <div key={i} style={{background:"rgba(255,255,255,0.6)",borderRadius:8,padding:"4px 8px",fontSize:11,color:"#3A5828",fontWeight:600}}>
+                          {label}: {meals.map(m=>m.name||m).join(", ")}
+                        </div>
+                      ):null;
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {mealTab==="week"&&(
         <div style={{padding:"8px 16px"}}>
@@ -4003,6 +4131,8 @@ export default function App(){
   const setShopData=d=>{setShopDataRaw(prev=>{const next=typeof d==='function'?d(prev):d;save('chores_shop',next);return next;});};
 
   const [mealData,setMealDataRaw]=useState(()=>load('chores_meal',{}));
+  const [savedMealPlans,setSavedMealPlansRaw]=useState(()=>load('chores_saved_plans',[]));
+  const setSavedMealPlans=d=>{setSavedMealPlansRaw(prev=>{const next=typeof d==='function'?d(prev):d;save('chores_saved_plans',next);return next;});};
   const setMealData=d=>{setMealDataRaw(prev=>{const next=typeof d==='function'?d(prev):d;save('chores_meal',next);return next;});};
 
   // Greeting
