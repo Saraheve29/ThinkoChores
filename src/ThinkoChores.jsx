@@ -1893,7 +1893,7 @@ const sendMealToShop=(meal,label)=>{
                   {plan.labels.map((label,dayIdx)=>(
                     <button key={dayIdx} onClick={()=>{
                       const newDays=[...plan.days.map(d=>[...d])];
-                      newDays[dayIdx]=[...newDays[dayIdx],{id:Date.now()+Math.random(),text:r.name,url:r.url||"",had:false}];
+                      newDays[dayIdx]=[...newDays[dayIdx],{id:Date.now()+Math.random(),text:r.name,url:r.url||"",had:false,recipeId:r.id}];
                       save({...plan,days:newDays});
                       setShowAddToDay(false);
                       alert(`Added "${r.name}" to ${label}!`);
@@ -2884,6 +2884,7 @@ Rules:
                       <div key={meal.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderTop:"1px solid "+border,opacity:meal.had?0.6:1}}>
                         <div style={{width:6,height:6,borderRadius:"50%",background:textCol,flexShrink:0,opacity:0.6}}/>
                         <div style={{flex:1}}><div style={{fontSize:14,fontWeight:600,color:textCol,lineHeight:1.4,textDecoration:meal.had?"line-through":"none"}}>{meal.text}</div>{meal.url&&<UrlBadge url={meal.url}/>}</div>
+                        {meal.recipeId&&(()=>{const linkedRecipe=recipes.find(rx=>rx.id===meal.recipeId);return linkedRecipe?(<button onClick={()=>setRecipeDetail(linkedRecipe)} title="Open recipe" style={{background:"#5A7848",color:"#fff",border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>📖</button>):null;})()}
                         <button onClick={()=>toggleMealHad(dayIdx,meal.id)} title={meal.had?"Mark as not had":"Mark as had — keeps it for next week"} style={{background:meal.had?"#5A7848":"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:meal.had?"#fff":textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>✓</button>
                         <button onClick={()=>scheduleMeal(meal,label)} title="Calendar" style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>📅</button>
                         <button onClick={()=>{const key=dayIdx+"-"+meal.id;setExpandedMeal(expandedMeal===key?null:key);}} title="Ingredients" style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🥦</button>
