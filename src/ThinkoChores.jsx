@@ -1861,7 +1861,7 @@ const sendMealToShop=(meal,label)=>{
           </div>}
           {r.method&&<div style={{background:"rgba(255,255,255,0.82)",borderRadius:18,padding:"18px",marginBottom:14,border:"1.5px solid rgba(90,120,72,0.18)",boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
             <div style={{fontWeight:800,color:"#2A4020",fontSize:15,marginBottom:12}}>📋 Method</div>
-            {r.method.split("\n").filter(l=>l.trim()).map((line,i)=>(
+            {r.method.split(/\n\n+|\n(?=\d+\.)/).flatMap(p=>p.split("\n")).filter(l=>l.trim()).map((line,i)=>(
               <div key={i} style={{display:"flex",alignItems:"flex-start",gap:12,padding:"8px 0",borderBottom:"1px solid rgba(90,80,60,0.07)"}}>
                 <div style={{width:26,height:26,borderRadius:"50%",background:"#5A7848",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,flexShrink:0}}>{i+1}</div>
                 <div style={{fontSize:15,color:"#1A1A10",lineHeight:1.6,flex:1,paddingTop:3}}>{line.trim()}</div>
@@ -2247,7 +2247,8 @@ ${importText}`};
 
 Rules:
 - Extract ALL ingredients listed, one per line including quantities
-- Extract ALL method steps, numbered
+- Extract ALL method steps — if the text uses paragraphs rather than numbered steps, split each paragraph/sentence into a separate step numbered "Step 1. ...
+Step 2. ..."
 - If it is a URL, extract the recipe name from the URL and make sensible guesses
 - Keep ingredient quantities (e.g. "200g flour", "2 eggs")
 - Return ONLY the JSON object, nothing else
@@ -2385,9 +2386,11 @@ Return ONLY this JSON (no markdown, no explanation):
 
 Rules:
 - Extract ALL ingredients with quantities (e.g. 200g flour, 2 eggs)
-- Extract ALL numbered method steps
-- Read partial/cut-off text at edges and complete sensibly
-- For cookbook photos extract the full recipe text shown
+- Extract ALL method steps — even if the book uses paragraphs with no numbers, split each paragraph or sentence into a separate numbered step: "Step 1. ...
+Step 2. ..."
+- Read partial/cut-off text at edges and include it
+- For cookbook photos extract every word of the recipe shown
+- If this looks like page 2 of a recipe (starts mid-method), still extract whatever steps are shown
 - Never leave ingredients or method empty if text is visible`}
                         ]}]
                       });
