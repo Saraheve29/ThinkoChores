@@ -1645,6 +1645,11 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
   const plan = (data && data.labels) ? data : init();
   const save = (updated) => setData(updated);
 
+  /* saved meal plans */
+  const [savedMealPlans,setSavedMealPlansRaw]=useState(()=>{try{const v=localStorage.getItem('chores_saved_plans');return v?JSON.parse(v):[];}catch{return [];}});
+  const setSavedMealPlans=d=>{setSavedMealPlansRaw(prev=>{const next=typeof d==='function'?d(prev):d;try{localStorage.setItem('chores_saved_plans',JSON.stringify(next));}catch{}return next;});};
+  const [savePlanName,setSavePlanName]=useState('');
+
   /* label editing */
   const [mealTab,setMealTab]=useState('week');
   const [importText,setImportText]=useState('');
@@ -4145,9 +4150,6 @@ export default function App(){
   const setShopData=d=>{setShopDataRaw(prev=>{const next=typeof d==='function'?d(prev):d;save('chores_shop',next);return next;});};
 
   const [mealData,setMealDataRaw]=useState(()=>load('chores_meal',{}));
-  const [savedMealPlans,setSavedMealPlansRaw]=useState(()=>load('chores_saved_plans',[]));
-  const setSavedMealPlans=d=>{setSavedMealPlansRaw(prev=>{const next=typeof d==='function'?d(prev):d;save('chores_saved_plans',next);return next;});};
-  const [savePlanName,setSavePlanName]=useState('');
   const setMealData=d=>{setMealDataRaw(prev=>{const next=typeof d==='function'?d(prev):d;save('chores_meal',next);return next;});};
 
   // Greeting
