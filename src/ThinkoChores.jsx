@@ -1050,7 +1050,7 @@ const SHOP_TEMPLATES=[
 const SHOP_LIST_ICONS=["🛒","🎁","🍎","👗","🏠","🐾","💊","📚","🎉","✈️"];
 
 
-function ShopListDetail({list,onBack,onUpdate,onDelete}){
+function ShopListDetail({list,onBack,onUpdate,onDelete,onOpenRecipe}){
   const [newItem,setNewItem]=useState("");
   const [dragId,setDragId]=useState(null);
 
@@ -1060,7 +1060,15 @@ function ShopListDetail({list,onBack,onUpdate,onDelete}){
   const save=items=>onUpdate({...list,items:items.map(i=>({cat:"",...i}))});
   const addItem=()=>{if(!newItem.trim())return;save([...list.items,{id:Date.now()+Math.random(),text:newItem.trim(),done:false,cat:""}]);setNewItem("");};
   const toggle=id=>save(list.items.map(it=>it.id===id?{...it,done:!it.done}:it));
-  const del=id=>save(list.items.filter(it=>it.id!==id));
+  // Recipes (read once) so each meal heading can check every ingredient is covered
+  const [savedRecipes]=useState(()=>{try{const v=JSON.parse(localStorage.getItem('chores_recipes')||'[]');return Array.isArray(v)?v:[];}catch{return [];}});
+  // Removing a recipe item (bin, or clearing ticked ones) = "sorted", so the recipe check won't ask about it again
+  const haveFrom=items=>items.filter(i=>i&&i.meal).flatMap(i=>[{meal:i.meal,key:shopKey(i.text)},...(i.alsoFor||[]).map(a=>({meal:a.meal,key:shopKey(a.text)}))]).filter(h=>h.key);
+  const removeItems=pred=>{
+    const gone=list.items.filter(pred);
+    onUpdate({...list,items:list.items.filter(i=>!pred(i)).map(i=>({cat:"",...i})),haveAlready:[...(list.haveAlready||[]),...haveFrom(gone)]});
+  };
+  const del=id=>removeItems(it=>it.id===id);
   const dragOver=toId=>{
     if(!dragId||dragId===toId)return;
     const a=[...list.items],fi=a.findIndex(i=>i.id===dragId),ti=a.findIndex(i=>i.id===toId);
@@ -1128,11 +1136,32 @@ function ShopListDetail({list,onBack,onUpdate,onDelete}){
           const groups={};
           const mealGroups={};
           const noCat=[];
+          const shared=[];
+          const mealOrder=[];
+          const mealsOf=i=>[i.meal,...(i.alsoFor||[]).map(a=>a.meal)].filter(Boolean);
+          const isShared=i=>!!i.meal&&(i.alsoFor||[]).some(a=>a.meal&&a.meal!==i.meal);
           active.forEach(item=>{
+            mealsOf(item).forEach(m=>{if(!mealOrder.includes(m))mealOrder.push(m);});
             if(item.cat&&CAT_EMOJI[item.cat]){if(!groups[item.cat])groups[item.cat]=[];groups[item.cat].push(item);}
+            else if(isShared(item)) shared.push(item);
             else if(item.meal){if(!mealGroups[item.meal])mealGroups[item.meal]=[];mealGroups[item.meal].push(item);}
             else noCat.push(item);
           });
+          const isMealList=isMealShopList(list);
+          const listKeys=new Set(list.items.flatMap(i=>[shopKey(i.text),...(i.alsoFor||[]).map(a=>shopKey(a.text))]).filter(Boolean));
+          const small={fontSize:12,fontWeight:700,lineHeight:1.45,marginTop:6};
+          const recipeFor=meal=>isMealList?savedRecipes.find(r=>String(r.name||"").trim().toLowerCase()===String(meal).trim().toLowerCase()):null;
+          // Recipe lines that aren't on the list yet (and you haven't said you have)
+          const missingFor=meal=>{
+            const recipe=recipeFor(meal); if(!recipe) return [];
+            const have=new Set((list.haveAlready||[]).filter(h=>h.meal===meal).map(h=>h.key));
+            const seen=new Set();
+            return String(recipe.ingredients||"").split("\n").map(x=>x.trim()).filter(x=>x&&!/:\s*$/.test(x))
+              .flatMap(splitShopLine).filter(t=>{const k=shopKey(t);if(!k||seen.has(k))return false;seen.add(k);return !listKeys.has(k)&&!have.has(k)&&!isTapWater(t);});
+          };
+          const checked=mealOrder.filter(m=>recipeFor(m));
+          const allMissing=checked.map(m=>({meal:m,items:missingFor(m)})).filter(x=>x.items.length);
+          const missingCount=allMissing.reduce((n,x)=>n+x.items.length,0);
           const renderItem=(item)=>(
             <div key={item.id}
               draggable onDragStart={()=>setDragId(item.id)} onDragOver={e=>{e.preventDefault();dragOver(item.id);}} onDragEnd={()=>setDragId(null)}
@@ -1176,11 +1205,11 @@ function ShopListDetail({list,onBack,onUpdate,onDelete}){
                         </button>
                       )}
                     </div>
-                    {item.meal&&(item.done||(item.cat&&CAT_EMOJI[item.cat]))&&(
+                    {item.meal&&(item.done||(item.cat&&CAT_EMOJI[item.cat])||isShared(item))&&(
                       <div style={{fontSize:11,color:"#8A8070",fontWeight:600,marginTop:2}}>🍽️ {item.meal}</div>
                     )}
                     {(item.alsoFor||[]).map((a,ai)=>(
-                      <div key={ai} style={{fontSize:11,color:"#5A7848",fontWeight:700,marginTop:2,lineHeight:1.4}}>🔗 Also for {a.meal}: {a.text}</div>
+                      <div key={ai} style={{fontSize:11,color:"#5A7848",fontWeight:700,marginTop:2,lineHeight:1.4}}>{a.meal===item.meal?`➕ Also: ${a.text}`:`🔗 Also for ${a.meal}: ${a.text}`}</div>
                     ))}
                     <select value={item.cat||""} onChange={e=>{save(list.items.map(i=>i.id===item.id?{...i,cat:e.target.value}:i));}}
                       style={{fontSize:11,fontWeight:600,color:item.cat?"#3A6020":"#8A8070",border:item.cat?"1px solid rgba(90,120,72,0.25)":"1px dashed rgba(90,80,60,0.20)",background:item.cat?"rgba(90,120,72,0.08)":"rgba(255,255,255,0.60)",borderRadius:100,cursor:"pointer",padding:"3px 8px",marginTop:3,outline:"none",maxWidth:"100%"}}>
@@ -1197,20 +1226,79 @@ function ShopListDetail({list,onBack,onUpdate,onDelete}){
           );
           return(
             <div>
-              {noCat.map(renderItem)}
-              {Object.entries(mealGroups).map(([meal,items])=>(
-                <div key={"meal-"+meal} style={{marginBottom:14}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 4px 6px"}}>
-                    <span style={{fontSize:17}}>🍽️</span>
-                    <span style={{flex:1,fontFamily:"Georgia,serif",fontWeight:700,fontSize:16,color:"#2A4020"}}>{meal}</span>
-                    <span style={{fontSize:12,color:"#8A8070",fontWeight:600}}>{items.length}</span>
-                  </div>
-                  {items.map(renderItem)}
+              {isMealList&&checked.length>0&&(
+                <div style={{padding:"12px 14px",marginBottom:12,background:"rgba(255,255,255,0.96)",borderRadius:14,border:missingCount?"2px solid rgba(230,126,34,0.55)":"2px solid rgba(46,125,50,0.45)",boxShadow:"0 2px 10px rgba(0,0,0,0.10)"}}>
+                  {missingCount===0?(
+                    <div style={{fontSize:14,fontWeight:800,color:"#2E7D32"}}>✅ All {checked.length} recipe{checked.length===1?"":"s"} checked — nothing missing, nothing doubled</div>
+                  ):(
+                    <>
+                      <div style={{fontSize:14,fontWeight:800,color:"#8B4513",marginBottom:4}}>➕ {missingCount} ingredient{missingCount===1?"":"s"} missing across {allMissing.length} recipe{allMissing.length===1?"":"s"}</div>
+                      {allMissing.map(x=>(
+                        <div key={x.meal} style={{fontSize:12,color:"#5A4A30",fontWeight:600,lineHeight:1.5}}><b>{x.meal}:</b> {x.items.map(shopName).join(" · ")}</div>
+                      ))}
+                      <button onClick={()=>{let l=list;allMissing.forEach(x=>{l=addToMealShop([l],x.meal,x.items).lists[0];});onUpdate(l);}}
+                        style={{width:"100%",marginTop:10,padding:"10px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer"}}>+ Add all missing</button>
+                      <div style={{fontSize:11,color:"#8A8070",marginTop:6,textAlign:"center"}}>Already have some? Tap "✓ I have these" under that meal instead.</div>
+                    </>
+                  )}
                 </div>
-              ))}
+              )}
+              {noCat.map(renderItem)}
+              {shared.length>0&&(
+                <div style={{marginBottom:14}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",margin:"6px 0 8px",background:"rgba(255,255,255,0.95)",borderRadius:14,border:"1.5px solid rgba(41,128,185,0.3)",borderLeft:"6px solid #2980b9",boxShadow:"0 2px 10px rgba(0,0,0,0.10)"}}>
+                    <span style={{fontSize:18,flexShrink:0}}>🔗</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:16,color:"#1A2810",lineHeight:1.35}}>Needed for more than one meal</div>
+                      <div style={{fontSize:12,color:"#5A4A30",fontWeight:600,marginTop:2}}>Listed once so you don't buy them twice</div>
+                    </div>
+                    <span style={{fontSize:12,color:"#fff",fontWeight:800,background:"#2980b9",borderRadius:100,padding:"3px 10px",flexShrink:0}}>{shared.length}</span>
+                  </div>
+                  {shared.map(renderItem)}
+                </div>
+              )}
+              {mealOrder.map(meal=>{
+                const own=mealGroups[meal]||[];
+                const elsewhere=active.filter(i=>!own.includes(i)&&mealsOf(i).includes(meal));
+                const recipe=recipeFor(meal);
+                const missing=missingFor(meal);
+                return(
+                <div key={"meal-"+meal} style={{marginBottom:14}}>
+                  {/* Solid panel so the meal name is readable over the garden photo */}
+                  <div style={{padding:"10px 14px",margin:"6px 0 8px",background:"rgba(255,255,255,0.95)",borderRadius:14,border:"1.5px solid rgba(90,120,72,0.25)",borderLeft:"6px solid #5A7848",boxShadow:"0 2px 10px rgba(0,0,0,0.10)"}}>
+                    <div onClick={()=>{if(recipe&&onOpenRecipe)onOpenRecipe(recipe.id);}} style={{display:"flex",alignItems:"center",gap:10,cursor:recipe?"pointer":"default"}}>
+                      <span style={{fontSize:18,flexShrink:0}}>🍽️</span>
+                      <span style={{flex:1,fontFamily:"Georgia,serif",fontWeight:700,fontSize:16,color:"#1A2810",lineHeight:1.35}}>
+                        {meal}
+                        {recipe&&<span style={{display:"block",fontFamily:"'Segoe UI',sans-serif",fontSize:12,fontWeight:700,color:"#5A7848",marginTop:2}}>📖 Tap to open recipe ›</span>}
+                      </span>
+                      <span style={{fontSize:12,color:"#fff",fontWeight:800,background:"#5A7848",borderRadius:100,padding:"3px 10px",flexShrink:0}}>{own.length}</span>
+                    </div>
+                    {elsewhere.length>0&&(
+                      <div style={{...small,color:"#1a5276"}}>🔗 Also needs (listed {elsewhere.every(isShared)?"in the blue section":"elsewhere"}): {elsewhere.map(i=>shopName(i.text)).join(" · ")}</div>
+                    )}
+                    {recipe&&missing.length===0&&(
+                      <div style={{...small,color:"#2E7D32"}}>✅ Every ingredient for this recipe is covered</div>
+                    )}
+                    {recipe&&missing.length>0&&(
+                      <div style={{marginTop:8,padding:"8px 10px",background:"rgba(230,126,34,0.10)",borderRadius:10,border:"1px solid rgba(230,126,34,0.35)"}}>
+                        <div style={{fontSize:12,fontWeight:800,color:"#8B4513",lineHeight:1.45}}>➕ In the recipe but not on the list: {missing.map(shopName).join(" · ")}</div>
+                        <div style={{display:"flex",gap:6,marginTop:8}}>
+                          <button onClick={()=>{const res=addToMealShop([list],meal,missing);onUpdate(res.lists[0]);}}
+                            style={{flex:1,padding:"8px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:12,cursor:"pointer"}}>+ Add {missing.length===1?"it":"them"}</button>
+                          <button onClick={()=>onUpdate({...list,haveAlready:[...(list.haveAlready||[]),...missing.map(t=>({meal,key:shopKey(t)}))]})}
+                            style={{flex:1,padding:"8px",background:"#fff",color:"#5A4A30",border:"1px solid rgba(90,80,60,0.25)",borderRadius:100,fontWeight:700,fontSize:12,cursor:"pointer"}}>✓ I have {missing.length===1?"it":"these"}</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {own.map(renderItem)}
+                </div>
+                );
+              })}
               {Object.entries(groups).map(([cat,items])=>(
                 <div key={cat} style={{marginBottom:10}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#5A7848",letterSpacing:0.8,textTransform:"uppercase",marginBottom:6,paddingLeft:4}}>
+                  <div style={{display:"inline-block",fontSize:12,fontWeight:800,color:"#2A4020",letterSpacing:0.8,textTransform:"uppercase",marginBottom:8,padding:"6px 14px",background:"rgba(255,255,255,0.95)",borderRadius:100,border:"1px solid rgba(90,120,72,0.25)",boxShadow:"0 2px 8px rgba(0,0,0,0.08)"}}>
                     {CAT_EMOJI[cat]} {cat}
                   </div>
                   {items.map(renderItem)}
@@ -1218,9 +1306,9 @@ function ShopListDetail({list,onBack,onUpdate,onDelete}){
               ))}
               {done.length>0&&(
                 <div style={{marginTop:14}}>
-                  <div style={{fontSize:10,fontWeight:700,color:"rgba(90,80,60,0.35)",letterSpacing:1,textTransform:"uppercase",marginBottom:8}}>Done</div>
+                  <div style={{display:"inline-block",fontSize:12,fontWeight:800,color:"#5A4A30",letterSpacing:1,textTransform:"uppercase",marginBottom:8,padding:"6px 14px",background:"rgba(255,255,255,0.95)",borderRadius:100,border:"1px solid rgba(90,80,60,0.2)",boxShadow:"0 2px 8px rgba(0,0,0,0.08)"}}>✓ Done</div>
                   {done.map(renderItem)}
-                  <button onClick={()=>save(list.items.filter(i=>!i.done))}
+                  <button onClick={()=>removeItems(i=>i.done)}
                     style={{width:"100%",padding:"10px",marginTop:8,background:"rgba(192,57,43,0.08)",color:"#c0392b",border:"1px solid rgba(192,57,43,0.18)",borderRadius:100,fontWeight:700,fontSize:13,cursor:"pointer"}}>
                     🗑 Remove ticked items
                   </button>
@@ -1269,49 +1357,140 @@ const CAT_EMOJI={
 // ── Meal Plan Shopping: ONE list for all recipes, grouped by meal, no double items ──
 const MEAL_SHOP_NAME="Meal Plan Shopping";
 const isMealShopList=l=>!!l&&(l.mealShop===true||l.name===MEAL_SHOP_NAME||l.name==="🍽️ Meal Plan Shopping");
-// Boil an ingredient line down to its core name, so "1 tsp salt" and "salt, to taste" count as the same item
-const ingCore=txt=>{
-  let s=String(txt||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-  s=s.replace(/\([^)]*\)/g," ").split(",")[0].trim();
-  for(let n=0;n<4;n++){
+// Boil an ingredient line down to the thing you'd actually BUY, so different wordings match:
+//   "1 tsp salt" = "sea salt, to taste" · "½ tsp freshly ground black pepper" = "black pepper"
+//   "2 cloves garlic, crushed" = "3 garlic cloves" · "1/3 cup shredded Cheddar cheese" = "grated cheddar"
+const SHOP_UNITS=/^(tbsps?|tsps?|tablespoons?|teaspoons?|dsp|g|grams?|kg|ml|l|litres?|liters?|oz|lbs?|cups?|handfuls?|pinch(es)?|dash(es)?|cloves?|cans?|tins?|bunch(es)?|slices?|sprigs?|packs?|packets?|jars?|bags?|pieces?|knobs?|splash(es)?|sticks?|drizzle|glugs?|sprinkle|rashers?|heads?|thumbs?|stalks?|bottles?|cartons?|pots?|tubs?|balls?|blocks?)\b\.?\s*/;
+const SHOP_DESCRIPTORS=/\b(freshly|fresh|ground|cracked|crushed|finely|roughly|thinly|coarsely|chopped|diced|sliced|grated|shredded|minced|peeled|softened|melted|beaten|room temperature|large|small|medium|big|extra|virgin|light|lean|mild|mature|strong|unsalted|salted|semi skimmed|skimmed|whole|full fat|low fat|reduced fat|good quality|organic|free range|boneless|skinless|ripe)\b/g;
+const shopKey=txt=>{
+  let s=String(txt||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+  s=s.replace(/\([^)]*\)/g," ").replace(/&/g," and ").replace(/-/g," ").split(",")[0];
+  s=s.replace(/^\s*(season(ed)? with|to season|to serve|for serving|to garnish)\s*:?\s*/,"");
+  s=s.replace(/\s+(for|to) (frying|fry|serving|serve|garnish|garnishing|greasing|grease|drizzling|drizzle|taste|season|seasoning|decorate|dusting)\b.*$/,"");
+  s=s.replace(/\s+optional\s*$/,"");
+  for(let n=0;n<5;n++){
     const before=s;
-    s=s.replace(/^(a|an|some)\s+/,"");
-    s=s.replace(/^[\d\s\/.\-½¼¾⅓⅔⅛x×]+/,"");
-    s=s.replace(/^(tbsps?|tsps?|tablespoons?|teaspoons?|g|grams?|kg|ml|l|litres?|liters?|oz|lbs?|cups?|handfuls?|pinch(es)?|dash(es)?|cloves?|cans?|tins?|bunch(es)?|slices?|sprigs?|packs?|packets?|jars?|bags?|pieces?|knobs?|splash(es)?|sticks?)\b\.?\s*/,"");
+    s=s.trim();
+    s=s.replace(/^(a|an|some|about|approx|approximately|around|roughly)\s+/,"");
+    s=s.replace(/^[\d\s\/.½¼¾⅓⅔⅛x×]+/,"");
+    s=s.replace(SHOP_UNITS,"");
     s=s.replace(/^of\s+/,"");
-    s=s.replace(/^(large|small|medium|big|fresh)\s+/,"");
     if(s===before)break;
   }
+  // Same product, different words
+  s=s.replace(/\b(minced|ground) (beef|lamb|pork|turkey|chicken)\b/g,"$2 mince")
+     .replace(/\bchopped tomatoes\b/g,"tinned tomatoes")
+     .replace(/\btomato paste\b/g,"tomato puree")
+     .replace(/\b(sea|kosher|table|flaky|fine|coarse|rock) salt\b/g,"salt").replace(/\bsalt flakes\b/g,"salt")
+     .replace(/\bblack peppercorns?\b/g,"black pepper")
+     .replace(/\bgarlic cloves?\b/g,"garlic")
+     .replace(/\begg (yolks?|whites?)\b/g,"egg")
+     .replace(/\b(?:juice|zest) of (?:\S+ )?(?:a |an )?(lemon|lime)s?\b/g,"$1").replace(/\b(lemon|lime) (juice|zest)\b/g,"$1")
+     .replace(/\b([a-z]+) stock cubes?\b/g,"$1 stock").replace(/\bstock cubes?\b/g,"stock")
+     .replace(/\b(cheddar|mozzarella|parmesan|monterey jack|red leicester|feta|halloumi|gouda|edam|brie|stilton|emmental|gruyere|wensleydale|double gloucester) cheese\b/g,"$1");
+  s=s.replace(SHOP_DESCRIPTORS," ");
   s=s.replace(/[^a-z\s]/g," ").replace(/\s+/g," ").trim();
+  s=s.replace(/^(of|and)\s+/,"").replace(/\s+(and|of)$/,"");
   return s.replace(/oes$/,"o").replace(/([^s])s$/,"$1");
 };
+const ingCore=shopKey;
+// "Salt and pepper" / "Salt & freshly ground black pepper, to taste" → two separate things to buy
+const splitShopLine=txt=>{
+  const t=String(txt||"");
+  const parts=t.split(",").map(p=>shopKey(p));
+  const first=parts[0]||"";
+  if(/^(salt and (black )?pepper|(black )?pepper and salt)$/.test(first)) return ["Salt","Black pepper"];
+  if(first==="salt"&&/^(black )?pepper$/.test(parts[1]||"")) return ["Salt","Black pepper"];
+  return [t];
+};
+// Short tidy name for summaries: "½ tsp freshly ground black pepper" → "Black pepper"
+const shopName=txt=>{const k=shopKey(txt);return k?k.charAt(0).toUpperCase()+k.slice(1):String(txt||"").trim();};
+// Tap water in a recipe isn't something you buy
+const isTapWater=txt=>/^(cold |boiling |hot |warm |tap |lukewarm )?water$/.test(shopKey(txt));
 // Add one meal's ingredients to the combined list. Anything already on it (and not ticked off)
 // isn't added again — the existing line gets an "also for" note instead, so amounts aren't lost.
-const addToMealShop=(lists,mealName,entries)=>{
+// haveTexts = lines you said you already have (unticked), so the recipe check doesn't nag about them.
+const addToMealShop=(lists,mealName,entries,haveTexts=[])=>{
   const all=lists||[];
   const found=all.find(isMealShopList);
   const target=found||{id:Date.now()+Math.random(),name:MEAL_SHOP_NAME,icon:"🍽️",color:"#5A7848",items:[],created:Date.now()};
   const items=[...(target.items||[])];
   let added=0;const merged=[];
+  const addedNow=new Set();   // lines added in THIS send (a recipe listing salt twice keeps both amounts)
+  const expanded=[];
   (entries||[]).forEach(en=>{
     const e=typeof en==="string"?{text:en}:(en||{});
     const text=String(e.text||e.name||"").trim();
     if(!text)return;
+    splitShopLine(text).forEach(t=>expanded.push({...e,text:t}));
+  });
+  expanded.forEach(e=>{
+    const text=e.text;
     if(e.done){items.push({id:Date.now()+Math.random(),text,done:true,cat:e.cat||"",qty:e.qty||"",meal:mealName});return;}
-    const core=ingCore(text);
-    const idx=core?items.findIndex(it=>!it.done&&ingCore(it.text)===core):-1;
+    const key=shopKey(text);
+    const idx=key?items.findIndex(it=>!it.done&&shopKey(it.text)===key):-1;
     if(idx>=0){
       const it=items[idx];
-      const sameMeal=it.meal===mealName||(it.alsoFor||[]).some(a=>a.meal===mealName);
-      if(!sameMeal) items[idx]={...it,alsoFor:[...(it.alsoFor||[]),{meal:mealName,text:e.qty?text+" ("+e.qty+")":text}]};
+      const note={meal:mealName,text:e.qty?text+" ("+e.qty+")":text};
+      if(addedNow.has(it.id)){ if(it.text!==text) items[idx]={...it,alsoFor:[...(it.alsoFor||[]),note]}; }
+      else if(it.meal!==mealName&&!(it.alsoFor||[]).some(a=>a.meal===mealName)) items[idx]={...it,alsoFor:[...(it.alsoFor||[]),note]};
       merged.push(text);
     } else {
-      items.push({id:Date.now()+Math.random(),text,done:false,cat:e.cat||"",qty:e.qty||"",meal:mealName});
+      const id=Date.now()+Math.random();
+      items.push({id,text,done:false,cat:e.cat||"",qty:e.qty||"",meal:mealName});
+      addedNow.add(id);
       added++;
     }
   });
-  const updated={...target,name:target.name==="🍽️ Meal Plan Shopping"?MEAL_SHOP_NAME:target.name,mealShop:true,items};
+  const have=[...(target.haveAlready||[])];
+  (haveTexts||[]).flatMap(t=>splitShopLine(t)).forEach(t=>{const key=shopKey(t);if(key&&!have.some(h=>h.meal===mealName&&h.key===key))have.push({meal:mealName,key});});
+  const updated={...target,name:target.name==="🍽️ Meal Plan Shopping"?MEAL_SHOP_NAME:target.name,mealShop:true,items,haveAlready:have};
   return {lists:found?all.map(l=>l.id===found.id?updated:l):[...all,updated],listId:updated.id,added,merged,isNew:!found};
+};
+// Tidy an existing Meal Plan Shopping list with the stronger matching: split "salt and pepper" lines and
+// merge repeats (e.g. black pepper listed under 3 meals) into ONE line with "also for" notes.
+// Bought (ticked) and hand-typed items are left alone. Returns the SAME object when nothing changed.
+const tidyMealShop=list=>{
+  if(!list||!Array.isArray(list.items))return list;
+  let changed=false;
+  const out=[];const keyIdx={};
+  // First: any "also for" note that doesn't actually match its line (from the old, weaker matching)
+  // becomes its own item again, so nothing is hidden under the wrong thing.
+  const src=[];
+  list.items.forEach(it=>{
+    if(!it||it.done||!it.meal||!(it.alsoFor||[]).length){src.push(it);return;}
+    const k=shopKey(it.text);
+    const keep=[],loose=[];
+    it.alsoFor.forEach(a=>{(shopKey(a.text)===k||!shopKey(a.text)?keep:loose).push(a);});
+    if(loose.length){changed=true;src.push({...it,alsoFor:keep});loose.forEach((a,ai)=>src.push({id:Date.now()+Math.random()+ai,text:a.text,done:false,cat:"",qty:"",meal:a.meal}));}
+    else src.push(it);
+  });
+  src.forEach(it=>{
+    if(!it||it.done||!it.meal){out.push(it);return;}
+    const parts=splitShopLine(it.text);
+    if(parts.length>1)changed=true;
+    parts.forEach((t,pi)=>{
+      const item=parts.length>1?{...it,id:pi===0?it.id:Date.now()+Math.random()+pi,text:t}:it;
+      const key=shopKey(item.text);
+      if(key&&keyIdx[key]!==undefined){
+        const k=out[keyIdx[key]];
+        const extra=[];
+        if(item.meal===k.meal){ if(item.text!==k.text&&!(k.alsoFor||[]).some(a=>a.text===item.text))extra.push({meal:item.meal,text:item.text}); }
+        else if(!(k.alsoFor||[]).some(a=>a.meal===item.meal)) extra.push({meal:item.meal,text:item.text});
+        (item.alsoFor||[]).forEach(a=>{if(a.meal!==k.meal&&!(k.alsoFor||[]).some(x=>x.meal===a.meal)&&!extra.some(x=>x.meal===a.meal))extra.push(a);});
+        out[keyIdx[key]]={...k,alsoFor:[...(k.alsoFor||[]),...extra]};
+        changed=true;
+      } else {
+        if(key)keyIdx[key]=out.length;
+        out.push(item);
+      }
+    });
+  });
+  // forget "I have it" notes for meals no longer on the list
+  const meals=new Set(out.flatMap(i=>i?[i.meal,...(i.alsoFor||[]).map(a=>a.meal)]:[]).filter(Boolean));
+  const have=(list.haveAlready||[]).filter(h=>meals.has(h.meal));
+  if(have.length!==(list.haveAlready||[]).length)changed=true;
+  return changed?{...list,items:out,haveAlready:have}:list;
 };
 const mealShopMsg=res=>{
   const parts=[];
@@ -1324,7 +1503,8 @@ const mealShopMsg=res=>{
 const shopLine=i=>(i.text||i.name||"")+((i.alsoFor||[]).length?" (+ "+i.alsoFor.map(a=>a.text).join(", ")+")":"");
 
 function ShoppingList({data,setData,setScreen}){
-  const [activeId,setActiveIdRaw]=useState(null);
+  // Coming back from a recipe opened from the list → reopen that list
+  const [activeId,setActiveIdRaw]=useState(()=>{try{const v=localStorage.getItem('thinko_return_list');if(v){localStorage.removeItem('thinko_return_list');const l=(data||[]).find(x=>String(x.id)===v);return l?l.id:null;}}catch{}return null;});
   const [showTemplates,setShowTemplates]=useState(false);
   const [customising,setCustomising]=useState(null);
   const [customItems,setCustomItems]=useState([]);
@@ -1372,10 +1552,17 @@ function ShoppingList({data,setData,setScreen}){
     setData(lists.filter(l=>!oldIds.has(l.id)));
     setMergedNote({count:oldLists.length,merged,listId});
   },[data]);
+  // Tidy the combined list with the stronger matching (merges repeats like black pepper) — runs only when needed
+  useEffect(()=>{
+    const ml=(data||[]).find(isMealShopList);
+    if(!ml)return;
+    const t=tidyMealShop(ml);
+    if(t!==ml) setData(ds=>ds.map(l=>l.id===ml.id?tidyMealShop(l):l));
+  },[data]);
 
   // Navigate to open list
   const active=data.find(l=>l.id===activeId);
-  if(active) return <ShopListDetail list={active} onBack={()=>setActiveId(null)} onUpdate={u=>setData(ds=>ds.map(l=>l.id===u.id?u:l))} onDelete={id=>{setData(ds=>ds.filter(l=>l.id!==id));setActiveId(null);}}/>;
+  if(active) return <ShopListDetail list={active} onOpenRecipe={rid=>{try{localStorage.setItem('thinko_open_recipe',String(rid));localStorage.setItem('thinko_return_list',String(active.id));}catch{}setScreen("meals");}} onBack={()=>setActiveId(null)} onUpdate={u=>setData(ds=>ds.map(l=>l.id===u.id?u:l))} onDelete={id=>{setData(ds=>ds.filter(l=>l.id!==id));setActiveId(null);}}/>;
 
   const orderedLists=(()=>{
     const base=shopOrder
@@ -1899,7 +2086,8 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
     });
   };
   const [addingRecipe,setAddingRecipe]=useState(false);
-  const [recipeDetail,setRecipeDetail]=useState(null);
+  const [recipeDetail,setRecipeDetail]=useState(()=>{try{const v=localStorage.getItem('thinko_open_recipe');if(v){localStorage.removeItem('thinko_open_recipe');return recipes.find(x=>String(x.id)===v)||null;}}catch{}return null;});
+  const [fromShop,setFromShop]=useState(()=>!!recipeDetail);
   const [recipeAiLoading,setRecipeAiLoading]=useState(false);
   const [recipeFilter,setRecipeFilter]=useState("all");
   const [recipeAiText,setRecipeAiText]=useState('');
@@ -2033,7 +2221,7 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
     if(!meal?.ingredients?.length)return;
     const needed=(meal.ingredients||[]).filter(ig=>!ig.got);
     if(!needed.length){alert("You already have everything! ✅");return;}
-    const res=addToMealShop(shopData,mealName,needed.map(ig=>ig.text));
+    const res=addToMealShop(shopData,mealName,needed.map(ig=>ig.text),(meal.ingredients||[]).filter(ig=>ig.got).map(ig=>ig.text));
     setShopData(res.lists);
     alert(mealShopMsg(res));
   };
@@ -2091,7 +2279,7 @@ const sendMealToShop=(meal,label)=>{
     const r=recipes.find(x=>x.id===recipeDetail.id)||recipeDetail;
     return(
       <div style={{minHeight:"100vh",background:"transparent",fontFamily:"'Segoe UI',sans-serif",paddingBottom:90}}>
-        <Header title={r.name} onBack={()=>setRecipeDetail(null)} right={
+        <Header title={r.name} onBack={()=>{setRecipeDetail(null);if(fromShop){setFromShop(false);setScreen("shopping");}}} right={
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             <button onClick={()=>{setRecipes(rs=>rs.map(rx=>rx.id===r.id?{...rx,favourite:!rx.favourite}:rx));setRecipeDetail(rv=>({...rv,favourite:!rv.favourite}));}}
               style={{background:"none",border:"none",fontSize:24,cursor:"pointer",padding:"4px",lineHeight:1}}>
@@ -2237,9 +2425,9 @@ const sendMealToShop=(meal,label)=>{
                   if(lines.length===0){alert("No ingredients found in this recipe.");return;}
                   const onListItems=(((shopData||[]).find(isMealShopList)||{}).items||[]).filter(i=>!i.done);
                   setIngPickerItems(lines.map(text=>{
-                    const core=ingCore(text);
-                    const match=core?onListItems.find(i=>ingCore(i.text)===core):null;
-                    return {text,selected:true,onList:match?(match.meal||"your list"):null};
+                    const matches=splitShopLine(text).map(pt=>{const k=shopKey(pt);return k?onListItems.find(i=>shopKey(i.text)===k):null;});
+                    const water=isTapWater(text);
+                    return {text,selected:!water,water,onList:matches.every(Boolean)?(matches[0].meal||"your list"):null};
                   }));
                 }}
                   style={{width:"100%",padding:"14px",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:"#2A4020",border:"1.5px solid rgba(90,120,72,0.25)",borderRadius:100,fontWeight:700,fontSize:15,cursor:"pointer"}}>
@@ -2261,6 +2449,7 @@ const sendMealToShop=(meal,label)=>{
                         </div>
                         <div style={{flex:1}}>
                           <div style={{fontSize:14,color:"#1A1A10",lineHeight:1.4,textDecoration:item.selected?"none":"line-through"}}>{item.text}</div>
+                          {item.water&&!item.selected&&<div style={{fontSize:11,color:"#2980b9",fontWeight:700,marginTop:2}}>💧 Tap water — left off (tap to add)</div>}
                           {item.onList&&<div style={{fontSize:11,color:"#5A7848",fontWeight:700,marginTop:2,lineHeight:1.4}}>🔗 Already on your list{item.onList===r.name||item.onList==="your list"?"":` for ${item.onList}`} — won't be added twice</div>}
                         </div>
                       </div>
@@ -2269,9 +2458,10 @@ const sendMealToShop=(meal,label)=>{
                       <button onClick={()=>setIngPickerItems(null)} style={{flex:1,padding:"11px",background:"rgba(90,80,60,0.07)",border:"none",borderRadius:100,fontSize:13,fontWeight:700,color:"#8A8070",cursor:"pointer"}}>Cancel</button>
                       <button onClick={()=>{
                         const chosen=ingPickerItems.filter(i=>i.selected).map(i=>i.text);
+                        const skipped=ingPickerItems.filter(i=>!i.selected).map(i=>i.text);
                         if(chosen.length===0){alert("Nothing selected!");return;}
                         if(!setShopData)return;
-                        const res=addToMealShop(shopData,r.name,chosen);
+                        const res=addToMealShop(shopData,r.name,chosen,skipped);
                         setShopData(res.lists);
                         setIngPickerItems(null);
                         alert(mealShopMsg(res));
