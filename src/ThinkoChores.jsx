@@ -51,6 +51,7 @@ const RECIPE_CATS=[
   {id:"breakfast",label:"Breakfast", icon:"🍳"},
   {id:"dessert",  label:"Dessert",   icon:"🍮"},
   {id:"snacks",   label:"Snacks",    icon:"🧀"},
+  {id:"drinks",   label:"Drinks",    icon:"🥤"},
   {id:"other",    label:"Other",     icon:"📌"},
 ];
 const headerGrad  = `linear-gradient(135deg,#3A5030 0%,#4A6840 50%,#5A7850 100%)`;
@@ -988,7 +989,7 @@ function ShopListDetail({list,onBack,onUpdate,onDelete}){
         </div>
         <div style={{display:"flex",gap:6,paddingBottom:6}}>
           <button onClick={()=>{
-            const txt="🛒 "+list.name+"\n\n"+list.items.filter(i=>!i.done).map(i=>"☐ "+i.text).join("\n")+(list.items.filter(i=>i.done).length?"\n\n✅ Got:\n"+list.items.filter(i=>i.done).map(i=>"✓ "+i.text).join("\n"):"")+("\n\nFrom Thinko 🌿");
+            const txt="🛒 "+list.name+"\n\n"+list.items.filter(i=>!i.done).map(i=>"☐ "+shopLine(i)).join("\n")+(list.items.filter(i=>i.done).length?"\n\n✅ Got:\n"+list.items.filter(i=>i.done).map(i=>"✓ "+shopLine(i)).join("\n"):"")+("\n\nFrom Thinko 🌿");
             if(navigator.share){navigator.share({title:'Shopping List',text:txt});}
             else{window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}
           }} style={{flex:1,background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:12,padding:'11px',fontSize:14,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 18px rgba(90,120,72,0.15)'}}>📤 Share list</button>
@@ -1012,7 +1013,7 @@ function ShopListDetail({list,onBack,onUpdate,onDelete}){
         {/* Share row */}
         <div style={{display:"flex",gap:8,marginBottom:16}}>
           <button onClick={()=>{
-            const txt="🛒 "+list.name+"\n\n"+list.items.filter(i=>!i.done).map(i=>"☐ "+i.text).join("\n")+(list.items.filter(i=>i.done).length?"\n\n✅ Got:\n"+list.items.filter(i=>i.done).map(i=>"✓ "+i.text).join("\n"):"")+("\n\nFrom Thinko 🌿");
+            const txt="🛒 "+list.name+"\n\n"+list.items.filter(i=>!i.done).map(i=>"☐ "+shopLine(i)).join("\n")+(list.items.filter(i=>i.done).length?"\n\n✅ Got:\n"+list.items.filter(i=>i.done).map(i=>"✓ "+shopLine(i)).join("\n"):"")+("\n\nFrom Thinko 🌿");
             if(navigator.share){navigator.share({title:'Shopping List',text:txt});}
             else{window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}
           }} style={{flex:1,background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',borderRadius:14,padding:'12px 8px',fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>📤 Share</button>
@@ -1028,9 +1029,11 @@ function ShopListDetail({list,onBack,onUpdate,onDelete}){
           const active=list.items.filter(i=>!i.done);
           const done=list.items.filter(i=>i.done);
           const groups={};
+          const mealGroups={};
           const noCat=[];
           active.forEach(item=>{
             if(item.cat&&CAT_EMOJI[item.cat]){if(!groups[item.cat])groups[item.cat]=[];groups[item.cat].push(item);}
+            else if(item.meal){if(!mealGroups[item.meal])mealGroups[item.meal]=[];mealGroups[item.meal].push(item);}
             else noCat.push(item);
           });
           const renderItem=(item)=>(
@@ -1076,6 +1079,12 @@ function ShopListDetail({list,onBack,onUpdate,onDelete}){
                         </button>
                       )}
                     </div>
+                    {item.meal&&(item.done||(item.cat&&CAT_EMOJI[item.cat]))&&(
+                      <div style={{fontSize:11,color:"#8A8070",fontWeight:600,marginTop:2}}>🍽️ {item.meal}</div>
+                    )}
+                    {(item.alsoFor||[]).map((a,ai)=>(
+                      <div key={ai} style={{fontSize:11,color:"#5A7848",fontWeight:700,marginTop:2,lineHeight:1.4}}>🔗 Also for {a.meal}: {a.text}</div>
+                    ))}
                     <select value={item.cat||""} onChange={e=>{save(list.items.map(i=>i.id===item.id?{...i,cat:e.target.value}:i));}}
                       style={{fontSize:11,fontWeight:600,color:item.cat?"#3A6020":"#8A8070",border:item.cat?"1px solid rgba(90,120,72,0.25)":"1px dashed rgba(90,80,60,0.20)",background:item.cat?"rgba(90,120,72,0.08)":"rgba(255,255,255,0.60)",borderRadius:100,cursor:"pointer",padding:"3px 8px",marginTop:3,outline:"none",maxWidth:"100%"}}>
                       <option value="">＋ category</option>
@@ -1092,6 +1101,16 @@ function ShopListDetail({list,onBack,onUpdate,onDelete}){
           return(
             <div>
               {noCat.map(renderItem)}
+              {Object.entries(mealGroups).map(([meal,items])=>(
+                <div key={"meal-"+meal} style={{marginBottom:14}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 4px 6px"}}>
+                    <span style={{fontSize:17}}>🍽️</span>
+                    <span style={{flex:1,fontFamily:"Georgia,serif",fontWeight:700,fontSize:16,color:"#2A4020"}}>{meal}</span>
+                    <span style={{fontSize:12,color:"#8A8070",fontWeight:600}}>{items.length}</span>
+                  </div>
+                  {items.map(renderItem)}
+                </div>
+              ))}
               {Object.entries(groups).map(([cat,items])=>(
                 <div key={cat} style={{marginBottom:10}}>
                   <div style={{fontSize:11,fontWeight:700,color:"#5A7848",letterSpacing:0.8,textTransform:"uppercase",marginBottom:6,paddingLeft:4}}>
@@ -1118,7 +1137,7 @@ function ShopListDetail({list,onBack,onUpdate,onDelete}){
         <button onClick={()=>{
           const items=list.items;
           if(!items.length){alert("No items yet");return;}
-          const txt="🛒 "+list.name+"\n\n"+items.filter(i=>!i.done).map(i=>"☐ "+i.name).join("\n")+(items.filter(i=>i.done).length?"\n\n✅ Got:\n"+items.filter(i=>i.done).map(i=>"✓ "+i.name).join("\n"):"")+("\n\nFrom Thinko 🌿");
+          const txt="🛒 "+list.name+"\n\n"+items.filter(i=>!i.done).map(i=>"☐ "+shopLine(i)).join("\n")+(items.filter(i=>i.done).length?"\n\n✅ Got:\n"+items.filter(i=>i.done).map(i=>"✓ "+shopLine(i)).join("\n"):"")+("\n\nFrom Thinko 🌿");
           if(navigator.share){navigator.share({title:'Shopping List',text:txt});}
         else{window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}
         }} style={{flex:1,background:MULTI,color:'#2A3820',border:'1.5px solid rgba(90,120,72,0.25)',padding:'16px 8px',fontSize:16,fontWeight:700,cursor:'pointer',borderRadius:14}}>📤 Share list</button>
@@ -1149,6 +1168,63 @@ const CAT_EMOJI={
   "health & pharmacy":"💊",
   "pets":"🐾",
 };
+
+// ── Meal Plan Shopping: ONE list for all recipes, grouped by meal, no double items ──
+const MEAL_SHOP_NAME="Meal Plan Shopping";
+const isMealShopList=l=>!!l&&(l.mealShop===true||l.name===MEAL_SHOP_NAME||l.name==="🍽️ Meal Plan Shopping");
+// Boil an ingredient line down to its core name, so "1 tsp salt" and "salt, to taste" count as the same item
+const ingCore=txt=>{
+  let s=String(txt||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  s=s.replace(/\([^)]*\)/g," ").split(",")[0].trim();
+  for(let n=0;n<4;n++){
+    const before=s;
+    s=s.replace(/^(a|an|some)\s+/,"");
+    s=s.replace(/^[\d\s\/.\-½¼¾⅓⅔⅛x×]+/,"");
+    s=s.replace(/^(tbsps?|tsps?|tablespoons?|teaspoons?|g|grams?|kg|ml|l|litres?|liters?|oz|lbs?|cups?|handfuls?|pinch(es)?|dash(es)?|cloves?|cans?|tins?|bunch(es)?|slices?|sprigs?|packs?|packets?|jars?|bags?|pieces?|knobs?|splash(es)?|sticks?)\b\.?\s*/,"");
+    s=s.replace(/^of\s+/,"");
+    s=s.replace(/^(large|small|medium|big|fresh)\s+/,"");
+    if(s===before)break;
+  }
+  s=s.replace(/[^a-z\s]/g," ").replace(/\s+/g," ").trim();
+  return s.replace(/oes$/,"o").replace(/([^s])s$/,"$1");
+};
+// Add one meal's ingredients to the combined list. Anything already on it (and not ticked off)
+// isn't added again — the existing line gets an "also for" note instead, so amounts aren't lost.
+const addToMealShop=(lists,mealName,entries)=>{
+  const all=lists||[];
+  const found=all.find(isMealShopList);
+  const target=found||{id:Date.now()+Math.random(),name:MEAL_SHOP_NAME,icon:"🍽️",color:"#5A7848",items:[],created:Date.now()};
+  const items=[...(target.items||[])];
+  let added=0;const merged=[];
+  (entries||[]).forEach(en=>{
+    const e=typeof en==="string"?{text:en}:(en||{});
+    const text=String(e.text||e.name||"").trim();
+    if(!text)return;
+    if(e.done){items.push({id:Date.now()+Math.random(),text,done:true,cat:e.cat||"",qty:e.qty||"",meal:mealName});return;}
+    const core=ingCore(text);
+    const idx=core?items.findIndex(it=>!it.done&&ingCore(it.text)===core):-1;
+    if(idx>=0){
+      const it=items[idx];
+      const sameMeal=it.meal===mealName||(it.alsoFor||[]).some(a=>a.meal===mealName);
+      if(!sameMeal) items[idx]={...it,alsoFor:[...(it.alsoFor||[]),{meal:mealName,text:e.qty?text+" ("+e.qty+")":text}]};
+      merged.push(text);
+    } else {
+      items.push({id:Date.now()+Math.random(),text,done:false,cat:e.cat||"",qty:e.qty||"",meal:mealName});
+      added++;
+    }
+  });
+  const updated={...target,name:target.name==="🍽️ Meal Plan Shopping"?MEAL_SHOP_NAME:target.name,mealShop:true,items};
+  return {lists:found?all.map(l=>l.id===found.id?updated:l):[...all,updated],listId:updated.id,added,merged,isNew:!found};
+};
+const mealShopMsg=res=>{
+  const parts=[];
+  if(res.added>0) parts.push(`✅ ${res.added} item${res.added===1?"":"s"} added to "${MEAL_SHOP_NAME}"`);
+  if(res.merged.length>0) parts.push(`🔗 Already on the list, so not added twice:\n${res.merged.map(t=>"• "+t).join("\n")}`);
+  if(res.isNew&&res.added>0) parts.push("Every recipe you send now goes into this one list, under its own heading.");
+  return parts.join("\n\n")||"Nothing new to add.";
+};
+// One line of a shared list (includes "also for" amounts so nobody under-buys)
+const shopLine=i=>(i.text||i.name||"")+((i.alsoFor||[]).length?" (+ "+i.alsoFor.map(a=>a.text).join(", ")+")":"");
 
 function ShoppingList({data,setData,setScreen}){
   const [activeId,setActiveIdRaw]=useState(null);
@@ -1459,6 +1535,35 @@ function ShoppingList({data,setData,setScreen}){
       </div>
 
       <div style={{padding:"0 14px"}}>
+        {/* Combine separate recipe lists into the one Meal Plan Shopping list */}
+        {(()=>{
+          const oldLists=data.filter(l=>!isMealShopList(l)&&(/ — Ingredients$/.test(l.name||"")||/^🍽/.test(l.name||"")));
+          const hasCombined=data.some(isMealShopList);
+          const count=oldLists.length+(hasCombined?1:0);
+          if(oldLists.length===0||count<2) return null;
+          return(
+            <button onClick={()=>{
+              if(!window.confirm(`Combine your ${count} recipe lists into one "${MEAL_SHOP_NAME}" list?\n\nEach recipe keeps its own heading, and repeated items like salt only appear once.`))return;
+              let lists=data;let listId=null;let mergedCount=0;
+              oldLists.forEach(ol=>{
+                const meal=(ol.name||"").replace(/ — Ingredients$/,"").replace(/^🍽️?\s*/,"").trim()||"Recipe";
+                const res=addToMealShop(lists,meal,ol.items||[]);
+                lists=res.lists;listId=res.listId;mergedCount+=res.merged.length;
+              });
+              const oldIds=new Set(oldLists.map(l=>l.id));
+              setData(lists.filter(l=>!oldIds.has(l.id)));
+              if(listId) setActiveId(listId);
+              alert(`✅ All combined into "${MEAL_SHOP_NAME}"${mergedCount>0?`\n\n🔗 ${mergedCount} repeated item${mergedCount===1?"":"s"} merged, so you won't buy ${mergedCount===1?"it":"them"} twice`:""}`);
+            }}
+              style={{width:"100%",marginBottom:14,padding:"14px 18px",background:"rgba(90,120,72,0.12)",border:"2px dashed rgba(90,120,72,0.45)",borderRadius:18,cursor:"pointer",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
+              <span style={{fontSize:26}}>🔗</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:800,color:"#2A4020"}}>Combine your recipe lists into one</div>
+                <div style={{fontSize:12,color:"#5A4A30",marginTop:2}}>{count} separate lists · keeps each meal's heading · no double items</div>
+              </div>
+            </button>
+          );
+        })()}
         {/* Empty state when no lists */}
         {data.length===0&&(
           <div style={{textAlign:"center",padding:"60px 24px"}}>
@@ -1684,6 +1789,7 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
   const [recipeAiText,setRecipeAiText]=useState('');
   const [showRecipeAi,setShowRecipeAi]=useState(false);
   const [showAddToDay,setShowAddToDay]=useState(false);
+  const [ingPickerItems,setIngPickerItems]=useState(null); // null=hidden, array of {text,selected}
   const [recipeDraft,setRecipeDraft]=useState({name:'',description:'',ingredients:'',method:'',url:'',pinUrl:'',photo:'',photos:[],category:'other',cuisine:'other',favourite:false});
   const [recipeFavFilter,setRecipeFavFilter]=useState(false);
   const [editLabelIdx,setEditLabelIdx]=useState(null);
@@ -1746,14 +1852,9 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
     const meal=plan.days[dayIdx]?.find(m=>m.id===mealId);
     const ing=meal?.ingredients?.find(i=>i.id===ingId);
     if(!ing)return;
-    const listName=`🍽 ${mealName}`;
-    const existing=shopData.find(l=>l.name===listName);
-    const newItem={id:Date.now()+Math.random(),text:ing.text,done:false,cat:""};
-    if(existing){
-      setShopData(shopData.map(l=>l.id===existing.id?{...l,items:[...l.items,newItem]}:l));
-    } else {
-      setShopData([...shopData,{id:Date.now(),name:listName,icon:"🍽️",items:[newItem],created:Date.now()}]);
-    }
+    const res=addToMealShop(shopData,mealName,[ing.text]);
+    setShopData(res.lists);
+    if(res.merged.length) alert(`🔗 "${ing.text}" is already on your shopping list — not added twice.`);
   };
   const sendIngredientsToShop=(dayIdx,mealId,mealName)=>{
     if(!shopData||!setShopData)return;
@@ -1761,15 +1862,9 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
     if(!meal?.ingredients?.length)return;
     const needed=(meal.ingredients||[]).filter(ig=>!ig.got);
     if(!needed.length){alert("You already have everything! ✅");return;}
-    const listName=`🍽 ${mealName}`;
-    const existing=shopData.find(l=>l.name===listName);
-    const newItems=needed.map(ig=>({id:Date.now()+Math.random(),text:ig.text,done:false,cat:""}));
-    if(existing){
-      setShopData(shopData.map(l=>l.id===existing.id?{...l,items:[...l.items,...newItems]}:l));
-    } else {
-      setShopData([...shopData,{id:Date.now(),name:listName,icon:"🍽️",items:newItems,created:Date.now()}]);
-    }
-    alert("Added "+needed.length+" ingredient"+(needed.length>1?"s":"")+" to Shopping List ✅");
+    const res=addToMealShop(shopData,mealName,needed.map(ig=>ig.text));
+    setShopData(res.lists);
+    alert(mealShopMsg(res));
   };
   const shareShoppingList=(dayIdx,mealId,mealName)=>{
     const meal=plan.days[dayIdx]?.find(m=>m.id===mealId);
@@ -1906,25 +2001,59 @@ const sendMealToShop=(meal,label)=>{
               </div>
             )}
 
-            {/* Add ingredients to shopping */}
+            {/* Add ingredients to shopping — with picker */}
             {r.ingredients&&(
-              <button onClick={()=>{
-                const lines=r.ingredients.split("\n").map(l=>l.trim()).filter(Boolean);
-                if(lines.length===0){alert("No ingredients found in this recipe.");return;}
-                const newList={
-                  id:Date.now()+Math.random(),
-                  name:`${r.name} — Ingredients`,
-                  icon:"🛒",
-                  color:"#5A7848",
-                  items:lines.map(text=>({id:Date.now()+Math.random(),text,done:false})),
-                  created:Date.now()
-                };
-                setShopData&&setShopData(prev=>[...prev,newList]);
-                alert(`Created shopping list "${newList.name}" with ${lines.length} ingredients!`);
-              }}
-                style={{width:"100%",padding:"14px",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:"#2A4020",border:"1.5px solid rgba(90,120,72,0.25)",borderRadius:100,fontWeight:700,fontSize:15,cursor:"pointer"}}>
-                🛒 Send ingredients to shopping list
-              </button>
+              <>
+                <button onClick={()=>{
+                  const lines=r.ingredients.split("\n").map(l=>l.trim()).filter(Boolean);
+                  if(lines.length===0){alert("No ingredients found in this recipe.");return;}
+                  const onListItems=(((shopData||[]).find(isMealShopList)||{}).items||[]).filter(i=>!i.done);
+                  setIngPickerItems(lines.map(text=>{
+                    const core=ingCore(text);
+                    const match=core?onListItems.find(i=>ingCore(i.text)===core):null;
+                    return {text,selected:true,onList:match?(match.meal||"your list"):null};
+                  }));
+                }}
+                  style={{width:"100%",padding:"14px",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:"#2A4020",border:"1.5px solid rgba(90,120,72,0.25)",borderRadius:100,fontWeight:700,fontSize:15,cursor:"pointer"}}>
+                  🛒 Send ingredients to shopping list
+                </button>
+                {ingPickerItems&&(
+                  <div style={{background:"rgba(255,255,255,0.92)",borderRadius:18,padding:"16px",border:"1.5px solid rgba(90,120,72,0.18)",boxShadow:"0 4px 18px rgba(0,0,0,0.08)"}}>
+                    <div style={{fontWeight:800,color:"#2A4020",fontSize:14,marginBottom:4}}>🛒 Choose what you need</div>
+                    <div style={{fontSize:12,color:"#8A8070",marginBottom:12}}>Untick anything you already have</div>
+                    <div style={{display:"flex",gap:8,marginBottom:12}}>
+                      <button onClick={()=>setIngPickerItems(prev=>prev.map(i=>({...i,selected:true})))} style={{flex:1,padding:"7px",background:"rgba(90,120,72,0.1)",border:"none",borderRadius:100,fontSize:12,fontWeight:700,color:"#3A5828",cursor:"pointer"}}>Select all</button>
+                      <button onClick={()=>setIngPickerItems(prev=>prev.map(i=>({...i,selected:false})))} style={{flex:1,padding:"7px",background:"rgba(90,80,60,0.07)",border:"none",borderRadius:100,fontSize:12,fontWeight:700,color:"#8A8070",cursor:"pointer"}}>Clear all</button>
+                    </div>
+                    {ingPickerItems.map((item,idx)=>(
+                      <div key={idx} onClick={()=>setIngPickerItems(prev=>prev.map((it,i)=>i===idx?{...it,selected:!it.selected}:it))}
+                        style={{display:"flex",alignItems:"center",gap:10,padding:"9px 4px",borderBottom:"1px solid rgba(90,80,60,0.07)",cursor:"pointer",opacity:item.selected?1:0.45}}>
+                        <div style={{width:22,height:22,borderRadius:6,border:"1.5px solid "+(item.selected?"#5A7848":"rgba(90,120,72,0.35)"),background:item.selected?"#5A7848":"transparent",color:"#fff",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,transition:"all 0.15s"}}>
+                          {item.selected?"✓":""}
+                        </div>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:14,color:"#1A1A10",lineHeight:1.4,textDecoration:item.selected?"none":"line-through"}}>{item.text}</div>
+                          {item.onList&&<div style={{fontSize:11,color:"#5A7848",fontWeight:700,marginTop:2,lineHeight:1.4}}>🔗 Already on your list{item.onList===r.name||item.onList==="your list"?"":` for ${item.onList}`} — won't be added twice</div>}
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{display:"flex",gap:8,marginTop:14}}>
+                      <button onClick={()=>setIngPickerItems(null)} style={{flex:1,padding:"11px",background:"rgba(90,80,60,0.07)",border:"none",borderRadius:100,fontSize:13,fontWeight:700,color:"#8A8070",cursor:"pointer"}}>Cancel</button>
+                      <button onClick={()=>{
+                        const chosen=ingPickerItems.filter(i=>i.selected).map(i=>i.text);
+                        if(chosen.length===0){alert("Nothing selected!");return;}
+                        if(!setShopData)return;
+                        const res=addToMealShop(shopData,r.name,chosen);
+                        setShopData(res.lists);
+                        setIngPickerItems(null);
+                        alert(mealShopMsg(res));
+                      }} style={{flex:2,padding:"11px",background:"#5A7848",border:"none",borderRadius:100,fontSize:13,fontWeight:700,color:"#fff",cursor:"pointer"}}>
+                        ✅ Add {ingPickerItems.filter(i=>i.selected).length} to shopping
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -2440,11 +2569,11 @@ Rules:
                     const data=await callAnthropic({
                       model:"claude-sonnet-4-6",
                       max_tokens:20,
-                      system:"Categorise this recipe. Reply with ONLY one word from: meat, fish, veggie, pies, pasta, soup, baking, dessert, snacks, breakfast, other",
+                      system:"Categorise this recipe. Reply with ONLY one word from: meat, fish, veggie, pies, pasta, soup, baking, dessert, snacks, breakfast, drinks, other",
                       messages:[{role:"user",content:[{type:"text",text:`Name: ${recipeDraft.name}\nIngredients: ${(recipeDraft.ingredients||"").slice(0,300)}`}]}]
                     });
                     const cat=(data.content?.[0]?.text||"other").toLowerCase().trim().replace(/[^a-z]/g,"");
-                    const valid=["meat","fish","veggie","pies","pasta","soup","baking","dessert","snacks","breakfast","other"];
+                    const valid=["meat","fish","veggie","pies","pasta","soup","baking","dessert","snacks","breakfast","drinks","other"];
                     if(valid.includes(cat)) category=cat;
                   }catch(e){console.error("Category:",e);}
                   setRecipes(rs=>[...rs,{id:Date.now(),...recipeDraft,category}]);
@@ -2503,7 +2632,7 @@ Rules:
                   model:"claude-sonnet-4-6",
                   max_tokens:1000,
                   system:"You categorise recipes. Return only a JSON array, no markdown.",
-                  messages:[{role:"user",content:[{type:"text",text:'Categorise each recipe with a food category and cuisine country. Categories: meat, fish, chicken, veggie, pasta, pies, soups, baking, breakfast, dessert, snacks, other. Cuisines: british, jamaican, mexican, italian, chinese, indian, american, french, thai, mediterranean, spanish, caribbean, african, turkish, other. Recipes: '+recipes.map((r,i)=>(i+1)+'. '+r.name).join(', ')+'. Return JSON array: [{"name":"recipe name","category":"meat","cuisine":"british"}]'}]}]
+                  messages:[{role:"user",content:[{type:"text",text:'Categorise each recipe with a food category and cuisine country. Categories: meat, fish, chicken, veggie, pasta, pies, soups, baking, breakfast, dessert, snacks, drinks, other. Cuisines: british, jamaican, mexican, italian, chinese, indian, american, french, thai, mediterranean, spanish, caribbean, african, turkish, other. Recipes: '+recipes.map((r,i)=>(i+1)+'. '+r.name).join(', ')+'. Return JSON array: [{"name":"recipe name","category":"meat","cuisine":"british"}]'}]}]
                 });
                 const raw=data.content?.[0]?.text||"[]";
                 const match=raw.match(/\[[\s\S]*\]/);
