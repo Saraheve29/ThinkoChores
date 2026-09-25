@@ -54,7 +54,104 @@ const RECIPE_CATS=[
   {id:"drinks",   label:"Drinks",    icon:"🥤"},
   {id:"other",    label:"Other",     icon:"📌"},
 ];
-const headerGrad  = `linear-gradient(135deg,#3A5030 0%,#4A6840 50%,#5A7850 100%)`;
+
+// ── Recipe sorting: one shared engine for automatic AND by-hand categories ──
+const CAT_IDS=RECIPE_CATS.filter(c=>c.id!=="all").map(c=>c.id);
+const CUISINE_IDS=RECIPE_CUISINES.filter(c=>c.id!=="any").map(c=>c.id);
+const CAT_SYNONYMS={soup:"soups",broth:"soups",chowder:"soups",vegetarian:"veggie",vegan:"veggie",vegetable:"veggie",vegetables:"veggie",plantbased:"veggie",
+  beef:"meat",pork:"meat",lamb:"meat",mince:"meat",sausage:"meat",sausages:"meat",bacon:"meat",ham:"meat",goat:"meat",poultry:"chicken",turkey:"chicken",
+  seafood:"fish",prawn:"fish",prawns:"fish",shellfish:"fish",salmon:"fish",pie:"pies",cake:"baking",cakes:"baking",bread:"baking",bake:"baking",bakes:"baking",
+  desserts:"dessert",pudding:"dessert",puddings:"dessert",sweets:"dessert",snack:"snacks",starter:"snacks",starters:"snacks",drink:"drinks",beverage:"drinks",
+  beverages:"drinks",cocktail:"drinks",cocktails:"drinks",smoothie:"drinks",smoothies:"drinks",noodle:"pasta",noodles:"pasta"};
+// Turn whatever the AI (or old saved data) says into a real category id — e.g. "Soup." → "soups"
+const normCat=v=>{
+  const s=String(v||"").toLowerCase().replace(/[^a-z ]/g,"").trim();
+  if(!s)return null;
+  if(CAT_IDS.includes(s))return s;
+  if(CAT_SYNONYMS[s])return CAT_SYNONYMS[s];
+  const w=s.split(" ").find(x=>CAT_IDS.includes(x)||CAT_SYNONYMS[x]);
+  return w?(CAT_IDS.includes(w)?w:CAT_SYNONYMS[w]):null;
+};
+const CUISINE_SYNONYMS={english:"british",scottish:"british",welsh:"british",irish:"british",uk:"british",greek:"mediterranean",lebanese:"mediterranean",
+  middleeastern:"mediterranean",moroccan:"african",nigerian:"african",ghanaian:"african",ethiopian:"african",southafrican:"african",
+  trinidadian:"caribbean",barbadian:"caribbean",texmex:"mexican",cantonese:"chinese",szechuan:"chinese",sichuan:"chinese",usa:"american",us:"american"};
+const normCuisine=v=>{
+  const s=String(v||"").toLowerCase().replace(/[^a-z]/g,"");
+  if(!s)return null;
+  if(CUISINE_IDS.includes(s))return s;
+  return CUISINE_SYNONYMS[s]||null;
+};
+// Instant guess from the recipe name (then main ingredients) — works even with no AI / no credit.
+// Dish type wins first (soup, pie, pasta...), then the main protein.
+const CAT_RULES=[
+  ["soups",/\b(soups?|broth|chowder|bisque|gazpacho|minestrone|ramen|pho)\b/],
+  ["breakfast",/\b(breakfast|brunch|pancakes?|porridge|granola|overnight oats|omelett?es?|french toast|waffles?|eggs? benedict|full english|fry up|muesli|crumpets?|shakshuka)\b/],
+  ["pies",/\b(pies?|pasty|pasties|quiche|wellington)\b/],
+  ["pasta",/\b(pasta|spag|spaghetti|penne|lasagne|lasagna|macaroni|mac (and|n) cheese|tagliatelle|linguine|fusilli|rigatoni|farfalle|ravioli|tortellini|gnocchi|carbonara|bolognese|noodles?|orzo|chow mein|pad thai)\b/],
+  ["dessert",/\b(desserts?|puddings?|crumble|cheesecake|trifle|mousse|ice cream|sorbet|tiramisu|pavlova|custard|sundae|eton mess|panna cotta|jelly|roly poly|banoffee)\b/],
+  ["baking",/\b(cakes?|cupcakes?|muffins?|cookies?|biscuits?|scones?|bread|loaf|buns?|flapjacks?|shortbread|brownies?|blondies?|doughnuts?|donuts?|bagels?|croissants?|sponge|teacakes?)\b/],
+  ["drinks",/\b(drinks?|smoothies?|milkshakes?|mocktails?|cocktails?|lemonade|latte|cappuccino|frappe|iced coffee|iced tea|hot chocolate|mojito|margarita|sangria|spritz|slushies?|punch|cordial|sorrel|eggnog)\b/],
+  ["fish",/\b(fish|saltfish|salmon|cod|tuna|haddock|mackerel|prawns?|shrimps?|seafood|crab|lobster|mussels|sardines?|trout|sea ?bass|plaice|kippers?|scampi|squid|calamari|tilapia|pollock|snapper|anchov(y|ies))\b/],
+  ["chicken",/\b(chicken|turkey|poultry|duck)\b/],
+  ["meat",/\b(beef|pork|lamb|mince|minced|sausages?|bacon|ham|steak|gammon|corned beef|meatballs?|burgers?|chorizo|brisket|ribs|oxtail|goat|mutton|venison|salami|pepperoni|hot ?dogs?|kebabs?|meatloaf)\b/],
+  ["veggie",/\b(vegetarian|vegan|veggie|halloumi|tofu|lentils?|chickpeas?|falafel|paneer|quorn|dahl|dal)\b/],
+  ["snacks",/\b(snacks?|dips?|hummus|houmous|nachos|popcorn|sandwich(es)?|toasties?|wraps?|bruschetta|samosas?|spring rolls?|canapes?|crisps)\b/],
+];
+const guessText=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/&/g," and ").replace(/[^a-z' ]/g," ").replace(/\s+/g," ");
+const guessCat=r=>{
+  const name=guessText(r&&r.name);
+  for(const [id,re] of CAT_RULES) if(re.test(name)) return id;
+  // Not obvious from the name → look at the main ingredients (ignoring stock, sauces, powders etc.)
+  const lines=String((r&&r.ingredients)||"").split("\n").map(guessText)
+    .filter(l=>l.trim()&&!/\b(stock|sauce|gravy|bouillon|cubes?|oxo|granules|seasoning|powder|paste|essence|fat|dripping|lard)\b/.test(l));
+  const ing=" "+lines.join(" | ")+" ";
+  for(const id of ["pasta","fish","chicken","meat","veggie"]){
+    const rule=CAT_RULES.find(x=>x[0]===id);
+    if(rule&&rule[1].test(ing)) return id;
+  }
+  return null;
+};
+// A recipe "needs sorting" if it has no real category and you haven't chosen one yourself
+const needsCat=r=>!!r&&!r.catManual&&(!r.category||r.category==="other"||!CAT_IDS.includes(r.category));
+// Ask the AI to sort a batch of recipes (matched back by NUMBER, not by name — so no mix-ups)
+async function aiCategoriseBatch(list){
+  if(!list||!list.length) return [];
+  const lines=list.map((r,i)=>{
+    const ings=String(r.ingredients||"").split("\n").map(s=>s.trim()).filter(Boolean).slice(0,12).join(", ").slice(0,240);
+    const notes=String(r.description||"").trim().slice(0,80);
+    return `${i+1}. ${r.name||"Untitled"}${ings?` — ingredients: ${ings}`:""}${notes?` — notes: ${notes}`:""}`;
+  }).join("\n");
+  const data=await callAnthropic({
+    model:"claude-sonnet-4-6",
+    max_tokens:Math.min(4000,150+list.length*45),
+    system:"You sort home-cooking recipes into categories for a family meal planner. Return ONLY a JSON array, no markdown, no explanation.",
+    messages:[{role:"user",content:[{type:"text",text:
+`Choose the ONE best category and the cuisine for each recipe below.
+
+Categories — use these exact words: ${CAT_IDS.join(", ")}
+How to choose the category:
+- If it clearly is one of these dish types, use it: drinks, breakfast, soups, pies, pasta (incl. noodles), dessert, baking (cakes, bread, biscuits), snacks (sandwiches, dips, finger food)
+- Otherwise use the main protein: chicken (incl. turkey/duck), fish (incl. seafood/prawns/saltfish), meat (beef, pork, lamb, goat, mince, sausages, bacon, corned beef), veggie (no meat or fish)
+- Only answer "other" if nothing fits at all
+Cuisines — use these exact words: ${CUISINE_IDS.join(", ")}
+
+Recipes:
+${lines}
+
+Reply with one entry per recipe, using the same numbers:
+[{"n":1,"category":"meat","cuisine":"british"}]`}]}]
+  });
+  const raw=data.content?.[0]?.text||"[]";
+  const m=raw.match(/\[[\s\S]*\]/);
+  if(!m) throw new Error("No answer from AI");
+  const arr=JSON.parse(m[0]);
+  return list.map((r,i)=>{
+    const hit=Array.isArray(arr)?arr.find(x=>x&&Number(x.n)===i+1):null;
+    return {category:hit?normCat(hit.category):null,cuisine:hit?normCuisine(hit.cuisine):null};
+  });
+}
+
+const headerGrad  =`linear-gradient(135deg,#3A5030 0%,#4A6840 50%,#5A7850 100%)`;
 const pageGrad    = `linear-gradient(180deg,#F5F0E4 0%,#EDE8D8 40%,#E5DFC8 100%)`;
 const btnGrad     = `linear-gradient(135deg,#3D5A2A,#6A9058)`;
 const cardGlass   = "rgba(252,248,238,0.75)";
@@ -1765,7 +1862,13 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
   const [recipeCatFilter,setRecipeCatFilter]=useState("all");
   const [recipeCuisineFilter,setRecipeCuisineFilter]=useState("any");
   const [recipes,setRecipesRaw]=useState(()=>{
-    try{const v=localStorage.getItem('chores_recipes');return v?JSON.parse(v):[];}catch{return [];}
+    try{
+      const v=localStorage.getItem('chores_recipes');
+      const list=v?JSON.parse(v):[];
+      if(!Array.isArray(list)) return [];
+      // Tidy old category values (e.g. "soup" → "soups", missing → "other") so every recipe shows under a filter
+      return list.map(r=>{if(!r)return r;const c=normCat(r.category)||"other";return r.category===c?r:{...r,category:c};}).filter(Boolean);
+    }catch{return [];}
   });
   const setRecipes=d=>{
     setRecipesRaw(prev=>{
@@ -1792,6 +1895,61 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
   const [ingPickerItems,setIngPickerItems]=useState(null); // null=hidden, array of {text,selected}
   const [recipeDraft,setRecipeDraft]=useState({name:'',description:'',ingredients:'',method:'',url:'',pinUrl:'',photo:'',photos:[],category:'other',cuisine:'other',favourite:false});
   const [recipeFavFilter,setRecipeFavFilter]=useState(false);
+
+  /* ── Recipe categories: by hand + automatic ── */
+  const [catEditFor,setCatEditFor]=useState(null);   // recipe id whose "change category" panel is open
+  const [handSort,setHandSort]=useState(null);       // {ids:[...], idx} while sorting by hand
+  const [sortBusy,setSortBusy]=useState(null);       // progress text while auto-sorting
+  const setRecipeCat=(id,cat)=>setRecipes(prev=>prev.map(x=>x.id===id?{...x,category:cat,catManual:true}:x));
+  const setRecipeCuisine=(id,cu)=>setRecipes(prev=>prev.map(x=>x.id===id?{...x,cuisine:cu,cuisineManual:true}:x));
+  // Apply automatic results — never overrides anything you chose yourself
+  const applyCatResults=(results,overwrite)=>setRecipes(prev=>prev.map(x=>{
+    const res=results[x.id]; if(!res) return x;
+    const upd={...x};
+    if(!x.catManual&&res.category&&res.category!=="other"&&(overwrite||needsCat(x))) upd.category=res.category;
+    if(!x.cuisineManual&&res.cuisine&&res.cuisine!=="other"&&(overwrite||!x.cuisine||x.cuisine==="other")) upd.cuisine=res.cuisine;
+    return upd;
+  }));
+  // Every save button uses this: instant guess now, then the AI double-checks in the background
+  const saveNewRecipe=(draft,extra={})=>{
+    const r={...draft,...extra,id:Date.now()+Math.random(),created:Date.now()};
+    if(!r.catManual) r.category=guessCat(r)||"other";
+    if(!r.cuisineManual&&!r.cuisine) r.cuisine="other";
+    setRecipes(prev=>[r,...prev]);
+    if(!r.catManual||!r.cuisineManual){
+      aiCategoriseBatch([r]).then(res=>{
+        const x=res[0]||{};
+        applyCatResults({[r.id]:{category:(x.category&&x.category!=="other")?x.category:guessCat(r),cuisine:x.cuisine}},true);
+      }).catch(e=>console.error("Auto-category:",e));
+    }
+    return r;
+  };
+  // Sort many recipes at once: "missing" = only unsorted ones, "all" = re-check everything not set by hand
+  const autoSortRecipes=async(mode)=>{
+    if(sortBusy) return;
+    const todo=mode==="all"?recipes.filter(r=>!r.catManual||!r.cuisineManual):recipes.filter(needsCat);
+    if(!todo.length){alert(mode==="all"?"You've set every recipe yourself — nothing to re-check ✅":"All your recipes already have a category ✅");return;}
+    const results={};
+    let aiFailed=false;
+    for(let i=0;i<todo.length;i+=12){
+      const chunk=todo.slice(i,i+12);
+      setSortBusy(`✨ Sorting your recipes… ${Math.min(i+chunk.length,todo.length)} of ${todo.length}`);
+      let res=[];
+      try{res=await aiCategoriseBatch(chunk);}catch(e){console.error("Auto-sort:",e);aiFailed=true;}
+      chunk.forEach((r,j)=>{
+        const ai=res[j]||{};
+        results[r.id]={category:(ai.category&&ai.category!=="other")?ai.category:guessCat(r),cuisine:ai.cuisine||null};
+      });
+    }
+    applyCatResults(results,mode==="all");
+    setSortBusy(null);
+    const stillUnsorted=todo.filter(r=>needsCat(r)&&!(results[r.id]?.category&&results[r.id].category!=="other")).length;
+    const done=mode==="all"?todo.length:todo.length-stillUnsorted;
+    alert((mode==="all"?`✅ Re-checked ${done} recipe${done===1?"":"s"}.`:`✅ Sorted ${done} of ${todo.length} recipe${todo.length===1?"":"s"}.`)
+      +(stillUnsorted>0?`\n\n📌 ${stillUnsorted} still need${stillUnsorted===1?"s":""} a category — tap "Sort by hand" to choose.`:"")
+      +(aiFailed?"\n\n(The AI couldn't be reached, so I sorted by name and ingredients where I could.)":""));
+  };
+
   const [editLabelIdx,setEditLabelIdx]=useState(null);
   const [labelDraft,setLabelDraft]=useState('');
 
@@ -1916,7 +2074,8 @@ const sendMealToShop=(meal,label)=>{
 
   // Recipe detail view
   if(recipeDetail){
-    const r=recipeDetail;
+    // Always show the latest saved version (so category changes appear straight away)
+    const r=recipes.find(x=>x.id===recipeDetail.id)||recipeDetail;
     return(
       <div style={{minHeight:"100vh",background:"transparent",fontFamily:"'Segoe UI',sans-serif",paddingBottom:90}}>
         <Header title={r.name} onBack={()=>setRecipeDetail(null)} right={
@@ -1940,6 +2099,62 @@ const sendMealToShop=(meal,label)=>{
                 {allPhotos.map((ph,pi)=>(
                   <img key={pi} src={ph} alt={r.name+' '+(pi+1)} style={{height:180,width:"auto",maxWidth:"80vw",objectFit:"cover",borderRadius:16,flexShrink:0,boxShadow:"0 4px 18px rgba(0,0,0,0.10)"}}/>
                 ))}
+              </div>
+            );
+          })()}
+          {/* Category — tap to change it yourself */}
+          {(()=>{
+            const cat=RECIPE_CATS.find(c=>c.id===r.category&&c.id!=="all");
+            const cu=RECIPE_CUISINES.find(c=>c.id===r.cuisine&&c.id!=="any"&&c.id!=="other");
+            const unsorted=needsCat(r)||!cat;
+            const open=catEditFor===r.id;
+            const chip={borderRadius:100,padding:"5px 12px",fontSize:13,fontWeight:700};
+            return(
+              <div style={{marginBottom:14}}>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                  {unsorted
+                    ?<span style={{...chip,background:"rgba(230,126,34,0.14)",color:"#A0522D",border:"1.5px dashed rgba(230,126,34,0.45)"}}>📌 No category yet</span>
+                    :<span style={{...chip,background:"rgba(90,120,72,0.14)",color:"#2A4020"}}>{cat.icon} {cat.label}</span>}
+                  {cu&&<span style={{...chip,background:"rgba(41,128,185,0.10)",color:"#1a5276"}}>{cu.icon} {cu.label}</span>}
+                  <button onClick={()=>setCatEditFor(open?null:r.id)}
+                    style={{...chip,background:open?"#5A7848":"rgba(255,255,255,0.85)",color:open?"#fff":"#3A5828",border:"1.5px solid rgba(90,120,72,0.35)",cursor:"pointer"}}>
+                    {open?"✓ Done":unsorted?"✏️ Set category":"✏️ Change"}
+                  </button>
+                </div>
+                {open&&(
+                  <div style={{background:"rgba(255,255,255,0.92)",borderRadius:18,padding:"14px",marginTop:10,border:"1.5px solid rgba(90,120,72,0.2)",boxShadow:"0 4px 16px rgba(0,0,0,0.06)"}}>
+                    <div style={{fontSize:12,fontWeight:800,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>Category</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
+                      {RECIPE_CATS.filter(c=>c.id!=="all").map(c=>{
+                        const on=r.category===c.id&&!unsorted||(c.id==="other"&&r.catManual&&r.category==="other");
+                        return(
+                          <button key={c.id} onClick={()=>setRecipeCat(r.id,c.id)}
+                            style={{padding:"7px 12px",borderRadius:100,fontSize:13,fontWeight:700,cursor:"pointer",border:"none",
+                              background:on?"#5A7848":"rgba(90,80,60,0.08)",color:on?"#fff":"#5A4A30"}}>
+                            {c.icon} {c.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div style={{fontSize:12,fontWeight:800,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>Cuisine</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+                      {RECIPE_CUISINES.filter(c=>c.id!=="any").map(c=>{
+                        const on=r.cuisine===c.id&&(c.id!=="other"||r.cuisineManual);
+                        return(
+                          <button key={c.id} onClick={()=>setRecipeCuisine(r.id,c.id)}
+                            style={{padding:"7px 12px",borderRadius:100,fontSize:13,fontWeight:700,cursor:"pointer",border:"none",
+                              background:on?"#2980b9":"rgba(90,80,60,0.08)",color:on?"#fff":"#5A4A30"}}>
+                            {c.icon} {c.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button onClick={()=>setCatEditFor(null)}
+                      style={{width:"100%",padding:"11px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer"}}>
+                      ✓ Done
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -2322,8 +2537,7 @@ ${importText}`};
               <div style={{display:"flex",gap:8}}>
                 <button onClick={()=>{
                   if(!recipeDraft.name.trim())return;
-                  const idea={...recipeDraft,id:Date.now(),savedAt:new Date().toISOString()};
-                  setRecipes(rs=>[idea,...rs]);
+                  saveNewRecipe(recipeDraft,{savedAt:new Date().toISOString()});
                   setRecipeDraft({name:'',description:'',ingredients:'',method:'',url:'',pinUrl:'',photo:''});
                   setAddingRecipe(false);
                 }} style={{flex:1,padding:"12px",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:"#2A1A08",border:"none",borderRadius:100,fontFamily:"Georgia,serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>
@@ -2417,24 +2631,24 @@ ${recipeAiText}`}]}]
                 </div>
               )}
 
-              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>Category</div>
+              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>Category <span style={{textTransform:"none",letterSpacing:0,fontWeight:600,color:"#8A8070"}}>— optional, skip it and it's sorted for you</span></div>
               <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
                 {RECIPE_CATS.filter(c=>c.id!=="all").map(c=>(
-                  <button key={c.id} onClick={()=>setRecipeDraft(d=>({...d,category:c.id}))}
+                  <button key={c.id} onClick={()=>setRecipeDraft(d=>d.catManual&&d.category===c.id?{...d,category:"other",catManual:false}:{...d,category:c.id,catManual:true})}
                     style={{padding:"5px 12px",borderRadius:100,fontSize:12,fontWeight:700,cursor:"pointer",
-                      background:recipeDraft.category===c.id?"#5A7848":"rgba(90,80,60,0.08)",
-                      color:recipeDraft.category===c.id?"#fff":"#5A4A30",border:"none"}}>
+                      background:recipeDraft.catManual&&recipeDraft.category===c.id?"#5A7848":"rgba(90,80,60,0.08)",
+                      color:recipeDraft.catManual&&recipeDraft.category===c.id?"#fff":"#5A4A30",border:"none"}}>
                     {c.icon} {c.label}
                   </button>
                 ))}
               </div>
-              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>Cuisine</div>
+              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>Cuisine <span style={{textTransform:"none",letterSpacing:0,fontWeight:600,color:"#8A8070"}}>— optional</span></div>
               <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
                 {RECIPE_CUISINES.filter(c=>c.id!=="any").map(c=>(
-                  <button key={c.id} onClick={()=>setRecipeDraft(d=>({...d,cuisine:c.id}))}
+                  <button key={c.id} onClick={()=>setRecipeDraft(d=>d.cuisineManual&&d.cuisine===c.id?{...d,cuisine:"other",cuisineManual:false}:{...d,cuisine:c.id,cuisineManual:true})}
                     style={{padding:"5px 12px",borderRadius:100,fontSize:12,fontWeight:700,cursor:"pointer",
-                      background:recipeDraft.cuisine===c.id?"#2980b9":"rgba(90,80,60,0.08)",
-                      color:recipeDraft.cuisine===c.id?"#fff":"#5A4A30",border:"none"}}>
+                      background:recipeDraft.cuisineManual&&recipeDraft.cuisine===c.id?"#2980b9":"rgba(90,80,60,0.08)",
+                      color:recipeDraft.cuisineManual&&recipeDraft.cuisine===c.id?"#fff":"#5A4A30",border:"none"}}>
                     {c.icon} {c.label}
                   </button>
                 ))}
@@ -2563,23 +2777,9 @@ Rules:
                 <button onClick={()=>{setAddingRecipe(false);setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",photo:"",photos:[],category:"other",cuisine:"other",favourite:false});}} style={{flex:1,background:"rgba(90,80,60,0.08)",color:"#8A8070",border:"none",borderRadius:100,padding:"11px",fontWeight:600,fontSize:13,cursor:"pointer"}}>Cancel</button>
                 <button onClick={async()=>{
                   if(!recipeDraft.name.trim())return;
-                  setRecipeAiLoading(true);
-                  let category="other";
-                  try{
-                    const data=await callAnthropic({
-                      model:"claude-sonnet-4-6",
-                      max_tokens:20,
-                      system:"Categorise this recipe. Reply with ONLY one word from: meat, fish, veggie, pies, pasta, soup, baking, dessert, snacks, breakfast, drinks, other",
-                      messages:[{role:"user",content:[{type:"text",text:`Name: ${recipeDraft.name}\nIngredients: ${(recipeDraft.ingredients||"").slice(0,300)}`}]}]
-                    });
-                    const cat=(data.content?.[0]?.text||"other").toLowerCase().trim().replace(/[^a-z]/g,"");
-                    const valid=["meat","fish","veggie","pies","pasta","soup","baking","dessert","snacks","breakfast","drinks","other"];
-                    if(valid.includes(cat)) category=cat;
-                  }catch(e){console.error("Category:",e);}
-                  setRecipes(rs=>[...rs,{id:Date.now(),...recipeDraft,category}]);
+                  saveNewRecipe(recipeDraft);
                   setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",photo:"",photos:[],category:"other",cuisine:"other",favourite:false});
                   setAddingRecipe(false);
-                  setRecipeAiLoading(false);
                 }} disabled={recipeAiLoading}
                 style={{flex:2,background:recipeAiLoading?"#888":"#5A7848",color:"#fff",border:"none",borderRadius:100,padding:"11px 24px",fontWeight:700,fontSize:14,cursor:recipeAiLoading?"not-allowed":"pointer",boxShadow:"0 3px 12px rgba(58,80,38,0.28)"}}>
                   {recipeAiLoading?"✨ Saving...":"Save Recipe"}
@@ -2625,36 +2825,81 @@ Rules:
             <span style={{fontSize:18}}>+</span> Add Recipe
           </button>
 
-          {recipes.length>0&&(
-            <button onClick={async()=>{
-              try{
-                const data=await callAnthropic({
-                  model:"claude-sonnet-4-6",
-                  max_tokens:1000,
-                  system:"You categorise recipes. Return only a JSON array, no markdown.",
-                  messages:[{role:"user",content:[{type:"text",text:'Categorise each recipe with a food category and cuisine country. Categories: meat, fish, chicken, veggie, pasta, pies, soups, baking, breakfast, dessert, snacks, drinks, other. Cuisines: british, jamaican, mexican, italian, chinese, indian, american, french, thai, mediterranean, spanish, caribbean, african, turkish, other. Recipes: '+recipes.map((r,i)=>(i+1)+'. '+r.name).join(', ')+'. Return JSON array: [{"name":"recipe name","category":"meat","cuisine":"british"}]'}]}]
-                });
-                const raw=data.content?.[0]?.text||"[]";
-                const match=raw.match(/\[[\s\S]*\]/);
-                if(!match) throw new Error("No array found");
-                const parsed=JSON.parse(match[0]);
-                if(Array.isArray(parsed)&&parsed.length>0){
-                  setRecipes(prev=>prev.map(r=>{
-                    const rName=r.name.toLowerCase().trim();
-                    const found=parsed.find(c=>{
-                      const cName=(c.name||"").toLowerCase().trim();
-                      return cName===rName||cName.includes(rName)||rName.includes(cName)||
-                        rName.split(" ").filter(w=>w.length>3).some(w=>cName.includes(w));
-                    });
-                    return found?{...r,category:found.category||r.category,cuisine:found.cuisine||r.cuisine}:r;
-                  }));
-                  alert("Done! "+parsed.length+" recipes categorised.");
-                }
-              }catch(e){alert("Error: "+e.message);}
-            }} style={{width:"100%",padding:"12px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer",marginBottom:12,boxShadow:"0 3px 12px rgba(58,80,38,0.28)"}}>
-              ✨ Auto-categorise my recipes with AI
-            </button>
+          {/* Sorting: progress / unsorted banner / sort-by-hand */}
+          {sortBusy&&(
+            <div style={{background:"rgba(255,255,255,0.92)",borderRadius:16,padding:"12px 14px",marginBottom:12,border:"1.5px solid rgba(90,120,72,0.25)",fontSize:14,fontWeight:700,color:"#3A5828",textAlign:"center"}}>
+              {sortBusy}
+            </div>
           )}
+          {!sortBusy&&!handSort&&recipes.length>0&&(()=>{
+            const todo=recipes.filter(needsCat);
+            if(todo.length===0) return null;
+            return(
+              <div style={{background:"rgba(255,255,255,0.92)",borderRadius:18,padding:"14px",marginBottom:12,border:"1.5px dashed rgba(230,126,34,0.5)",boxShadow:"0 2px 10px rgba(0,0,0,0.05)"}}>
+                <div style={{fontSize:15,fontWeight:800,color:"#2A4020",marginBottom:2}}>📌 {todo.length} recipe{todo.length===1?"":"s"} without a category</div>
+                <div style={{fontSize:12,color:"#8A8070",marginBottom:12}}>Let the app sort {todo.length===1?"it":"them"}, or choose yourself</div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>autoSortRecipes("missing")}
+                    style={{flex:1,padding:"11px 8px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 3px 12px rgba(58,80,38,0.25)"}}>
+                    ✨ Auto-sort
+                  </button>
+                  <button onClick={()=>setHandSort({ids:todo.map(r=>r.id),idx:0})}
+                    style={{flex:1,padding:"11px 8px",background:"rgba(255,255,255,0.9)",color:"#3A5828",border:"1.5px solid rgba(90,120,72,0.4)",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer"}}>
+                    ✋ Sort by hand
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+          {handSort&&(()=>{
+            // skip past any recipe that's been deleted since sorting started
+            let i=handSort.idx;
+            while(i<handSort.ids.length&&!recipes.some(x=>x.id===handSort.ids[i])) i++;
+            const cur=recipes.find(x=>x.id===handSort.ids[i]);
+            if(!cur) return(
+              <button onClick={()=>setHandSort(null)} style={{width:"100%",padding:"12px",marginBottom:14,background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer"}}>✓ All done — close</button>
+            );
+            const isLast=i+1>=handSort.ids.length;
+            const goNext=()=>{if(isLast){setHandSort(null);}else{setHandSort({...handSort,idx:i+1});}};
+            const ings=String(cur.ingredients||"").split("\n").map(s=>s.trim()).filter(Boolean);
+            return(
+              <div style={{background:"rgba(255,255,255,0.96)",borderRadius:20,padding:"16px",marginBottom:14,border:"2px solid #5A7848",boxShadow:"0 6px 24px rgba(0,0,0,0.12)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                  <div style={{fontSize:12,fontWeight:800,color:"#5A7848",textTransform:"uppercase",letterSpacing:0.5}}>✋ Sort by hand · {i+1} of {handSort.ids.length}</div>
+                  <button onClick={()=>setHandSort(null)} style={{background:"rgba(90,80,60,0.08)",border:"none",borderRadius:100,padding:"6px 14px",fontSize:12,fontWeight:700,color:"#8A8070",cursor:"pointer"}}>Stop</button>
+                </div>
+                <div style={{height:5,background:"rgba(90,120,72,0.12)",borderRadius:3,marginBottom:14,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${Math.round((i/handSort.ids.length)*100)}%`,background:"#5A7848",transition:"width 0.3s"}}/>
+                </div>
+                <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:14}}>
+                  <div style={{width:56,height:56,borderRadius:14,background:"#5A7848",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,flexShrink:0,overflow:"hidden"}}>
+                    {cur.photo?<img src={cur.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:"🍽️"}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:18,color:"#1A1A10",lineHeight:1.3}}>{cur.name}</div>
+                    {ings.length>0&&<div style={{fontSize:12,color:"#8A8070",marginTop:3,lineHeight:1.4}}>{ings.slice(0,4).join(" · ")}{ings.length>4?" …":""}</div>}
+                  </div>
+                </div>
+                <div style={{fontSize:14,fontWeight:800,color:"#2A4020",marginBottom:10}}>Which category is it?</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
+                  {RECIPE_CATS.filter(c=>c.id!=="all").map(c=>(
+                    <button key={c.id} onClick={()=>{
+                        setRecipeCat(cur.id,c.id);
+                        if(isLast&&!recipes.some(x=>x.id!==cur.id&&needsCat(x))) setTimeout(()=>alert("🎉 All sorted!"),60);
+                        goNext();
+                      }}
+                      style={{padding:"12px 4px",background:"rgba(90,120,72,0.08)",border:"1.5px solid rgba(90,120,72,0.2)",borderRadius:14,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                      <span style={{fontSize:24,lineHeight:1}}>{c.icon}</span>
+                      <span style={{fontSize:12,fontWeight:700,color:"#2A4020"}}>{c.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <button onClick={goNext} style={{width:"100%",padding:"10px",background:"none",border:"none",fontSize:13,fontWeight:700,color:"#8A8070",cursor:"pointer"}}>
+                  Skip this one for now →
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Category filter */}
           <div style={{overflowX:"auto",marginBottom:8}}>
@@ -2695,28 +2940,42 @@ Rules:
             </div>
           </div>
 
+          {/* Re-check every category with the stronger sorter (keeps anything chosen by hand) */}
+          {recipes.length>0&&!sortBusy&&!handSort&&(
+            <div style={{textAlign:"center",marginBottom:12}}>
+              <button onClick={()=>{
+                const n=recipes.filter(r=>!r.catManual||!r.cuisineManual).length;
+                if(n===0){alert("You've set every recipe yourself — nothing to re-check ✅");return;}
+                if(window.confirm(`Re-check the category of ${n} recipe${n===1?"":"s"}?\n\nAny you've set yourself won't be changed.`)) autoSortRecipes("all");
+              }}
+                style={{background:"rgba(255,255,255,0.75)",border:"1px solid rgba(90,120,72,0.25)",borderRadius:100,padding:"6px 14px",fontSize:12,fontWeight:700,color:"#5A7848",cursor:"pointer"}}>
+                ✨ Re-check all categories
+              </button>
+            </div>
+          )}
+
           {/* Add recipe form */}
           {addingRecipe&&(
             <div style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",borderRadius:22,padding:"20px 18px",marginBottom:14,boxShadow:"0 4px 24px rgba(0,0,0,0.08)",border:"1px solid rgba(90,120,72,0.18)"}}>
               <div style={{fontWeight:700,color:"#2A4020",fontSize:15,marginBottom:12}}>📖 New Recipe</div>
-              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>Category</div>
+              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>Category <span style={{textTransform:"none",letterSpacing:0,fontWeight:600,color:"#8A8070"}}>— optional, skip it and it's sorted for you</span></div>
               <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
                 {RECIPE_CATS.filter(c=>c.id!=="all").map(c=>(
-                  <button key={c.id} onClick={()=>setRecipeDraft(d=>({...d,category:c.id}))}
+                  <button key={c.id} onClick={()=>setRecipeDraft(d=>d.catManual&&d.category===c.id?{...d,category:"other",catManual:false}:{...d,category:c.id,catManual:true})}
                     style={{padding:"5px 12px",borderRadius:100,fontSize:12,fontWeight:700,cursor:"pointer",
-                      background:recipeDraft.category===c.id?"#5A7848":"rgba(90,80,60,0.08)",
-                      color:recipeDraft.category===c.id?"#fff":"#5A4A30",border:"none"}}>
+                      background:recipeDraft.catManual&&recipeDraft.category===c.id?"#5A7848":"rgba(90,80,60,0.08)",
+                      color:recipeDraft.catManual&&recipeDraft.category===c.id?"#fff":"#5A4A30",border:"none"}}>
                     {c.icon} {c.label}
                   </button>
                 ))}
               </div>
-              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>Cuisine</div>
+              <div style={{marginBottom:6,fontSize:12,fontWeight:700,color:"#3A5828",textTransform:"uppercase",letterSpacing:0.5}}>Cuisine <span style={{textTransform:"none",letterSpacing:0,fontWeight:600,color:"#8A8070"}}>— optional</span></div>
               <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
                 {RECIPE_CUISINES.filter(c=>c.id!=="any").map(c=>(
-                  <button key={c.id} onClick={()=>setRecipeDraft(d=>({...d,cuisine:c.id}))}
+                  <button key={c.id} onClick={()=>setRecipeDraft(d=>d.cuisineManual&&d.cuisine===c.id?{...d,cuisine:"other",cuisineManual:false}:{...d,cuisine:c.id,cuisineManual:true})}
                     style={{padding:"5px 12px",borderRadius:100,fontSize:12,fontWeight:700,cursor:"pointer",
-                      background:recipeDraft.cuisine===c.id?"#2980b9":"rgba(90,80,60,0.08)",
-                      color:recipeDraft.cuisine===c.id?"#fff":"#5A4A30",border:"none"}}>
+                      background:recipeDraft.cuisineManual&&recipeDraft.cuisine===c.id?"#2980b9":"rgba(90,80,60,0.08)",
+                      color:recipeDraft.cuisineManual&&recipeDraft.cuisine===c.id?"#fff":"#5A4A30",border:"none"}}>
                     {c.icon} {c.label}
                   </button>
                 ))}
@@ -2807,8 +3066,7 @@ Rules:
                 <button onClick={()=>{setAddingRecipe(false);setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",pinUrl:"",photo:"",category:"other",cuisine:"other"});}} style={{flex:1,background:"rgba(90,80,60,0.08)",color:"#8A8070",border:"none",borderRadius:100,padding:"11px",fontWeight:600,fontSize:13,cursor:"pointer"}}>Cancel</button>
                 <button onClick={()=>{
                   if(!recipeDraft.name.trim())return;
-                  const newRecipe={...recipeDraft,id:Date.now()+Math.random(),created:Date.now()};
-                  setRecipes(prev=>[newRecipe,...prev]);
+                  saveNewRecipe(recipeDraft);
                   setAddingRecipe(false);
                   setRecipeDraft({name:"",description:"",ingredients:"",method:"",url:"",pinUrl:"",photo:"",photos:[],category:"other",cuisine:"other",favourite:false});
                 }} style={{flex:2,background:"#5A7848",color:"#fff",border:"none",borderRadius:100,padding:"13px",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 3px 12px rgba(58,80,38,0.28)"}}>
@@ -2848,6 +3106,7 @@ Rules:
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontWeight:700,fontSize:15,color:"#1A1A10",marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}</div>
                       <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                        {needsCat(r)&&<span style={{background:"rgba(230,126,34,0.12)",borderRadius:100,padding:"2px 8px",fontSize:11,fontWeight:700,color:"#A0522D"}}>📌 No category</span>}
                         {r.category&&r.category!=="other"&&(()=>{const cat=RECIPE_CATS.find(c=>c.id===r.category);return cat?<span style={{background:"rgba(90,120,72,0.12)",borderRadius:100,padding:"2px 8px",fontSize:11,fontWeight:700,color:"#3A5828"}}>{cat.icon} {cat.label}</span>:null;})()}
                         {r.cuisine&&r.cuisine!=="other"&&(()=>{const cu=RECIPE_CUISINES.find(c=>c.id===r.cuisine);return cu?<span style={{background:"rgba(41,128,185,0.10)",borderRadius:100,padding:"2px 8px",fontSize:11,fontWeight:700,color:"#1a5276"}}>{cu.icon} {cu.label}</span>:null;})()}
                         <span style={{fontSize:11,color:"#8A8070"}}>{r.ingredients?r.ingredients.split("\n").filter(Boolean).length+" ingredients":"No ingredients"}</span>
