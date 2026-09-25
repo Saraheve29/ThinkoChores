@@ -1356,13 +1356,35 @@ function ShoppingList({data,setData,setScreen}){
     try{const v=localStorage.getItem('thinko_shop_order');return v?JSON.parse(v):null;}catch{return null;}
   });
 
+  // Old separate recipe lists ("Corned Beef Hash — Ingredients", "🍽 Fajitas") are folded into the ONE
+  // Meal Plan Shopping list automatically — no button to find. Each keeps its meal heading; repeats merge.
+  const [mergedNote,setMergedNote]=useState(null);
+  useEffect(()=>{
+    const oldLists=(data||[]).filter(l=>!!l&&!isMealShopList(l)&&(/ — Ingredients$/.test(l.name||"")||/^🍽/.test(l.name||"")));
+    if(!oldLists.length) return;
+    let lists=data;let listId=null;let merged=0;
+    oldLists.forEach(ol=>{
+      const meal=(ol.name||"").replace(/ — Ingredients$/,"").replace(/^🍽️?\s*/,"").trim()||"Recipe";
+      const res=addToMealShop(lists,meal,ol.items||[]);
+      lists=res.lists;listId=res.listId;merged+=res.merged.length;
+    });
+    const oldIds=new Set(oldLists.map(l=>l.id));
+    setData(lists.filter(l=>!oldIds.has(l.id)));
+    setMergedNote({count:oldLists.length,merged,listId});
+  },[data]);
+
   // Navigate to open list
   const active=data.find(l=>l.id===activeId);
   if(active) return <ShopListDetail list={active} onBack={()=>setActiveId(null)} onUpdate={u=>setData(ds=>ds.map(l=>l.id===u.id?u:l))} onDelete={id=>{setData(ds=>ds.filter(l=>l.id!==id));setActiveId(null);}}/>;
 
-  const orderedLists=shopOrder
-    ?(shopOrder.map(id=>data.find(l=>l.id===id)).filter(Boolean).concat(data.filter(l=>!shopOrder.includes(l.id))))
-    :data;
+  const orderedLists=(()=>{
+    const base=shopOrder
+      ?(shopOrder.map(id=>data.find(l=>l.id===id)).filter(Boolean).concat(data.filter(l=>!shopOrder.includes(l.id))))
+      :data;
+    // Meal Plan Shopping goes to the top, unless you've dragged it somewhere yourself
+    const ml=base.find(isMealShopList);
+    return ml&&!(shopOrder||[]).includes(ml.id)?[ml,...base.filter(l=>l!==ml)]:base;
+  })();
 
   const shopDragOver=(e,id)=>{
     e.preventDefault();
@@ -1632,35 +1654,26 @@ function ShoppingList({data,setData,setScreen}){
       </div>
 
       <div style={{padding:"0 14px"}}>
-        {/* Combine separate recipe lists into the one Meal Plan Shopping list */}
-        {(()=>{
-          const oldLists=data.filter(l=>!isMealShopList(l)&&(/ — Ingredients$/.test(l.name||"")||/^🍽/.test(l.name||"")));
-          const hasCombined=data.some(isMealShopList);
-          const count=oldLists.length+(hasCombined?1:0);
-          if(oldLists.length===0||count<2) return null;
-          return(
-            <button onClick={()=>{
-              if(!window.confirm(`Combine your ${count} recipe lists into one "${MEAL_SHOP_NAME}" list?\n\nEach recipe keeps its own heading, and repeated items like salt only appear once.`))return;
-              let lists=data;let listId=null;let mergedCount=0;
-              oldLists.forEach(ol=>{
-                const meal=(ol.name||"").replace(/ — Ingredients$/,"").replace(/^🍽️?\s*/,"").trim()||"Recipe";
-                const res=addToMealShop(lists,meal,ol.items||[]);
-                lists=res.lists;listId=res.listId;mergedCount+=res.merged.length;
-              });
-              const oldIds=new Set(oldLists.map(l=>l.id));
-              setData(lists.filter(l=>!oldIds.has(l.id)));
-              if(listId) setActiveId(listId);
-              alert(`✅ All combined into "${MEAL_SHOP_NAME}"${mergedCount>0?`\n\n🔗 ${mergedCount} repeated item${mergedCount===1?"":"s"} merged, so you won't buy ${mergedCount===1?"it":"them"} twice`:""}`);
-            }}
-              style={{width:"100%",marginBottom:14,padding:"14px 18px",background:"rgba(90,120,72,0.12)",border:"2px dashed rgba(90,120,72,0.45)",borderRadius:18,cursor:"pointer",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
-              <span style={{fontSize:26}}>🔗</span>
-              <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:800,color:"#2A4020"}}>Combine your recipe lists into one</div>
-                <div style={{fontSize:12,color:"#5A4A30",marginTop:2}}>{count} separate lists · keeps each meal's heading · no double items</div>
-              </div>
-            </button>
-          );
-        })()}
+        {/* One-time message after old recipe lists were combined automatically */}
+        {mergedNote&&(
+          <div style={{background:"rgba(90,120,72,0.14)",border:"2px solid rgba(90,120,72,0.45)",borderRadius:18,padding:"14px 16px",marginBottom:14}}>
+            <div style={{fontSize:15,fontWeight:800,color:"#2A4020",marginBottom:4}}>✅ {mergedNote.count} recipe list{mergedNote.count===1?"":"s"} combined into one</div>
+            <div style={{fontSize:13,color:"#3A4A30",lineHeight:1.5,marginBottom:12}}>
+              Everything is now in <b>{MEAL_SHOP_NAME}</b>, with a heading for each meal
+              {mergedNote.merged>0?` — and ${mergedNote.merged} repeated item${mergedNote.merged===1?"":"s"} (like salt) only appear${mergedNote.merged===1?"s":""} once`:""}.
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>{const id=mergedNote.listId;setMergedNote(null);if(id)setActiveId(id);}}
+                style={{flex:2,padding:"11px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer"}}>
+                Open it →
+              </button>
+              <button onClick={()=>setMergedNote(null)}
+                style={{flex:1,padding:"11px",background:"rgba(255,255,255,0.8)",color:"#5A4A30",border:"1px solid rgba(90,80,60,0.2)",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer"}}>
+                OK
+              </button>
+            </div>
+          </div>
+        )}
         {/* Empty state when no lists */}
         {data.length===0&&(
           <div style={{textAlign:"center",padding:"60px 24px"}}>
