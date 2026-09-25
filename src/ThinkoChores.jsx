@@ -1057,6 +1057,7 @@ function ShopListDetail({list,onBack,onUpdate,onDelete,onOpenRecipe}){
   const [editingId,setEditingId]=useState(null);
   const [editText,setEditText]=useState("");
   const [editQty,setEditQty]=useState("");
+  const [sharedOpen,setSharedOpen]=useState(true);
   const save=items=>onUpdate({...list,items:items.map(i=>({cat:"",...i}))});
   const addItem=()=>{if(!newItem.trim())return;save([...list.items,{id:Date.now()+Math.random(),text:newItem.trim(),done:false,cat:""}]);setNewItem("");};
   const toggle=id=>save(list.items.map(it=>it.id===id?{...it,done:!it.done}:it));
@@ -1205,10 +1206,21 @@ function ShopListDetail({list,onBack,onUpdate,onDelete,onOpenRecipe}){
                         </button>
                       )}
                     </div>
-                    {item.meal&&(item.done||(item.cat&&CAT_EMOJI[item.cat])||isShared(item))&&(
+                    {isShared(item)&&(
+                      <div style={{marginTop:6,padding:"8px 10px",background:"rgba(255,255,255,0.85)",borderRadius:10,border:"1px solid rgba(41,128,185,0.3)"}}>
+                        <div style={{fontSize:12,fontWeight:800,color:"#1a5276",marginBottom:4}}>🛒 Buy enough for {mealsOf(item).length} meals:</div>
+                        {[{meal:item.meal,text:item.text},...(item.alsoFor||[])].map((a,ai)=>(
+                          <div key={ai} style={{fontSize:13,color:"#1A1A10",lineHeight:1.45,display:"flex",gap:6}}>
+                            <span style={{fontWeight:800,color:"#2980b9"}}>•</span>
+                            <span><b>{a.text}</b> <span style={{color:"#5A4A30",fontSize:12}}>— {a.meal}</span></span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {!isShared(item)&&item.meal&&(item.done||(item.cat&&CAT_EMOJI[item.cat]))&&(
                       <div style={{fontSize:11,color:"#8A8070",fontWeight:600,marginTop:2}}>🍽️ {item.meal}</div>
                     )}
-                    {(item.alsoFor||[]).map((a,ai)=>(
+                    {!isShared(item)&&(item.alsoFor||[]).map((a,ai)=>(
                       <div key={ai} style={{fontSize:11,color:"#5A7848",fontWeight:700,marginTop:2,lineHeight:1.4}}>{a.meal===item.meal?`➕ Also: ${a.text}`:`🔗 Also for ${a.meal}: ${a.text}`}</div>
                     ))}
                     <select value={item.cat||""} onChange={e=>{save(list.items.map(i=>i.id===item.id?{...i,cat:e.target.value}:i));}}
@@ -1246,15 +1258,16 @@ function ShopListDetail({list,onBack,onUpdate,onDelete,onOpenRecipe}){
               {noCat.map(renderItem)}
               {shared.length>0&&(
                 <div style={{marginBottom:14}}>
-                  <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",margin:"6px 0 8px",background:"rgba(255,255,255,0.95)",borderRadius:14,border:"1.5px solid rgba(41,128,185,0.3)",borderLeft:"6px solid #2980b9",boxShadow:"0 2px 10px rgba(0,0,0,0.10)"}}>
+                  <div onClick={()=>setSharedOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",margin:"6px 0 8px",background:"rgba(255,255,255,0.95)",borderRadius:14,border:"1.5px solid rgba(41,128,185,0.3)",borderLeft:"6px solid #2980b9",boxShadow:"0 2px 10px rgba(0,0,0,0.10)",cursor:"pointer"}}>
                     <span style={{fontSize:18,flexShrink:0}}>🔗</span>
                     <div style={{flex:1}}>
                       <div style={{fontFamily:"Georgia,serif",fontWeight:700,fontSize:16,color:"#1A2810",lineHeight:1.35}}>Needed for more than one meal</div>
-                      <div style={{fontSize:12,color:"#5A4A30",fontWeight:600,marginTop:2}}>Listed once so you don't buy them twice</div>
+                      <div style={{fontSize:12,color:"#1a5276",fontWeight:700,marginTop:3,lineHeight:1.4}}>{shared.map(i=>shopName(i.text)).join(" · ")}</div>
+                      <div style={{fontSize:12,color:"#5A4A30",fontWeight:600,marginTop:3}}>{sharedOpen?`Listed once below ↓ with how much each meal needs · tap to hide`:`Tap to show all ${shared.length}`}</div>
                     </div>
-                    <span style={{fontSize:12,color:"#fff",fontWeight:800,background:"#2980b9",borderRadius:100,padding:"3px 10px",flexShrink:0}}>{shared.length}</span>
+                    <span style={{fontSize:12,color:"#fff",fontWeight:800,background:"#2980b9",borderRadius:100,padding:"3px 10px",flexShrink:0}}>{shared.length} {sharedOpen?"▲":"▼"}</span>
                   </div>
-                  {shared.map(renderItem)}
+                  {sharedOpen&&shared.map(renderItem)}
                 </div>
               )}
               {mealOrder.map(meal=>{
