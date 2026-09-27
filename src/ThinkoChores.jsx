@@ -2195,6 +2195,15 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
     save({...plan,days});
     setEditMeal(null);
   };
+  // Move a meal to a different day (keeps its ingredients, recipe link and ticks)
+  const [moveMealKey,setMoveMealKey]=useState(null);
+  const moveMeal=(fromIdx,mealId,toIdx)=>{
+    if(fromIdx===toIdx){setMoveMealKey(null);return;}
+    const meal=(plan.days[fromIdx]||[]).find(m=>m.id===mealId); if(!meal)return;
+    const days=plan.days.map((d,i)=>i===fromIdx?d.filter(m=>m.id!==mealId):i===toIdx?[...(d||[]),meal]:d);
+    save({...plan,days});
+    setMoveMealKey(null);
+  };
   const deleteMeal=(dayIdx,mealId)=>{
     const days=plan.days.map((d,i)=>i===dayIdx?d.filter(m=>m.id!==mealId):d);
     save({...plan,days});
@@ -3493,8 +3502,26 @@ Rules:
                         <button onClick={()=>scheduleMeal(meal,label)} title="Calendar" style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>📅</button>
                         <button onClick={()=>{const key=dayIdx+"-"+meal.id;setExpandedMeal(expandedMeal===key?null:key);}} title="Ingredients" style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🥦</button>
                         <button onClick={()=>openEditMeal(dayIdx,meal)} style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>✏️</button>
+                        <button onClick={()=>{const k=dayIdx+"-"+meal.id;setMoveMealKey(moveMealKey===k?null:k);}} title="Move to another day" style={{background:moveMealKey===dayIdx+"-"+meal.id?"#5A7848":"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:moveMealKey===dayIdx+"-"+meal.id?"#fff":textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>📆</button>
                         <button onClick={()=>deleteMeal(dayIdx,meal.id)} style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:"#c0392b",border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🗑</button>
                       </div>
+                      {/* Move to another day */}
+                      {moveMealKey===dayIdx+"-"+meal.id&&(
+                        <div style={{padding:"10px 12px 12px",borderTop:"1px solid "+border,background:"rgba(255,255,255,0.9)",borderRadius:12,margin:"4px 0 8px"}}>
+                          <div style={{fontSize:13,fontWeight:800,color:"#2A4020",marginBottom:8}}>📆 Move "{meal.text}" to…</div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                            {plan.labels.map((lbl,ti)=>(
+                              <button key={ti} disabled={ti===dayIdx} onClick={()=>moveMeal(dayIdx,meal.id,ti)}
+                                style={{padding:"10px 6px",borderRadius:12,fontSize:13,fontWeight:700,cursor:ti===dayIdx?"default":"pointer",
+                                  background:ti===dayIdx?"rgba(90,80,60,0.06)":"rgba(90,120,72,0.10)",color:ti===dayIdx?"#B0A898":"#1A1A10",
+                                  border:ti===dayIdx?"1.5px dashed rgba(90,80,60,0.2)":"1.5px solid rgba(90,120,72,0.25)"}}>
+                                {lbl}{ti===dayIdx?" (now)":""}
+                              </button>
+                            ))}
+                          </div>
+                          <button onClick={()=>setMoveMealKey(null)} style={{width:"100%",marginTop:8,padding:"8px",background:"none",border:"none",color:"#8A8070",fontWeight:700,fontSize:13,cursor:"pointer"}}>Cancel</button>
+                        </div>
+                      )}
                       {/* Ingredients panel */}
                       {expandedMeal===(dayIdx+"-"+meal.id)&&(
                         <div style={{padding:"10px 14px 14px",borderTop:"1px solid "+border,background:"rgba(255,255,255,0.25)"}}>
