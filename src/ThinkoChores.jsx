@@ -3494,15 +3494,14 @@ Rules:
                   <div style={{padding:"0 18px 14px"}}>
                     {meals.map((meal,mi)=>(
                       <>
-                      <div key={meal.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderTop:"1px solid "+border,opacity:meal.had?0.6:1}}>
+                      <div key={meal.id} style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:8,rowGap:6,padding:"8px 0",borderTop:"1px solid "+border,opacity:meal.had?0.6:1}}>
                         <div style={{width:6,height:6,borderRadius:"50%",background:textCol,flexShrink:0,opacity:0.6}}/>
-                        <div style={{flex:1}}><div style={{fontSize:14,fontWeight:600,color:textCol,lineHeight:1.4,textDecoration:meal.had?"line-through":"none"}}>{meal.text}</div>{meal.url&&<UrlBadge url={meal.url}/>}</div>
+                        <div style={{flex:"1 1 120px",minWidth:0}}><div style={{fontSize:14,fontWeight:600,color:textCol,lineHeight:1.4,textDecoration:meal.had?"line-through":"none"}}>{meal.text}</div>{meal.url&&<UrlBadge url={meal.url}/>}</div>
                         {meal.recipeId&&(()=>{const linkedRecipe=recipes.find(rx=>rx.id===meal.recipeId);return linkedRecipe?(<button onClick={()=>setRecipeDetail(linkedRecipe)} title="Open recipe" style={{background:"#5A7848",color:"#fff",border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>📖</button>):null;})()}
                         <button onClick={()=>toggleMealHad(dayIdx,meal.id)} title={meal.had?"Mark as not had":"Mark as had — keeps it for next week"} style={{background:meal.had?"#5A7848":"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:meal.had?"#fff":textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>✓</button>
                         <button onClick={()=>scheduleMeal(meal,label)} title="Calendar" style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>📅</button>
                         <button onClick={()=>{const key=dayIdx+"-"+meal.id;setExpandedMeal(expandedMeal===key?null:key);}} title="Ingredients" style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🥦</button>
                         <button onClick={()=>openEditMeal(dayIdx,meal)} style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>✏️</button>
-                        <button onClick={()=>{const k=dayIdx+"-"+meal.id;setMoveMealKey(moveMealKey===k?null:k);}} title="Move to another day" style={{background:moveMealKey===dayIdx+"-"+meal.id?"#5A7848":"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:moveMealKey===dayIdx+"-"+meal.id?"#fff":textCol,border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>📆</button>
                         <button onClick={()=>deleteMeal(dayIdx,meal.id)} style={{background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:"#c0392b",border:"none",borderRadius:7,width:28,height:28,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>🗑</button>
                       </div>
                       {/* Move to another day */}
@@ -3595,6 +3594,33 @@ Rules:
                 style={{width:"100%",boxSizing:"border-box",padding:"11px 14px",borderRadius:11,border:`2px solid ${C.lp}`,fontSize:15,fontWeight:600,color:C.txt,outline:"none",marginBottom:10}}
               />
               <UrlField value={mealUrl} onChange={setMealUrl} style={{marginBottom:16}}/>
+              {/* Move this meal to a different day */}
+              {editMeal.mealId!==null&&(
+                <div style={{marginBottom:16}}>
+                  <div style={{fontSize:13,fontWeight:800,color:"#2A4020",marginBottom:8}}>📆 Move to another day</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                    {plan.labels.map((lbl,ti)=>{
+                      const here=ti===editMeal.dayIdx;
+                      return(
+                        <button key={ti} disabled={here} onClick={()=>{
+                            // save any text changes first, then move
+                            const from=editMeal.dayIdx,id=editMeal.mealId;
+                            const days=plan.days.map((d,i)=>i!==from?d:d.map(m=>m.id===id?{...m,text:mealDraft.trim()||m.text,url:mealUrl.trim()}:m));
+                            const meal=days[from].find(m=>m.id===id); if(!meal)return;
+                            const moved=days.map((d,i)=>i===from?d.filter(m=>m.id!==id):i===ti?[...(d||[]),meal]:d);
+                            save({...plan,days:moved});
+                            setEditMeal(null);
+                          }}
+                          style={{padding:"8px 12px",borderRadius:100,fontSize:13,fontWeight:700,cursor:here?"default":"pointer",
+                            background:here?"#5A7848":"rgba(90,120,72,0.10)",color:here?"#fff":"#1A1A10",
+                            border:here?"none":"1.5px solid rgba(90,120,72,0.25)"}}>
+                          {lbl}{here?" ✓":""}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <div style={{display:"flex",gap:10}}>
                 <button onClick={()=>setEditMeal(null)} style={{flex:1,background:C.ll,color:C.mid,border:"none",borderRadius:12,padding:"12px",fontWeight:700,fontSize:14,cursor:"pointer"}}>Cancel</button>
                 <button onClick={saveMeal} style={{flex:2,background:btnGrad,color:"#1A1A10",border:"none",borderRadius:12,padding:"12px",fontWeight:800,fontSize:15,cursor:"pointer",boxShadow:"0 3px 12px rgba(45,10,94,0.3)"}}>Save</button>
