@@ -2111,7 +2111,8 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
   const [recipeFavFilter,setRecipeFavFilter]=useState(false);
 
   /* ── Recipe categories: by hand + automatic ── */
-  const [catEditFor,setCatEditFor]=useState(null);   // recipe id whose "change category" panel is open
+  const [catEditFor,setCatEditFor]=useState(null);
+  const [recipeEdit,setRecipeEdit]=useState(null);   // {id,name,ingredients,method,description} while editing a recipe   // recipe id whose "change category" panel is open
   const [handSort,setHandSort]=useState(null);       // {ids:[...], idx} while sorting by hand
   const [sortBusy,setSortBusy]=useState(null);       // progress text while auto-sorting
   const setRecipeCat=(id,cat)=>setRecipes(prev=>prev.map(x=>x.id===id?{...x,category:cat,catManual:true}:x));
@@ -2336,11 +2337,11 @@ const sendMealToShop=(meal,label)=>{
               <div style={{marginBottom:14}}>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
                   {unsorted
-                    ?<span style={{...chip,background:"rgba(230,126,34,0.14)",color:"#A0522D",border:"1.5px dashed rgba(230,126,34,0.45)"}}>📌 No category yet</span>
-                    :<span style={{...chip,background:"rgba(90,120,72,0.14)",color:"#2A4020"}}>{cat.icon} {cat.label}</span>}
-                  {cu&&<span style={{...chip,background:"rgba(41,128,185,0.10)",color:"#1a5276"}}>{cu.icon} {cu.label}</span>}
+                    ?<span style={{...chip,background:"#FFF4E8",color:"#A0522D",border:"1.5px dashed rgba(230,126,34,0.6)"}}>📌 No category yet</span>
+                    :<span style={{...chip,background:"#EEF5E8",color:"#2A4020",border:"1.5px solid rgba(90,120,72,0.35)"}}>{cat.icon} {cat.label}</span>}
+                  {cu&&<span style={{...chip,background:"#EAF3FA",color:"#1a5276",border:"1.5px solid rgba(41,128,185,0.35)"}}>{cu.icon} {cu.label}</span>}
                   <button onClick={()=>setCatEditFor(open?null:r.id)}
-                    style={{...chip,background:open?"#5A7848":"rgba(255,255,255,0.85)",color:open?"#fff":"#3A5828",border:"1.5px solid rgba(90,120,72,0.35)",cursor:"pointer"}}>
+                    style={{...chip,background:open?"#5A7848":"#fff",color:open?"#fff":"#3A5828",border:"1.5px solid rgba(90,120,72,0.35)",cursor:"pointer"}}>
                     {open?"✓ Done":unsorted?"✏️ Set category":"✏️ Change"}
                   </button>
                 </div>
@@ -2388,6 +2389,47 @@ const sendMealToShop=(meal,label)=>{
               <span style={{fontSize:13,fontWeight:600,color:"#E60023"}}>View on Pinterest</span>
             </a>
           )}
+          {/* ✏️ Edit recipe — swap ingredients you can't get, change the method or notes */}
+          {recipeEdit&&recipeEdit.id===r.id?(()=>{
+            const box={width:"100%",boxSizing:"border-box",padding:"12px 14px",borderRadius:14,border:"1.5px solid rgba(90,120,72,0.3)",fontSize:15,lineHeight:1.7,color:"#1A1A10",outline:"none",resize:"vertical",fontFamily:"inherit",background:"#fff",marginBottom:14};
+            const lbl={fontWeight:800,color:"#2A4020",fontSize:14,marginBottom:6};
+            return(
+              <div style={{background:"rgba(255,255,255,0.95)",borderRadius:18,padding:"16px",marginBottom:14,border:"2px solid #5A7848",boxShadow:"0 4px 18px rgba(0,0,0,0.10)"}}>
+                <div style={{fontWeight:800,color:"#2A4020",fontSize:16,marginBottom:12}}>✏️ Edit recipe</div>
+                <div style={lbl}>Name</div>
+                <input value={recipeEdit.name} onChange={e=>setRecipeEdit(d=>({...d,name:e.target.value}))} style={{...box,lineHeight:1.4}}/>
+                <div style={lbl}>🥄 Ingredients <span style={{fontWeight:600,color:"#8A8070",fontSize:12}}>— one per line</span></div>
+                <textarea value={recipeEdit.ingredients} onChange={e=>setRecipeEdit(d=>({...d,ingredients:e.target.value}))} rows={9} style={box}/>
+                <div style={lbl}>📋 Method</div>
+                <textarea value={recipeEdit.method} onChange={e=>setRecipeEdit(d=>({...d,method:e.target.value}))} rows={7} style={box}/>
+                <div style={lbl}>📝 Notes</div>
+                <textarea value={recipeEdit.description} onChange={e=>setRecipeEdit(d=>({...d,description:e.target.value}))} rows={4} style={box}/>
+                <div style={{display:"flex",gap:10}}>
+                  <button onClick={()=>setRecipeEdit(null)} style={{flex:1,padding:"12px",background:"rgba(90,80,60,0.08)",color:"#5A4A30",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer"}}>Cancel</button>
+                  <button onClick={()=>{
+                    const name=recipeEdit.name.trim()||r.name;
+                    const oldLines=new Set(String(r.ingredients||"").split("\n").map(x=>x.trim().toLowerCase()).filter(Boolean));
+                    const newLines=String(recipeEdit.ingredients||"").split("\n").map(x=>x.trim()).filter(Boolean);
+                    const added=newLines.filter(x=>!oldLines.has(x.toLowerCase()));
+                    setRecipes(prev=>prev.map(x=>x.id===r.id?{...x,name,ingredients:recipeEdit.ingredients,method:recipeEdit.method,description:recipeEdit.description}:x));
+                    setRecipeEdit(null);
+                    if(added.length&&window.confirm(`Saved ✅\n\nYou added ${added.length} new ingredient${added.length===1?"":"s"}:\n${added.map(t=>"• "+t).join("\n")}\n\nAdd ${added.length===1?"it":"them"} to your shopping list?`)){
+                      const onListItems=(((shopData||[]).find(isMealShopList)||{}).items||[]).filter(i=>!i.done);
+                      setIngPickerItems(added.map(text=>{
+                        const matches=splitShopLine(text).map(pt=>{const k=shopKey(pt);return k?onListItems.find(i=>shopKey(i.text)===k):null;});
+                        return {text,selected:!isTapWater(text),water:isTapWater(text),onList:matches.every(Boolean)?(matches[0].meal||"your list"):null};
+                      }));
+                    }
+                  }} style={{flex:2,padding:"12px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer"}}>💾 Save changes</button>
+                </div>
+              </div>
+            );
+          })():(
+            <>
+              <button onClick={()=>setRecipeEdit({id:r.id,name:r.name||"",ingredients:r.ingredients||"",method:r.method||"",description:r.description||""})}
+                style={{width:"100%",padding:"11px",marginBottom:14,background:"#fff",color:"#3A5828",border:"1.5px solid rgba(90,120,72,0.4)",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
+                ✏️ Edit recipe — ingredients, method, notes
+              </button>
           {r.ingredients&&<div style={{background:"rgba(255,255,255,0.82)",borderRadius:18,padding:"18px",marginBottom:14,border:"1.5px solid rgba(90,120,72,0.18)",boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
             <div style={{fontWeight:800,color:"#2A4020",fontSize:15,marginBottom:12}}>🥄 Ingredients</div>
             {r.ingredients.split("\n").filter(l=>l.trim()).map((line,i)=>(
@@ -2410,6 +2452,8 @@ const sendMealToShop=(meal,label)=>{
             <div style={{fontWeight:800,color:"#2A4020",fontSize:15,marginBottom:8}}>📝 Notes</div>
             <div style={{fontSize:15,color:"#3A3020",lineHeight:1.8}}>{r.description}</div>
           </div>}
+            </>
+          )}
 
           {/* Action buttons */}
           <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:16}}>
