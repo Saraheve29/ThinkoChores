@@ -1062,6 +1062,7 @@ function ShopListDetail({list,onBack,onUpdate,onDelete,onOpenRecipe}){
   const addItem=()=>{if(!newItem.trim())return;save([...list.items,{id:Date.now()+Math.random(),text:newItem.trim(),done:false,cat:""}]);setNewItem("");};
   const toggle=id=>save(list.items.map(it=>it.id===id?{...it,done:!it.done}:it));
   // Recipes (read once) so each meal heading can check every ingredient is covered
+  const [cupboard]=useState(pantryKeys);
   const [savedRecipes]=useState(()=>{try{const v=JSON.parse(localStorage.getItem('chores_recipes')||'[]');return Array.isArray(v)?v:[];}catch{return [];}});
   // Removing a recipe item (bin, or clearing ticked ones) = "sorted", so the recipe check won't ask about it again
   const haveFrom=items=>items.filter(i=>i&&i.meal).flatMap(i=>[{meal:i.meal,key:shopKey(i.text)},...(i.alsoFor||[]).map(a=>({meal:a.meal,key:shopKey(a.text)}))]).filter(h=>h.key);
@@ -1155,7 +1156,7 @@ function ShopListDetail({list,onBack,onUpdate,onDelete,onOpenRecipe}){
           // Recipe lines that aren't on the list yet (and you haven't said you have)
           const missingFor=meal=>{
             const recipe=recipeFor(meal); if(!recipe) return [];
-            const have=new Set((list.haveAlready||[]).filter(h=>h.meal===meal).map(h=>h.key));
+            const have=new Set([...(list.haveAlready||[]).filter(h=>h.meal===meal).map(h=>h.key),...cupboard]);
             const seen=new Set();
             return String(recipe.ingredients||"").split("\n").map(x=>x.trim()).filter(x=>x&&!/:\s*$/.test(x))
               .flatMap(splitShopLine).filter(t=>{const k=shopKey(t);if(!k||seen.has(k))return false;seen.add(k);return !listKeys.has(k)&&!have.has(k)&&!isTapWater(t);});
@@ -1217,6 +1218,9 @@ function ShopListDetail({list,onBack,onUpdate,onDelete,onOpenRecipe}){
                         ))}
                       </div>
                     )}
+                    {!item.done&&cupboard.has(shopKey(item.text))&&(
+                      <div style={{fontSize:12,color:"#2E7D32",fontWeight:800,marginTop:3}}>🏠 You have this in your cupboard</div>
+                    )}
                     {!isShared(item)&&item.meal&&(item.done||(item.cat&&CAT_EMOJI[item.cat]))&&(
                       <div style={{fontSize:11,color:"#8A8070",fontWeight:600,marginTop:2}}>🍽️ {item.meal}</div>
                     )}
@@ -1238,6 +1242,18 @@ function ShopListDetail({list,onBack,onUpdate,onDelete,onOpenRecipe}){
           );
           return(
             <div>
+              {(()=>{
+                const atHome=active.filter(i=>cupboard.has(shopKey(i.text)));
+                if(!atHome.length) return null;
+                return(
+                  <div style={{padding:"12px 14px",marginBottom:12,background:"rgba(255,255,255,0.96)",borderRadius:14,border:"2px solid rgba(90,120,72,0.5)",boxShadow:"0 2px 10px rgba(0,0,0,0.10)"}}>
+                    <div style={{fontSize:14,fontWeight:800,color:"#2A4020",marginBottom:4}}>🏠 {atHome.length} thing{atHome.length===1?" is":"s are"} already in your cupboard</div>
+                    <div style={{fontSize:13,color:"#3A4A30",fontWeight:600,lineHeight:1.5}}>{atHome.map(i=>shopName(i.text)).join(" · ")}</div>
+                    <button onClick={()=>{const ids=new Set(atHome.map(i=>i.id));removeItems(i=>ids.has(i.id));}}
+                      style={{width:"100%",marginTop:10,padding:"10px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer"}}>✓ Take {atHome.length===1?"it":"them"} off the list</button>
+                  </div>
+                );
+              })()}
               {isMealList&&checked.length>0&&(
                 <div style={{padding:"12px 14px",marginBottom:12,background:"rgba(255,255,255,0.96)",borderRadius:14,border:missingCount?"2px solid rgba(230,126,34,0.55)":"2px solid rgba(46,125,50,0.45)",boxShadow:"0 2px 10px rgba(0,0,0,0.10)"}}>
                   {missingCount===0?(
@@ -1374,7 +1390,7 @@ const isMealShopList=l=>!!l&&(l.mealShop===true||l.name===MEAL_SHOP_NAME||l.name
 //   "1 tsp salt" = "sea salt, to taste" · "½ tsp freshly ground black pepper" = "black pepper"
 //   "2 cloves garlic, crushed" = "3 garlic cloves" · "1/3 cup shredded Cheddar cheese" = "grated cheddar"
 const SHOP_UNITS=/^(tbsps?|tsps?|tablespoons?|teaspoons?|dsp|g|grams?|kg|ml|l|litres?|liters?|oz|lbs?|cups?|handfuls?|pinch(es)?|dash(es)?|cloves?|cans?|tins?|bunch(es)?|slices?|sprigs?|packs?|packets?|jars?|bags?|pieces?|knobs?|splash(es)?|sticks?|drizzle|glugs?|sprinkle|rashers?|heads?|thumbs?|stalks?|bottles?|cartons?|pots?|tubs?|balls?|blocks?)\b\.?\s*/;
-const SHOP_DESCRIPTORS=/\b(freshly|fresh|ground|cracked|crushed|finely|roughly|thinly|coarsely|chopped|diced|sliced|grated|shredded|minced|peeled|softened|melted|beaten|room temperature|large|small|medium|big|extra|virgin|light|lean|mild|mature|strong|unsalted|salted|semi skimmed|skimmed|whole|full fat|low fat|reduced fat|good quality|organic|free range|boneless|skinless|ripe)\b/g;
+const SHOP_DESCRIPTORS=/\b(freshly|fresh|ground|cracked|crushed|finely|roughly|thinly|coarsely|chopped|diced|sliced|grated|shredded|minced|peeled|softened|melted|beaten|room temperature|large|small|medium|big|extra|virgin|light|lean|mild|mature|strong|unsalted|salted|semi skimmed|skimmed|whole|full fat|low fat|reduced fat|good quality|organic|free range|boneless|skinless|ripe|long grain|easy cook)\b/g;
 const shopKey=txt=>{
   let s=String(txt||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
   s=s.replace(/\([^)]*\)/g," ").replace(/&/g," and ").replace(/-/g," ").split(",")[0];
@@ -1385,6 +1401,7 @@ const shopKey=txt=>{
     const before=s;
     s=s.trim();
     s=s.replace(/^(a|an|some|about|approx|approximately|around|roughly)\s+/,"");
+    s=s.replace(/^(half|quarter|third|bit|little|few|couple|leftover|left over|remaining|spare)\s+(of\s+)?/,"");
     s=s.replace(/^[\d\s\/.½¼¾⅓⅔⅛x×]+/,"");
     s=s.replace(SHOP_UNITS,"");
     s=s.replace(/^of\s+/,"");
@@ -1420,6 +1437,59 @@ const splitShopLine=txt=>{
 const shopName=txt=>{const k=shopKey(txt);return k?k.charAt(0).toUpperCase()+k.slice(1):String(txt||"").trim();};
 // Tap water in a recipe isn't something you buy
 const isTapWater=txt=>/^(cold |boiling |hot |warm |tap |lukewarm )?water$/.test(shopKey(txt));
+// ── 🏠 In my cupboard: things already at home (leftovers + staples) so you don't buy them twice ──
+const PANTRY_KEY='chores_pantry';
+const loadPantry=()=>{try{const v=JSON.parse(localStorage.getItem(PANTRY_KEY)||'[]');return Array.isArray(v)?v:[];}catch{return [];}};
+const savePantry=p=>{try{localStorage.setItem(PANTRY_KEY,JSON.stringify(p));}catch{}};
+const addToPantry=texts=>{
+  const p=loadPantry();
+  (texts||[]).flatMap(splitShopLine).forEach(t=>{const key=shopKey(t);if(key&&!isTapWater(t)&&!p.some(x=>x.key===key))p.push({id:Date.now()+Math.random(),text:shopName(t),key,added:Date.now()});});
+  savePantry(p);return p;
+};
+const pantryKeys=()=>new Set(loadPantry().map(x=>x.key));
+const PANTRY_STAPLES=["Salt","Black pepper","Sugar","Plain flour","Olive oil","Vegetable oil","Rice","Pasta","Garlic","Onions","Butter","Tomato puree","Tinned tomatoes","Beef stock cubes","Chicken stock cubes","Mixed herbs","Paprika","Curry powder","Soy sauce","Ketchup","Mayonnaise"];
+function PantryView({pantry,setPantry,onBack}){
+  const [txt,setTxt]=useState("");
+  const add=t=>{const v=String(t||"").trim();if(!v)return;const key=shopKey(v);if(!key||pantry.some(x=>x.key===key))return;setPantry([{id:Date.now()+Math.random(),text:v,key,added:Date.now()},...pantry]);};
+  const card={background:"rgba(255,255,255,0.95)",borderRadius:18,padding:"14px",marginBottom:12,border:"1.5px solid rgba(90,120,72,0.2)",boxShadow:"0 2px 10px rgba(0,0,0,0.06)"};
+  const have=new Set(pantry.map(x=>x.key));
+  return(
+    <div style={{minHeight:"100vh",background:"transparent",fontFamily:"'Segoe UI',sans-serif",paddingBottom:90}}>
+      <Header title="🏠 In my cupboard" onBack={onBack}/>
+      <div style={{padding:"14px"}}>
+        <div style={{...card,fontSize:13,color:"#3A4A30",lineHeight:1.55}}>
+          Things you already have at home — leftovers and staples. Anything here is <b>left off</b> when you send a recipe to shopping, so you don't buy it twice. Tap <b>Used up</b> when it runs out.
+        </div>
+        <div style={{...card,display:"flex",gap:8}}>
+          <input value={txt} onChange={e=>setTxt(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){add(txt);setTxt("");}}} placeholder="Add something you have…"
+            style={{flex:1,padding:"10px 14px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.3)",fontSize:15,outline:"none"}}/>
+          <button onClick={()=>{add(txt);setTxt("");}} style={{background:"#5A7848",color:"#fff",border:"none",borderRadius:100,padding:"0 18px",fontWeight:800,fontSize:15,cursor:"pointer"}}>+ Add</button>
+        </div>
+        {PANTRY_STAPLES.some(t=>!have.has(shopKey(t)))&&(
+          <div style={card}>
+            <div style={{fontSize:13,fontWeight:800,color:"#2A4020",marginBottom:8}}>Quick add — tap what's in your cupboard</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {PANTRY_STAPLES.filter(t=>!have.has(shopKey(t))).map(t=>(
+                <button key={t} onClick={()=>add(t)} style={{padding:"7px 12px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.3)",background:"#F3F8EE",color:"#2A4020",fontWeight:700,fontSize:13,cursor:"pointer"}}>+ {t}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        <div style={card}>
+          <div style={{fontSize:14,fontWeight:800,color:"#2A4020",marginBottom:6}}>🏠 You have ({pantry.length})</div>
+          {pantry.length===0&&<div style={{fontSize:13,color:"#8A8070",padding:"8px 0"}}>Nothing yet — add things above, or tick a meal as eaten and save any leftovers.</div>}
+          {pantry.map(x=>(
+            <div key={x.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 2px",borderTop:"1px solid rgba(90,80,60,0.08)"}}>
+              <span style={{fontSize:16}}>🏠</span>
+              <span style={{flex:1,fontSize:15,fontWeight:600,color:"#1A1A10"}}>{x.text}</span>
+              <button onClick={()=>setPantry(pantry.filter(y=>y.id!==x.id))} style={{padding:"6px 12px",borderRadius:100,border:"1px solid rgba(192,57,43,0.3)",background:"#FFF3F1",color:"#c0392b",fontWeight:700,fontSize:12,cursor:"pointer"}}>Used up</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 // Add one meal's ingredients to the combined list. Anything already on it (and not ticked off)
 // isn't added again — the existing line gets an "also for" note instead, so amounts aren't lost.
 // haveTexts = lines you said you already have (unticked), so the recipe check doesn't nag about them.
@@ -1552,6 +1622,9 @@ function ShoppingList({data,setData,setScreen}){
   // Old separate recipe lists ("Corned Beef Hash — Ingredients", "🍽 Fajitas") are folded into the ONE
   // Meal Plan Shopping list automatically — no button to find. Each keeps its meal heading; repeats merge.
   const [mergedNote,setMergedNote]=useState(null);
+  const [pantry,setPantryState]=useState(loadPantry);
+  const setPantry=p=>{setPantryState(p);savePantry(p);};
+  const [pantryOpen,setPantryOpen]=useState(false);
   useEffect(()=>{
     const oldLists=(data||[]).filter(l=>!!l&&!isMealShopList(l)&&(/ — Ingredients$/.test(l.name||"")||/^🍽/.test(l.name||"")));
     if(!oldLists.length) return;
@@ -1575,6 +1648,7 @@ function ShoppingList({data,setData,setScreen}){
 
   // Navigate to open list
   const active=data.find(l=>l.id===activeId);
+  if(pantryOpen) return <PantryView pantry={pantry} setPantry={setPantry} onBack={()=>setPantryOpen(false)}/>;
   if(active) return <ShopListDetail list={active} onOpenRecipe={rid=>{try{localStorage.setItem('thinko_open_recipe',String(rid));localStorage.setItem('thinko_return_list',String(active.id));}catch{}setScreen("meals");}} onBack={()=>setActiveId(null)} onUpdate={u=>setData(ds=>ds.map(l=>l.id===u.id?u:l))} onDelete={id=>{setData(ds=>ds.filter(l=>l.id!==id));setActiveId(null);}}/>;
 
   const orderedLists=(()=>{
@@ -1885,6 +1959,18 @@ function ShoppingList({data,setData,setScreen}){
               + Create your first list
             </button>
           </div>
+        )}
+        {/* 🏠 IN MY CUPBOARD */}
+        {data.length>0&&(
+          <button onClick={()=>{setPantryState(loadPantry());setPantryOpen(true);}}
+            style={{width:"100%",marginBottom:12,padding:"14px 18px",background:"rgba(255,255,255,0.95)",border:"2px solid rgba(90,120,72,0.45)",borderRadius:18,cursor:"pointer",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
+            <span style={{fontSize:28}}>🏠</span>
+            <div style={{flex:1}}>
+              <div style={{fontSize:11,fontWeight:800,color:"#5A7848",textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>In my cupboard</div>
+              <div style={{fontSize:13,color:"#3A4A30",fontWeight:600}}>{pantry.length?`${pantry.length} thing${pantry.length===1?"":"s"} at home — won't be bought twice`:"Add what you already have so you don't buy it twice"}</div>
+            </div>
+            <span style={{fontSize:20,color:"#5A7848"}}>→</span>
+          </button>
         )}
         {/* WISH LIST QUICK ACCESS */}
         {(()=>{
@@ -2209,9 +2295,18 @@ function MealPlanner({data,setData,shopData,setShopData,setScreen}) {
     const days=plan.days.map((d,i)=>i===dayIdx?d.filter(m=>m.id!==mealId):d);
     save({...plan,days});
   };
+  const [leftovers,setLeftovers]=useState(null);   // {meal, items:[{text,on}], extra}
   const toggleMealHad=(dayIdx,mealId)=>{
+    const meal=(plan.days[dayIdx]||[]).find(m=>m.id===mealId);
     const days=plan.days.map((d,di)=>di!==dayIdx?d:d.map(m=>m.id!==mealId?m:{...m,had:!m.had}));
     save({...plan,days});
+    if(meal&&!meal.had){
+      // just eaten → anything left over goes in the cupboard
+      const rec=meal.recipeId?recipes.find(r=>r.id===meal.recipeId):recipes.find(r=>String(r.name||"").trim().toLowerCase()===String(meal.text||"").trim().toLowerCase());
+      const lines=rec?String(rec.ingredients||"").split("\n").map(x=>x.trim()).filter(Boolean):(meal.ingredients||[]).map(i=>i.text);
+      const home=pantryKeys();
+      setLeftovers({meal:meal.text,items:lines.flatMap(splitShopLine).filter(t=>!isTapWater(t)&&!home.has(shopKey(t))).map(text=>({text,on:false})),extra:""});
+    }
   };
 
   
@@ -2417,7 +2512,8 @@ const sendMealToShop=(meal,label)=>{
                       const onListItems=(((shopData||[]).find(isMealShopList)||{}).items||[]).filter(i=>!i.done);
                       setIngPickerItems(added.map(text=>{
                         const matches=splitShopLine(text).map(pt=>{const k=shopKey(pt);return k?onListItems.find(i=>shopKey(i.text)===k):null;});
-                        return {text,selected:!isTapWater(text),water:isTapWater(text),onList:matches.every(Boolean)?(matches[0].meal||"your list"):null};
+                        const inCupboard=splitShopLine(text).every(pt=>pantryKeys().has(shopKey(pt)));
+                        return {text,selected:!isTapWater(text)&&!inCupboard,water:isTapWater(text),inCupboard,onList:matches.every(Boolean)?(matches[0].meal||"your list"):null};
                       }));
                     }
                   }} style={{flex:2,padding:"12px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer"}}>💾 Save changes</button>
@@ -2490,10 +2586,12 @@ const sendMealToShop=(meal,label)=>{
                   const lines=r.ingredients.split("\n").map(l=>l.trim()).filter(Boolean);
                   if(lines.length===0){alert("No ingredients found in this recipe.");return;}
                   const onListItems=(((shopData||[]).find(isMealShopList)||{}).items||[]).filter(i=>!i.done);
+                  const home=pantryKeys();
                   setIngPickerItems(lines.map(text=>{
                     const matches=splitShopLine(text).map(pt=>{const k=shopKey(pt);return k?onListItems.find(i=>shopKey(i.text)===k):null;});
                     const water=isTapWater(text);
-                    return {text,selected:!water,water,onList:matches.every(Boolean)?(matches[0].meal||"your list"):null};
+                    const inCupboard=splitShopLine(text).every(pt=>home.has(shopKey(pt)));
+                    return {text,selected:!water&&!inCupboard,water,inCupboard,onList:matches.every(Boolean)?(matches[0].meal||"your list"):null};
                   }));
                 }}
                   style={{width:"100%",padding:"14px",background:"linear-gradient(135deg,rgba(230,200,180,0.92) 0%,rgba(210,195,220,0.92) 35%,rgba(190,215,200,0.92) 70%,rgba(220,210,185,0.92) 100%)",color:"#2A4020",border:"1.5px solid rgba(90,120,72,0.25)",borderRadius:100,fontWeight:700,fontSize:15,cursor:"pointer"}}>
@@ -2515,6 +2613,7 @@ const sendMealToShop=(meal,label)=>{
                         </div>
                         <div style={{flex:1}}>
                           <div style={{fontSize:14,color:"#1A1A10",lineHeight:1.4,textDecoration:item.selected?"none":"line-through"}}>{item.text}</div>
+                          {item.inCupboard&&!item.selected&&<div style={{fontSize:11,color:"#2E7D32",fontWeight:800,marginTop:2}}>🏠 In your cupboard — left off (tap to add)</div>}
                           {item.water&&!item.selected&&<div style={{fontSize:11,color:"#2980b9",fontWeight:700,marginTop:2}}>💧 Tap water — left off (tap to add)</div>}
                           {item.onList&&<div style={{fontSize:11,color:"#5A7848",fontWeight:700,marginTop:2,lineHeight:1.4}}>🔗 Already on your list{item.onList===r.name||item.onList==="your list"?"":` for ${item.onList}`} — won't be added twice</div>}
                         </div>
@@ -3619,6 +3718,32 @@ Rules:
       )}
 
       {/* Meal edit modal */}
+      {/* 🏠 Leftovers after eating a meal */}
+      {leftovers&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",zIndex:300,display:"flex",alignItems:"flex-end"}} onClick={()=>setLeftovers(null)}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",width:"100%",maxHeight:"80vh",overflowY:"auto",borderRadius:"22px 22px 0 0",padding:"18px 16px 90px",boxSizing:"border-box"}}>
+            <div style={{fontSize:17,fontWeight:800,color:"#2A4020",marginBottom:4}}>🏠 Anything left over?</div>
+            <div style={{fontSize:13,color:"#5A4A30",marginBottom:12,lineHeight:1.5}}>Tick what you still have from <b>{leftovers.meal}</b>. It goes in your cupboard list so you won't buy it again.</div>
+            {leftovers.items.map((it,idx)=>(
+              <div key={idx} onClick={()=>setLeftovers(l=>({...l,items:l.items.map((x,i)=>i===idx?{...x,on:!x.on}:x)}))}
+                style={{display:"flex",alignItems:"center",gap:10,padding:"10px 4px",borderBottom:"1px solid rgba(90,80,60,0.08)",cursor:"pointer"}}>
+                <div style={{width:24,height:24,borderRadius:7,border:"2px solid "+(it.on?"#5A7848":"rgba(90,120,72,0.4)"),background:it.on?"#5A7848":"#fff",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,flexShrink:0}}>{it.on?"✓":""}</div>
+                <div style={{fontSize:15,color:"#1A1A10"}}>{it.text}</div>
+              </div>
+            ))}
+            <input value={leftovers.extra} onChange={e=>setLeftovers(l=>({...l,extra:e.target.value}))} placeholder="Something else left? e.g. half a bag of rice"
+              style={{width:"100%",boxSizing:"border-box",marginTop:12,padding:"11px 14px",borderRadius:100,border:"1.5px solid rgba(90,120,72,0.3)",fontSize:14,outline:"none"}}/>
+            <div style={{display:"flex",gap:10,marginTop:14}}>
+              <button onClick={()=>setLeftovers(null)} style={{flex:1,padding:"12px",background:"rgba(90,80,60,0.08)",color:"#5A4A30",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer"}}>Nothing left</button>
+              <button onClick={()=>{
+                const picked=[...leftovers.items.filter(x=>x.on).map(x=>x.text),...(leftovers.extra.trim()?[leftovers.extra.trim()]:[])];
+                if(picked.length){addToPantry(picked);alert(`🏠 Saved ${picked.length} thing${picked.length===1?"":"s"} to your cupboard`);}
+                setLeftovers(null);
+              }} style={{flex:2,padding:"12px",background:"#5A7848",color:"#fff",border:"none",borderRadius:100,fontWeight:700,fontSize:14,cursor:"pointer"}}>🏠 Save to cupboard</button>
+            </div>
+          </div>
+        </div>
+      )}
       {editMeal!==null&&(
         <div style={{position:"fixed",inset:0,background:"rgba(58,80,38,0.20)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}}>
           <div style={{background:C.wh,borderRadius:"22px 22px 0 0",padding:"0 0 30px",width:"100%",maxWidth:480,boxShadow:"0 -8px 40px rgba(45,10,94,0.4)"}}>
